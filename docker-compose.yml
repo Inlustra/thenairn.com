@@ -45,6 +45,7 @@ services:
     volumes:
       - .data/transmission:/data
       - .data/transmission_config:/opt/config
+      - ./transmission/settings.json:/opt/config/settings.json
     restart: unless-stopped
 
   sonarr:

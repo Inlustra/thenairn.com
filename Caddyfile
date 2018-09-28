@@ -11,28 +11,21 @@ media.thenairn.com {
     redir /transmission/ /transmission/web/
     proxy /transmission transmission:9091
     
-}
-
-sonarr.thenairn.com {
-    proxy / sonarr:8989 {
+    proxy /sonarr/ sonarr:8989 {
 	    transparent
     }
-}
 
-jackett.thenairn.com {
-     proxy / jackett:9117 {
+    proxy /jackett/ jackett:9117 {
 	    transparent
     }
-}
 
-radarr.thenairn.com {
-    proxy / radarr:7878 {
+    proxy /radarr/ radarr:7878 {
         transparent
     }
 }
 
 portainer.thenairn.com {
-    proxy / portainer:9000 {
+    proxy / portainer:9234 {
 	    transparent
     }
 }
