@@ -62,7 +62,6 @@ services:
       - PGID=0
       - PUID=0
       - TZ=Europe/London
-      - VIRTUAL_HOST=sonarr.${DOMAIN}
     ports:
       - 8989:8989
 
