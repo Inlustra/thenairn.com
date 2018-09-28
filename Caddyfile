@@ -11,8 +11,20 @@ media.thenairn.com {
     redir /transmission/ /transmission/web/
     proxy /transmission transmission:9091
 
-    proxy /radarr radarr:7878
-    proxy /sonarr sonarr:8989
-    proxy /jackett jackett:9117
-    proxy /portainer portainer:9234
+}
+
+sonarr.thenairn.com {
+    proxy / sonarr:8989
+}
+
+radarr.thenairn.com {
+    proxy / radarr:7878
+}
+
+jackett.thenairn.com {
+    proxy / jackett:9117
+}
+
+portainer.thenairn.com {
+    proxy / portainer:9234
 }
