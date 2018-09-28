@@ -54,7 +54,7 @@ services:
     depends_on:
       - transmission
     volumes:            
-      - './sonarr:/config'
+      - ./sonarr:/config
       - .data/plex/media/Shows:/tv
       - .data/plex/media/Anime:/anime
       - .data/transmission/completed:/downloads
