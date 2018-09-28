@@ -14,5 +14,5 @@ media.thenairn.com {
     proxy /radarr radarr:7878
     proxy /sonarr sonarr:8989
     proxy /jackett jackett:9117
-    proxy /portainer portainer:9000
+    proxy /portainer portainer:9234
 }

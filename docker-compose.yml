@@ -99,7 +99,7 @@ services:
     image: portainer/portainer
     container_name: portainer
     ports:
-      - 9000:9000
+      - 9000:9234
     volumes:
       - .data/portainer:/data
       - /var/run/docker.sock:/var/run/docker.sock
