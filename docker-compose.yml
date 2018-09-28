@@ -24,7 +24,7 @@ services:
       - .data/plex/media/Shows:/data/shows
       - .data/plex/media/Movies:/data/movies
       - .data/plex/media/Anime:/data/anime
-      - .data/transmission:/data
+      - .data/transmission/completed:/data/completed
     restart: unless-stopped
 
   fileserver:
@@ -43,9 +43,9 @@ services:
       - '51413:51413/tcp'
       - '51413:51413/udp'
     volumes:
-      - .data/transmission:/data
-      - ./transmission:/opt/config
-      - ./transmission/settings.json:/opt/config/settings.json
+      - .data/transmission:/downloads
+      - ./transmission:/config
+      - ./transmission/settings.json:/config/settings.json
     restart: unless-stopped
 
   sonarr:
