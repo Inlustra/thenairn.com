@@ -24,6 +24,12 @@ media.thenairn.com {
     }
 }
 
+sonarr.thenairn.com {
+    proxy /sonarr/ sonarr:8989 {
+	    transparent
+    }
+}
+
 portainer.thenairn.com {
     proxy / portainer:9234 {
 	    transparent
