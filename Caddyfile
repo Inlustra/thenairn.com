@@ -13,7 +13,6 @@ files.thenairn.com {
 }
 
 transmission.thenairn.com {
-    redir / /web/
     proxy / transmission/transmission/:9091
 }
 
