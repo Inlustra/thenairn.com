@@ -14,25 +14,25 @@ media.thenairn.com {
 }
 
 sonarr.thenairn.com {
-    proxy /sonarr sonarr:8989 {
+    proxy / sonarr:8989 {
 	    transparent
     }
 }
 
 jackett.thenairn.com {
-     proxy /jackett jackett:9117 {
+     proxy / jackett:9117 {
 	    transparent
     }
 }
 
 radarr.thenairn.com {
-    proxy /radarr radarr:7878 {
+    proxy / radarr:7878 {
         transparent
     }
 }
 
 portainer.thenairn.com {
-    proxy /portainer portainer:9234 {
+    proxy / portainer:9234 {
 	    transparent
     }
 }
