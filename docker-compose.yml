@@ -35,8 +35,8 @@ services:
     restart: unless-stopped
 
   transmission:
-    build:
-      context: transmission
+    image: linuxserver/transmission
+    
     ports:
       - "51413:51413/tcp"
       - "51413:51413/udp"

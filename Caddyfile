@@ -15,7 +15,7 @@ media.thenairn.com {
         /  https://{host}{uri}
     }
 
-    basicauth / admin poubelle77
+    basicauth / admin nairnnairn
 
     proxy / fileserver:8080
 
