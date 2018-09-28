@@ -3,7 +3,7 @@ services:
   plex:
     image: plexinc/pms-docker:latest
     container_name: plex
-    hostname: Media
+    hostname: Hermes
     environment:
       - TZ=Europe/Paris
       - ADVERTISE_IP=
@@ -19,24 +19,23 @@ services:
       - '32413:32413/udp'
       - '32414:32414/udp'
     volumes:
-      - .data/plex/config:/config
-      - .data/plex/transcode:/transcode
-      - .data/plex/media/Shows:/data/shows
-      - .data/plex/media/Movies:/data/movies
-      - .data/plex/media/Anime:/data/anime
-      - .data/transmission/completed:/data/completed
+      - ${BASE_DIR}/plex/config:/config
+      - ${BASE_DIR}/plex/transcode:/transcode
+      - ${BASE_DIR}/plex/media/Shows:/data/shows
+      - ${BASE_DIR}/plex/media/Movies:/data/movies
+      - ${BASE_DIR}/plex/media/Anime:/data/anime
+      - ${BASE_DIR}/transmission/completed:/data/completed
     restart: unless-stopped
 
   fileserver:
     build:
       context: fileserver
     volumes:
-      - .data/transmission:/data
+      - ${BASE_DIR}/transmission:/data
     restart: unless-stopped
 
   transmission:
     image: linuxserver/transmission
-    hostname: transmission.thenairn.com
     environment:
       - PGID=0
       - PUID=0
@@ -44,7 +43,7 @@ services:
       - '51413:51413/tcp'
       - '51413:51413/udp'
     volumes:
-      - .data/transmission:/downloads
+      - ${BASE_DIR}/transmission:/downloads
       - ./transmission:/config
       - ./transmission/settings.json:/config/settings.json
     restart: unless-stopped
@@ -56,15 +55,16 @@ services:
       - transmission
     volumes:            
       - ./sonarr:/config
-      - .data/plex/media/Shows:/tv
-      - .data/plex/media/Anime:/anime
-      - .data/transmission/completed:/downloads
+      - ${BASE_DIR}/plex/media/Shows:/tv
+      - ${BASE_DIR}/plex/media/Anime:/anime
+      - ${BASE_DIR}/transmission/completed:/downloads
     environment:
       - PGID=0
       - PUID=0
       - TZ=Europe/London
     ports:
       - 8989:8989
+    restart: unless-stopped
 
   radarr:
     image: linuxserver/radarr
@@ -73,15 +73,16 @@ services:
       - transmission
     volumes:
       - ./radarr:/config
-      - .data/plex/media/Movies:/movies
-      - .data/plex/media/Anime:/anime
-      - .data/transmission/completed:/downloads
+      - ${BASE_DIR}/plex/media/Movies:/movies
+      - ${BASE_DIR}/plex/media/Anime:/anime
+      - ${BASE_DIR}/transmission/completed:/downloads
     environment:
       - PGID=0
       - PUID=0
       - TZ=Europe/London
     ports:
       - 7878:7878
+    restart: unless-stopped
 
   jackett:
     image: linuxserver/jackett
@@ -93,9 +94,10 @@ services:
       - TZ=Europe/London
     volumes:
       - ./jackett:/config
-      - .data/jackett/downloads:/downloads
+      - ${BASE_DIR}/jackett/downloads:/downloads
     ports:
       - 9117:9117
+    restart: unless-stopped
 
   portainer:
     image: portainer/portainer
@@ -104,12 +106,12 @@ services:
     ports:
       - 9000:9000
     volumes:
-      - .data/portainer:/data
+      - ${BASE_DIR}/portainer:/data
       - /var/run/docker.sock:/var/run/docker.sock
-    restart: always
+    restart: unless-stopped
 
   caddy:
-    image: abiosoft/caddy:0.11.0
+    image: abiosoft/caddy
     links:
       - fileserver
       - transmission
@@ -121,6 +123,6 @@ services:
       - '80:80/tcp'
       - '443:443/tcp'
     volumes:
-      - .data/caddy:/root/.caddy
+      - ${BASE_DIR}/caddy:/root/.caddy
       - ./Caddyfile:/etc/Caddyfile
     restart: unless-stopped
