@@ -1,4 +1,4 @@
-version: "3"
+version: '3'
 services:
   plex:
     image: plexinc/pms-docker:latest
@@ -9,15 +9,15 @@ services:
       - ADVERTISE_IP=
       - PLEX_CLAIM=
     ports:
-      - "32400:32400/tcp"
-      - "3005:3005/tcp"
-      - "8324:8324/tcp"
-      - "32469:32469/tcp"
-      - "1900:1900/udp"
-      - "32410:32410/udp"
-      - "32412:32412/udp"
-      - "32413:32413/udp"
-      - "32414:32414/udp"
+      - '32400:32400/tcp'
+      - '3005:3005/tcp'
+      - '8324:8324/tcp'
+      - '32469:32469/tcp'
+      - '1900:1900/udp'
+      - '32410:32410/udp'
+      - '32412:32412/udp'
+      - '32413:32413/udp'
+      - '32414:32414/udp'
     volumes:
       - .data/plex/config:/config
       - .data/plex/transcode:/transcode
@@ -36,10 +36,12 @@ services:
 
   transmission:
     image: linuxserver/transmission
-    
+    environment:
+      - PGID=0
+      - PUID=0
     ports:
-      - "51413:51413/tcp"
-      - "51413:51413/udp"
+      - '51413:51413/tcp'
+      - '51413:51413/udp'
     volumes:
       - .data/transmission:/data
       - .data/transmission_config:/opt/config
@@ -49,43 +51,43 @@ services:
     image: linuxserver/sonarr
     container_name: sonarr
     depends_on:
-        - transmission
+      - transmission
     volumes:
-        - .data/sonarr/config:/config
-        - .data/plex/media/Shows:/tv
-        - .data/plex/media/Anime:/anime
-        - .data/transmission/completed:/downloads
+      - .data/sonarr/config:/config
+      - .data/plex/media/Shows:/tv
+      - .data/plex/media/Anime:/anime
+      - .data/transmission/completed:/downloads
     environment:
-        - PGID=1000
-        - PUID=1000
-        - TZ=Europe/London
+      - PGID=0
+      - PUID=0
+      - TZ=Europe/London
     ports:
-        - 8989:8989
+      - 8989:8989
 
   radarr:
     image: linuxserver/radarr
     container_name: radarr
     depends_on:
-        - transmission
+      - transmission
     volumes:
-        - .data/radarr/config:/config
-        - .data/plex/media/Movies:/movies
-        - .data/plex/media/Anime:/anime
-        - .data/transmission/completed:/downloads
+      - .data/radarr/config:/config
+      - .data/plex/media/Movies:/movies
+      - .data/plex/media/Anime:/anime
+      - .data/transmission/completed:/downloads
     environment:
-        - PGID=1000
-        - PUID=1000
-        - TZ=Europe/London
+      - PGID=0
+      - PUID=0
+      - TZ=Europe/London
     ports:
-        - 7878:7878
+      - 7878:7878
 
   jackett:
     image: linuxserver/jackett
     container_name: jackett
     restart: always
     environment:
-      - PGID=1000
-      - PUID=1000
+      - PGID=0
+      - PUID=0
       - TZ=Europe/London
     volumes:
       - .data/jackett/config:/config
@@ -97,10 +99,10 @@ services:
     image: portainer/portainer
     container_name: portainer
     ports:
-        - 9000:9000
+      - 9000:9000
     volumes:
-        - .data/portainer:/data
-        - /var/run/docker.sock:/var/run/docker.sock
+      - .data/portainer:/data
+      - /var/run/docker.sock:/var/run/docker.sock
     restart: always
 
   caddy:
@@ -113,8 +115,8 @@ services:
       - sonarr
       - radarr
     ports:
-      - "80:80/tcp"
-      - "443:443/tcp"
+      - '80:80/tcp'
+      - '443:443/tcp'
     volumes:
       - .data/caddy:/root/.caddy
       - ./Caddyfile:/etc/Caddyfile
