@@ -102,3 +102,16 @@ services:
         - .data/portainer:/data
         - /var/run/docker.sock:/var/run/docker.sock
     restart: always
+
+  caddy:
+    image: abiosoft/caddy:0.11.0
+    links:
+      - fileserver
+      - transmission
+    ports:
+      - "80:80/tcp"
+      - "443:443/tcp"
+    volumes:
+      - .data/caddy:/root/.caddy
+      - ./Caddyfile:/etc/Caddyfile
+    restart: unless-stopped
