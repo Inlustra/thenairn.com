@@ -3,24 +3,29 @@ media.thenairn.com {
         if {>X-Forwarded-Proto} is http
         /  https://{host}{uri}
     }
+}
 
+files.thenairn.com {
     basicauth / admin nairnnairn
-
-    proxy / fileserver:8080
-
-    redir /transmission/ /transmission/web/
-    proxy /transmission transmission:9091
-    
-    proxy /sonarr/ sonarr:8989 {
-	    transparent
+    proxy / fileserver:8080 {
+        transparent
     }
+}
 
-    proxy /jackett/ jackett:9117 {
-	    transparent
-    }
+transmission.thenairn.com {
+    redir / /web/
+    proxy / transmission/transmission/:9091
+}
 
+radarr.thenairn.com {
     proxy /radarr/ radarr:7878 {
         transparent
+    }
+}
+
+jackett.thenairn.com {
+    proxy /jackett/ jackett:9117 {
+	    transparent
     }
 }
 

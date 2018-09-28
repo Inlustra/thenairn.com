@@ -44,7 +44,7 @@ services:
       - '51413:51413/udp'
     volumes:
       - .data/transmission:/data
-      - .data/transmission_config:/opt/config
+      - ./transmission:/opt/config
       - ./transmission/settings.json:/opt/config/settings.json
     restart: unless-stopped
 
@@ -53,8 +53,8 @@ services:
     container_name: sonarr
     depends_on:
       - transmission
-    volumes:
-      - .data/sonarr/config:/config
+    volumes:            
+      - './sonarr:/config'
       - .data/plex/media/Shows:/tv
       - .data/plex/media/Anime:/anime
       - .data/transmission/completed:/downloads
@@ -62,6 +62,7 @@ services:
       - PGID=0
       - PUID=0
       - TZ=Europe/London
+      - VIRTUAL_HOST=sonarr.${DOMAIN}
     ports:
       - 8989:8989
 
@@ -71,7 +72,7 @@ services:
     depends_on:
       - transmission
     volumes:
-      - .data/radarr/config:/config
+      - ./radarr:/config
       - .data/plex/media/Movies:/movies
       - .data/plex/media/Anime:/anime
       - .data/transmission/completed:/downloads
@@ -91,7 +92,7 @@ services:
       - PUID=0
       - TZ=Europe/London
     volumes:
-      - .data/jackett/config:/config
+      - ./jackett/config:/config
       - .data/jackett/downloads:/downloads
     ports:
       - 9117:9117
