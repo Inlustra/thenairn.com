@@ -91,7 +91,7 @@ services:
       - .data/jackett/config:/config
       - .data/jackett/downloads:/downloads
     ports:
-      - "9117:9117"
+      - 9117:9117
 
   portainer:
     image: portainer/portainer
@@ -108,6 +108,10 @@ services:
     links:
       - fileserver
       - transmission
+      - jackett
+      - portainer
+      - sonarr
+      - radarr
     ports:
       - "80:80/tcp"
       - "443:443/tcp"
