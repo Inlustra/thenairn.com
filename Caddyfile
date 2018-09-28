@@ -1,14 +1,3 @@
-drone.thenairn.com {
-    gzip {
-      not /stream/
-    }
-
-    proxy / http://drone-server:8000 {
-        websocket
-        transparent
-    }
-}
-
 media.thenairn.com {
     redir 301 {
         if {>X-Forwarded-Proto} is http
@@ -26,8 +15,4 @@ media.thenairn.com {
     proxy /sonarr sonarr:8989
     proxy /jackett jackett:9117
     proxy /portainer portainer:9000
-}
-
-nairn.link {
-    redir https://media.thenairn.com{uri}
 }
