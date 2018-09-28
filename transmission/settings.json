@@ -2,5 +2,6 @@
     "download-dir": "/downloads/completed/",
     "incomplete-dir": "/downloads/",
     "incomplete-dir-enabled": true,
-    "rpc-host-whitelist": "*.thenairn.com,radarr,sonarr,caddy"
+    "rpc-host-whitelist": "*.thenairn.com,radarr,sonarr,caddy",
+    "rpc-whitelist-enabled": false
 }
