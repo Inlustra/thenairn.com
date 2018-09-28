@@ -1,0 +1,28 @@
+drone.thenairn.com {
+    gzip {
+      not /stream/
+    }
+
+    proxy / http://drone-server:8000 {
+        websocket
+        transparent
+    }
+}
+
+media.thenairn.com {
+    redir 301 {
+        if {>X-Forwarded-Proto} is http
+        /  https://{host}{uri}
+    }
+
+    basicauth / admin poubelle77
+
+    proxy / fileserver:8080
+
+    redir /transmission/ /transmission/web/
+    proxy /transmission transmission:9091
+}
+
+nairn.link {
+    redir https://media.thenairn.com{uri}
+}
