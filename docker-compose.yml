@@ -19,7 +19,7 @@ services:
       - '32413:32413/udp'
       - '32414:32414/udp'
     volumes:
-      - ${BASE_DIR}/plex/config:/config
+      - ${CONFIG_DIR}/plex/config:/config
       - ${BASE_DIR}/plex/transcode:/transcode
       - ${BASE_DIR}/plex/media/Shows:/data/shows
       - ${BASE_DIR}/plex/media/Movies:/data/movies
@@ -44,7 +44,7 @@ services:
       - '51413:51413/udp'
     volumes:
       - ${BASE_DIR}/transmission:/downloads
-      - ./transmission:/config
+      - ${CONFIG_DIR}/transmission:/config
       - ./transmission/settings.json:/config/settings.json
     restart: unless-stopped
 
@@ -54,7 +54,7 @@ services:
     depends_on:
       - transmission
     volumes:            
-      - ./sonarr:/config
+      - ${CONFIG_DIR}/sonarr:/config
       - ${BASE_DIR}/plex/media/Shows:/tv
       - ${BASE_DIR}/plex/media/Anime:/anime
       - ${BASE_DIR}/transmission:/downloads
@@ -72,7 +72,7 @@ services:
     depends_on:
       - transmission
     volumes:
-      - ./radarr:/config
+      - ${CONFIG_DIR}/radarr:/config
       - ${BASE_DIR}/plex/media/Movies:/movies
       - ${BASE_DIR}/plex/media/Anime:/anime
       - ${BASE_DIR}/transmission:/downloads
@@ -93,7 +93,7 @@ services:
       - PUID=0
       - TZ=Europe/London
     volumes:
-      - ./jackett:/config
+      - ${CONFIG_DIR}/jackett:/config
       - ${BASE_DIR}/jackett/downloads:/downloads
     ports:
       - 9117:9117
@@ -117,7 +117,7 @@ services:
     ports:
         - 8443:8443
     volumes:
-        - ${BASE_DIR}/organizr:/config
+        - ${CONFIG_DIR}/organizr:/config
     environment:
       - PUID=0
       - PGID=0
