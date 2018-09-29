@@ -35,7 +35,13 @@ sonarr.thenairn.com {
 }
 
 portainer.thenairn.com {
-    proxy / portainer:9234 {
+    proxy / portainer:9000 {
 	    transparent
+    }
+}
+
+plex.thenairn.com {
+    proxy / plex:32400/web {
+        transparent
     }
 }

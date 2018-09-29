@@ -119,6 +119,7 @@ services:
       - portainer
       - sonarr
       - radarr
+      - plex
     ports:
       - '80:80/tcp'
       - '443:443/tcp'
