@@ -41,7 +41,7 @@ portainer.thenairn.com {
 }
 
 plex.thenairn.com {
-    proxy / plex:32400/web {
+    proxy / plex:32400 {
         transparent
     }
 }
