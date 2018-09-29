@@ -110,6 +110,19 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     restart: unless-stopped
 
+  organizr:
+    image: lsiocommunity/organizr
+    container_name: organizr
+    restart: unless-stopped   
+    ports:
+        - 8443:8443
+    volumes:
+        - ${BASE_DIR}/organizr:/config
+    environment:
+      - PUID=0
+      - PGID=0
+      - TZ=Europe/London
+
   caddy:
     image: abiosoft/caddy
     links:
@@ -120,6 +133,7 @@ services:
       - sonarr
       - radarr
       - plex
+      - organizr
     ports:
       - '80:80/tcp'
       - '443:443/tcp'
@@ -127,3 +141,4 @@ services:
       - ${BASE_DIR}/caddy:/root/.caddy
       - ./Caddyfile:/etc/Caddyfile
     restart: unless-stopped
+
