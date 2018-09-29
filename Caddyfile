@@ -47,18 +47,6 @@ portainer.thenairn.com {
 plex.thenairn.com {
     gzip
 
-    log /root/.caddy/logs/plexaccess.log {
-        rotate_size 1          # Rotate after 1 MB
-        rotate_age  7          # Keep log files for 7 days
-        rotate_keep 2          # Keep at most 2 log files
-    }
-    
-    errors /root/.caddy/logs/plexerror.log {
-        rotate_size 1          # Set max size 1 MB
-        rotate_age  7          # Keep log files for 7 days
-        rotate_keep 2          # Keep at most 2 log files
-    }
-
     proxy / plex:32400 {
         transparent
     }
