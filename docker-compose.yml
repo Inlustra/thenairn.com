@@ -57,7 +57,7 @@ services:
       - ./sonarr:/config
       - ${BASE_DIR}/plex/media/Shows:/tv
       - ${BASE_DIR}/plex/media/Anime:/anime
-      - ${BASE_DIR}/transmission/completed:/downloads
+      - ${BASE_DIR}/transmission:/downloads
     environment:
       - PGID=0
       - PUID=0
@@ -75,7 +75,7 @@ services:
       - ./radarr:/config
       - ${BASE_DIR}/plex/media/Movies:/movies
       - ${BASE_DIR}/plex/media/Anime:/anime
-      - ${BASE_DIR}/transmission/completed:/downloads
+      - ${BASE_DIR}/transmission:/downloads
     environment:
       - PGID=0
       - PUID=0
