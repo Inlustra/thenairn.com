@@ -83,6 +83,7 @@ sonarr.thenairn.com {
 
 portainer.thenairn.com {
     
+    
     reauth {
         path /  
         failure redirect target=https://media.thenairn.com
@@ -91,6 +92,7 @@ portainer.thenairn.com {
 
     proxy / portainer:9000 {
 	    transparent
+        header_downstream -X-Frame-Options
     }
 }
 
