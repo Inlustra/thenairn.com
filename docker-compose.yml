@@ -132,6 +132,7 @@ services:
       - radarr
       - organizr
       - ombi
+      - plex
     ports:
       - '80:80/tcp'
       - '443:443/tcp'

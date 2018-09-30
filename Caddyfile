@@ -18,7 +18,7 @@ media.thenairn.com {
     }
 
     redir /plex /plex/ 301
-    proxy /plex/ media.thenairn.com:32400 {
+    proxy /plex/ plex:32400 {
 	    transparent
     }
 
