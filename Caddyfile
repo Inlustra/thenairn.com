@@ -4,7 +4,7 @@ media.thenairn.com {
         /  https://{host}{uri}
     }
 
-    proxy / organizr:6598 {
+    proxy / organizr:6543 {
         transparent
     }
 }
