@@ -119,8 +119,6 @@ services:
     volumes:
         - ${CONFIG_DIR}/organizr:/config
     environment:
-      - PUID=0
-      - PGID=0
       - TZ=Europe/London
 
   caddy:
