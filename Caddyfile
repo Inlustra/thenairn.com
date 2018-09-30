@@ -29,7 +29,7 @@ files.thenairn.com {
     reauth {
         path /  
         failure redirect target=https://media.thenairn.com
-        upstream url=https://media.thenairn.com/auth.php?user,cookies=true
+        upstream url=https://media.thenairn.com/api/?v1/auth&group=4,cookies=true
 	}
 
     proxy / fileserver:8080 {
@@ -42,7 +42,7 @@ transmission.thenairn.com {
     reauth {
         path /  
         failure redirect target=https://media.thenairn.com
-        upstream url=https://media.thenairn.com/auth.php?user,cookies=true
+        upstream url=https://media.thenairn.com/api/?v1/auth&group=4,cookies=true
 	}
 
     proxy / transmission:9091
@@ -53,7 +53,7 @@ radarr.thenairn.com {
     reauth {
         path /  
         failure redirect target=https://media.thenairn.com
-        upstream url=https://media.thenairn.com/auth.php?admin,cookies=true
+        upstream url=https://media.thenairn.com/api/?v1/auth&group=4,cookies=true
 	}
 
     proxy / radarr:7878 {
@@ -66,7 +66,7 @@ jackett.thenairn.com {
     reauth {
         path /  
         failure redirect target=https://media.thenairn.com
-        upstream url=https://media.thenairn.com/auth.php?admin,cookies=true
+        upstream url=https://media.thenairn.com/api/?v1/auth&group=2,cookies=true
 	}
     
     proxy / jackett:9117 {
@@ -79,7 +79,7 @@ sonarr.thenairn.com {
     reauth {
         path /  
         failure redirect target=https://media.thenairn.com
-        upstream url=https://media.thenairn.com/auth.php?admin,cookies=true
+        upstream url=https://media.thenairn.com/api/?v1/auth&group=4,cookies=true
 	}
 
     proxy / sonarr:8989 {
@@ -88,17 +88,16 @@ sonarr.thenairn.com {
 }
 
 ombi.thenairn.com {
-
+    
     reauth {
         path /  
         failure redirect target=https://media.thenairn.com
-        upstream url=https://media.thenairn.com/auth.php?user,cookies=true
+        upstream url=https://media.thenairn.com/api/?v1/auth&group=4,cookies=true
 	}
 
     proxy / ombi:3579 {
 	    transparent
     }
-
 }
 
 plex.thenairn.com {
