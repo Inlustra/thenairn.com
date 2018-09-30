@@ -120,7 +120,10 @@ services:
       - TZ=Europe/London
 
   caddy:
-    image: abiosoft/caddy
+    build:
+      image: abiosoft/caddy
+      args:
+        plugins: reauth
     links:
       - fileserver
       - transmission
