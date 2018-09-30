@@ -17,11 +17,6 @@ media.thenairn.com {
         transparent
     }
 
-    redir /ombi /ombi/ 301
-    proxy /ombi/ ombi:3579 {
-	    transparent
-    }
-
     redir /plex /plex/ 301
     proxy /plex/ media.thenairn.com:32400 {
 	    transparent
