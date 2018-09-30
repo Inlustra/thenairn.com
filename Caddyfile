@@ -83,7 +83,6 @@ sonarr.thenairn.com {
 
 portainer.thenairn.com {
     
-    
     reauth {
         path /  
         failure redirect target=https://media.thenairn.com
@@ -97,6 +96,12 @@ portainer.thenairn.com {
 }
 
 plex.thenairn.com {
+    
+    redir 301 {
+        if {>X-Forwarded-Proto} is http
+        /  https://{host}{uri}
+    }
+
     gzip
 
     reauth {
