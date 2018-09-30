@@ -120,7 +120,6 @@ services:
       - TZ=Europe/London
 
   caddy:
-    image: abiosoft/caddy
     build:
       context: https://github.com/abiosoft/caddy-docker.git
       args:
