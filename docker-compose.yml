@@ -115,7 +115,7 @@ services:
     container_name: organizr
     restart: unless-stopped   
     ports:
-        - 8443:8443
+        - 6598:80
     volumes:
         - ${CONFIG_DIR}/organizr:/config
     environment:
