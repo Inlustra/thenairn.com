@@ -17,9 +17,14 @@ media.thenairn.com {
         transparent
     }
 
-    proxy /ombi ombi:3579 {
+    proxy /ombi/ ombi:3579 {
 	    transparent
     }
+
+    proxy /plex/ plex:32400 {
+	    transparent
+    }
+
 }
 
 files.thenairn.com {
@@ -82,6 +87,19 @@ sonarr.thenairn.com {
 
     proxy / sonarr:8989 {
 	    transparent
+    }
+}
+
+ombi.thenairn.com {
+    proxy / ombi:3579/ombi {
+	    transparent
+    }
+}
+
+plex.thenairn.com {
+    gzip
+    proxy / plex:32400 {
+        transparent
     }
 }
 
