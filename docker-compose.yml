@@ -109,10 +109,9 @@ services:
     image: rogueosb/ombi
     restart: unless-stopped
     environment:
-      - TZ=Europe/Bucharest
+      - TZ=Europe/London
       - PUID=0
       - PGID=0
-      - EAP=1
     volumes:
       - ${CONFIG_DIR}/ombi:/config
 
