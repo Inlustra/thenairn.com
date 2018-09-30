@@ -1,3 +1,12 @@
+# Organizr groups
+# auth_request /auth-0;   #=Admin
+# auth_request /auth-1;   #=Co-Admin 
+# auth_request /auth-2;   #=Super User 
+# auth_request /auth-3;   #=Power User 
+# auth_request /auth-4;   #=User
+# auth_request /auth-998; #=Logged In
+# auth_request /auth-999; #=Guest
+
 media.thenairn.com {
     redir 301 {
         if {>X-Forwarded-Proto} is http
@@ -14,7 +23,7 @@ files.thenairn.com {
     reauth {
         path /  
         failure redirect target=https://media.thenairn.com
-        upstream url=https://media.thenairn.com/auth.php?user,cookies=true
+        upstream url=https://media.thenairn.com/api/?v1/auth&group=4,cookies=true
 	}
 
     proxy / fileserver:8080 {
@@ -27,7 +36,7 @@ transmission.thenairn.com {
     reauth {
         path /  
         failure redirect target=https://media.thenairn.com
-        upstream url=https://media.thenairn.com/user.php?user,cookies=true
+        upstream url=https://media.thenairn.com/api/?v1/auth&group=4,cookies=true
 	}
 
     proxy / transmission:9091
@@ -38,7 +47,7 @@ radarr.thenairn.com {
     reauth {
         path /  
         failure redirect target=https://media.thenairn.com
-        upstream url=https://media.thenairn.com/auth.php?user,cookies=true
+        upstream url=https://media.thenairn.com/api/?v1/auth&group=4,cookies=true
 	}
 
     proxy / radarr:7878 {
@@ -51,7 +60,7 @@ jackett.thenairn.com {
     reauth {
         path /  
         failure redirect target=https://media.thenairn.com
-        upstream url=https://media.thenairn.com/auth.php?admin,cookies=true
+        upstream url=https://media.thenairn.com/api/?v1/auth&group=2,cookies=true
 	}
     
     proxy / jackett:9117 {
@@ -64,7 +73,7 @@ sonarr.thenairn.com {
     reauth {
         path /  
         failure redirect target=https://media.thenairn.com
-        upstream url=https://media.thenairn.com/user.php?user,cookies=true
+        upstream url=https://media.thenairn.com/api/?v1/auth&group=4,cookies=true
 	}
 
     proxy / sonarr:8989 {
@@ -77,7 +86,7 @@ portainer.thenairn.com {
     reauth {
         path /  
         failure redirect target=https://media.thenairn.com
-        upstream url=https://media.thenairn.com/auth.php?admin,cookies=true
+        upstream url=https://media.thenairn.com/api/?v1/auth&group=0,cookies=true
 	}
 
     proxy / portainer:9000 {
@@ -91,7 +100,7 @@ plex.thenairn.com {
     reauth {
         path /  
         failure redirect target=https://media.thenairn.com
-        upstream url=https://media.thenairn.com/auth.php?user,cookies=true
+        upstream url=https://media.thenairn.com/api/?v1/auth&group=4,cookies=true
 	}
 
     proxy / plex:32400 {
