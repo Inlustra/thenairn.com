@@ -10,36 +10,76 @@ media.thenairn.com {
 }
 
 files.thenairn.com {
-    basicauth / admin nairnnairn
+
+    reauth {
+        path /  
+        failure redirect target=https://media.thenairn.com
+        upstream url=https://media.thenairn.com/auth.php?user,cookies=true
+	}
+
     proxy / fileserver:8080 {
         transparent
     }
 }
 
 transmission.thenairn.com {
+    
+    reauth {
+        path /  
+        failure redirect target=https://media.thenairn.com
+        upstream url=https://media.thenairn.com/user.php?user,cookies=true
+	}
+
     proxy / transmission:9091
 }
 
 radarr.thenairn.com {
+    
+    reauth {
+        path /  
+        failure redirect target=https://media.thenairn.com
+        upstream url=https://media.thenairn.com/auth.php?user,cookies=true
+	}
+
     proxy / radarr:7878 {
         transparent
     }
 }
 
 jackett.thenairn.com {
-    cors / https://media.thenairn.com
+    
+    reauth {
+        path /  
+        failure redirect target=https://media.thenairn.com
+        upstream url=https://media.thenairn.com/auth.php?admin,cookies=true
+	}
+    
     proxy / jackett:9117 {
 	    transparent
     }
 }
 
 sonarr.thenairn.com {
+    
+    reauth {
+        path /  
+        failure redirect target=https://media.thenairn.com
+        upstream url=https://media.thenairn.com/user.php?user,cookies=true
+	}
+
     proxy / sonarr:8989 {
 	    transparent
     }
 }
 
 portainer.thenairn.com {
+    
+    reauth {
+        path /  
+        failure redirect target=https://media.thenairn.com
+        upstream url=https://media.thenairn.com/auth.php?admin,cookies=true
+	}
+
     proxy / portainer:9000 {
 	    transparent
     }
@@ -47,6 +87,12 @@ portainer.thenairn.com {
 
 plex.thenairn.com {
     gzip
+
+    reauth {
+        path /  
+        failure redirect target=https://media.thenairn.com
+        upstream url=https://media.thenairn.com/auth.php?user,cookies=true
+	}
 
     proxy / plex:32400 {
         transparent
