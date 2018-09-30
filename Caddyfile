@@ -91,7 +91,7 @@ sonarr.thenairn.com {
 }
 
 ombi.thenairn.com {
-    proxy / ombi:3579/ombi {
+    proxy / ombi:3579 {
 	    transparent
     }
 }
