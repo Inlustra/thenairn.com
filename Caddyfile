@@ -27,6 +27,7 @@ radarr.thenairn.com {
 }
 
 jackett.thenairn.com {
+    cors / http://media.thenairn.com
     proxy / jackett:9117 {
 	    transparent
     }
