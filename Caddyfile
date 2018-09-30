@@ -88,9 +88,17 @@ sonarr.thenairn.com {
 }
 
 ombi.thenairn.com {
+
+    reauth {
+        path /  
+        failure redirect target=https://media.thenairn.com
+        upstream url=https://media.thenairn.com/api/?v1/auth&group=4,cookies=true
+	}
+
     proxy / ombi:3579 {
 	    transparent
     }
+    
 }
 
 plex.thenairn.com {
