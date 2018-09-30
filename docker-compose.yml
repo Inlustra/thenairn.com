@@ -114,6 +114,9 @@ services:
       - PGID=0
     volumes:
       - ${CONFIG_DIR}/ombi:/config
+    links:
+      - sonarr
+      - radarr
 
   caddy:
     build:
