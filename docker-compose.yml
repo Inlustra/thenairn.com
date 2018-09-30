@@ -122,8 +122,9 @@ services:
   caddy:
     image: abiosoft/caddy
     build:
+      context: https://github.com/abiosoft/caddy-docker.git
       args:
-        - plugins=reauth
+        plugins: reauth
     links:
       - fileserver
       - transmission
