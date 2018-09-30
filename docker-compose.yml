@@ -123,7 +123,7 @@ services:
     image: abiosoft/caddy
     build:
       args:
-        plugins: reauth
+        - plugins=reauth
     links:
       - fileserver
       - transmission
