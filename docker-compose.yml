@@ -42,6 +42,8 @@ services:
     container_name: sonarr
     depends_on:
       - transmission
+    links: 
+      - jackett
     volumes:            
       - ${CONFIG_DIR}/sonarr:/config
       - ${BASE_DIR}/plex/media/Shows:/tv
@@ -58,6 +60,8 @@ services:
     container_name: radarr
     depends_on:
       - transmission
+    links: 
+      - jackett
     volumes:
       - ${CONFIG_DIR}/radarr:/config
       - ${BASE_DIR}/plex/media/Movies:/movies
