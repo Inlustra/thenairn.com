@@ -112,6 +112,15 @@ services:
     restart: unless-stopped
     volumes:
         - ${CONFIG_DIR}/organizr:/config
+    links:
+      - fileserver
+      - transmission
+      - jackett
+      - portainer
+      - sonarr
+      - radarr
+      - ombi
+      - plex
     environment:
       - TZ=Europe/London
 
