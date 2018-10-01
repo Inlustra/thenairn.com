@@ -55,6 +55,7 @@ services:
       - transmission
     links: 
       - jackett
+      - plex
     volumes:            
       - ${CONFIG_DIR}/sonarr:/config
       - ${BASE_DIR}/plex/media/Shows:/tv
@@ -73,6 +74,7 @@ services:
       - transmission
     links: 
       - jackett
+      - plex
     volumes:
       - ${CONFIG_DIR}/radarr:/config
       - ${BASE_DIR}/plex/media/Movies:/movies
