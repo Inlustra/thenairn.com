@@ -32,6 +32,9 @@ services:
       context: fileserver
     volumes:
       - ${BASE_DIR}/transmission:/data
+      - ${BASE_DIR}/plex/media/Movies:/data/movies
+      - ${BASE_DIR}/plex/media/Shows:/data/tv
+      - ${BASE_DIR}/plex/media/Anime:/data/anime
     restart: unless-stopped
 
   transmission:
