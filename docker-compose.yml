@@ -19,7 +19,7 @@ services:
       - 32413:32413/udp
       - 32414:32414/udp
     volumes:
-      - ${CONFIG_DIR}/plex/config:/config
+      - ${CONFIG_DIR}/plex:/config
       - ${BASE_DIR}/plex/transcode:/transcode
       - ${BASE_DIR}/plex/media/Shows:/data/shows
       - ${BASE_DIR}/plex/media/Movies:/data/movies
@@ -129,25 +129,11 @@ services:
     environment:
       - TZ=Europe/London
 
-  ombi:
-    container_name: ombi
-    image: rogueosb/ombi
-    restart: unless-stopped
-    environment:
-      - TZ=Europe/London
-      - PUID=0
-      - PGID=0
-    volumes:
-      - ${CONFIG_DIR}/ombi:/config
-    links:
-      - sonarr
-      - radarr
-
   caddy:
     build:
       context: https://github.com/abiosoft/caddy-docker.git
       args:
-        plugins: reauth,rewrite
+        plugins: reauth
     links:
       - fileserver
       - transmission
