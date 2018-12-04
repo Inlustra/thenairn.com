@@ -124,7 +124,6 @@ services:
       - portainer
       - sonarr
       - radarr
-      - ombi
       - plex
     environment:
       - TZ=Europe/London
@@ -142,7 +141,6 @@ services:
       - sonarr
       - radarr
       - organizr
-      - ombi
       - plex
     ports:
       - '80:80/tcp'
