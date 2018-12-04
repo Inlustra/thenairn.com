@@ -6,8 +6,8 @@ services:
     hostname: Hermes
     environment:
       - TZ=Europe/Paris
-      - PLEX_CLAIM=
-      - ADVERTISE_IP=
+      - PLEX_CLAIM=${PLEX_CLAIM}
+      - ADVERTISE_IP=${PLEX_ADVERTISE_IP}
     ports:
       - 32400:32400/tcp
       - 3005:3005/tcp

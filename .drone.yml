@@ -1,0 +1,21 @@
+kind: pipeline
+name: deployment
+
+trigger:
+  branch:
+    - master
+  event:
+    - push
+
+steps:
+  - name: deploy
+    image: docker/compose
+    environment:
+      PLEX_CLAIM:
+          from_secret: PLEX_CLAIM
+      PLEX_ADVERTISE_IP:
+          from_secret: PLEX_ADVERTISE_IP
+    commands:
+      - docker-compose up -d --build 
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
