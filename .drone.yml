@@ -20,7 +20,7 @@ steps:
       AZIRE_PASSWORD:
         from_secret: AZIRE_PASSWORD
       AZIRE_LOCATION:
-        fromt_secret: AZIRE_LOCATION
+        from_secret: AZIRE_LOCATION
     commands:
       - docker-compose up -d --build  --force-recreate wireguard-azire  
     volumes:
