@@ -22,7 +22,7 @@ steps:
       AZIRE_LOCATION:
         fromt_secret: AZIRE_LOCATION
     commands:
-      - docker-compose up wireguard-azire -d --build
+      - docker-compose up -d --build wireguard-azire  
     volumes:
     - name: dockersock
       path: /var/run/docker.sock
