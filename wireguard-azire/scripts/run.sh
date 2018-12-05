@@ -7,7 +7,7 @@ set -e
 apt update
 apt install -y wireguard
 
-exec configure-azire.sh
+sh configure-azire.sh
 
 # Find a Wireguard interface
 interfaces=`find /etc/wireguard -type f`
