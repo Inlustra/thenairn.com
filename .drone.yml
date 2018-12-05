@@ -24,4 +24,10 @@ steps:
     commands:
       - docker-compose up wireguard-azire -d --build
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+    - name: docker-sock
+      path: /var/run/docker.sock
+
+volumes:
+- name: docker-sock
+  host:
+    path: /var/run/docker.sock
