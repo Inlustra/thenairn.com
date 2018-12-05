@@ -37,6 +37,18 @@ services:
       - ${BASE_DIR}/plex/media/Anime:/data/anime
     restart: unless-stopped
 
+  wireguard-azire:
+    context: ./wireguard-azire
+    volumes:
+      - /etc/wireguard:/etc/wireguard
+      - /lib/wireguard:/lib/wireguard
+      - /lib/modules:/lib/modules
+    ports:
+      - 5555:5555
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+
   transmission:
     image: linuxserver/transmission
     environment:

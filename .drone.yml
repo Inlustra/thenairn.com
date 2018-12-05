@@ -12,10 +12,16 @@ steps:
     image: docker/compose
     environment:
       PLEX_CLAIM:
-          from_secret: PLEX_CLAIM
+        from_secret: PLEX_CLAIM
       PLEX_ADVERTISE_IP:
-          from_secret: PLEX_ADVERTISE_IP
+        from_secret: PLEX_ADVERTISE_IP
+      AZIRE_USERNAME:
+        from_secret: AZIRE_USERNAME
+      AZIRE_PASSWORD:
+        from_secret: AZIRE_PASSWORD
+      AZIRE_LOCATION:
+        fromt_secret: AZIRE_LOCATION
     commands:
-      - docker-compose up -d --build 
+      - docker-compose up wireguard-azire -d --build
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
