@@ -14,6 +14,7 @@ WG_ADDRESS=`echo azireoutput | jq '.data.Address'`
 WG_PUBLIC_KEY=`echo azireoutput | jq '.data.PublicKey'`
 WG_ENDPOINT=`echo azireoutput | jq '.data.Endpoint'`
 
+
 echo "$status"
 echo "$WG_PRIVATE_KEY"
 echo "$WG_DNS"
