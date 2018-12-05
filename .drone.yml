@@ -9,7 +9,7 @@ trigger:
 
 steps:
   - name: deploy
-    image: docker/compose
+    image: docker/compose:1.23.2
     environment:
       PLEX_CLAIM:
         from_secret: PLEX_CLAIM
@@ -24,11 +24,11 @@ steps:
     commands:
       - docker-compose up wireguard-azire -d --build
     volumes:
-    - name: docker-sock
+    - name: dockersock
       path: /var/run/docker.sock
-      
+
 
 volumes:
-- name: docker-sock
+- name: dockersock
   host:
     path: /var/run/docker.sock
