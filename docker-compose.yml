@@ -41,9 +41,9 @@ services:
     build:
       context: ./wireguard-azire
     environment:
-      AZIRE_USERNAME=${AZIRE_USERNAME}
-      AZIRE_PASSWORD=${AZIRE_PASSWORD}
-      AZIRE_LOCATION=${AZIRE_LOCATION}
+      - AZIRE_USERNAME=${AZIRE_USERNAME}
+      - AZIRE_PASSWORD=${AZIRE_PASSWORD}
+      - AZIRE_LOCATION=${AZIRE_LOCATION}
     volumes:
       - /etc/wireguard:/etc/wireguard
       - /lib/wireguard:/lib/wireguard
