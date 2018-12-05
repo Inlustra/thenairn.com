@@ -38,7 +38,8 @@ services:
     restart: unless-stopped
 
   wireguard-azire:
-    context: ./wireguard-azire
+    build:
+      context: ./wireguard-azire
     volumes:
       - /etc/wireguard:/etc/wireguard
       - /lib/wireguard:/lib/wireguard
