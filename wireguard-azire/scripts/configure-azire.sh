@@ -12,8 +12,8 @@ echo "$AZIRE_USERNAME"
 echo "$AZIRE_PASSWORD"
 echo "$AZIRE_LOCATION"
 echo ""
-printenv
-azireoutput=`curl -d username=$AZIRE_USERNAME --data-urlencode password=$AZIRE_PASSWORD --data-urlencode pubkey=$publickey https://api.azirevpn.com/v1/wireguard/connect/$AZIRE_LOCATION`
+
+azireoutput=`curl -s username=$AZIRE_USERNAME --data-urlencode password=$AZIRE_PASSWORD --data-urlencode pubkey=$publickey https://api.azirevpn.com/v1/wireguard/connect/$AZIRE_LOCATION`
 echo "$azireoutput"
 status=`echo azireoutput | jq '.status'`
 WG_DNS=`echo azireoutput | jq '.data.DNS'`
