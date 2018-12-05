@@ -5,7 +5,6 @@ set -e
 # Install Wireguard. This has to be done dynamically since the kernel
 # module depends on the host kernel version.
 apt update
-apt install -y linux-headers-$(uname -r)
 apt install -y wireguard
 
 exec ./configure-azire.sh
