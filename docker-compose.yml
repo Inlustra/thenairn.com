@@ -3,7 +3,7 @@ services:
   plex:
     image: plexinc/pms-docker:latest
     container_name: plex
-    hostname: Hermes
+    hostname: Artemis
     environment:
       - TZ=Europe/Paris
       - PLEX_CLAIM=${PLEX_CLAIM}
@@ -36,6 +36,19 @@ services:
       - ${BASE_DIR}/plex/media/Shows:/data/tv
       - ${BASE_DIR}/plex/media/Anime:/data/anime
     restart: unless-stopped
+
+  tautulli:
+    image: linuxserver/tautulli
+    container_name: tautull
+    environment:
+      - TZ=Europe/Paris
+      - PGID=0
+      - PUID=0
+    volumes:
+      - ${CONFIG_DIR}/tautulli:/config
+      - ${BASE_DIR}/tautulli/logs:/logs:ro
+    restart: unless-stopped
+
 
   wireguard-azire:
     privileged: true
