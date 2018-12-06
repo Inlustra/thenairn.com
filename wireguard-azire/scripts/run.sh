@@ -11,19 +11,11 @@ set -e
 apt update
 apt install -y wireguard
 
+CONFIG_LOCATION=/etc/wireguard/azire-wireguard.conf
 source /scripts/configure-azire.sh
 
-# Find a Wireguard interface
-interfaces=`find /etc/wireguard -type f`
-if [[ -z $interfaces ]]; then
-    echo "$(date): Interface not found in /etc/wireguard" >&2
-    exit 1
-fi
-
-interface=`echo $interfaces | head -n 1`
-
-echo "$(date): Starting Wireguard on interface $(interface)"
-wg-quick up $interface
+echo "$(date): Starting Wireguard on interface $CONFIG_LOCATION"
+wg-quick up $CONFIG_LOCATION
 
 # Handle shutdown behavior
 finish () {

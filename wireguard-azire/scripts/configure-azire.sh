@@ -24,5 +24,5 @@ export WG_PUBLIC_KEY=`jq -r '.data.PublicKey' <<< "$azireoutput"`
 export WG_ENDPOINT=`jq -r '.data.Endpoint' <<< "$azireoutput"`
 
 
-envsubst < /scripts/azire-wireguard.conf > /etc/wireguard/azire-wireguard.conf
-echo `cat /etc/wireguard/azire-wireguard.conf` 
+envsubst < /scripts/azire-wireguard.conf > $CONFIG_LOCATION
+echo `cat $CONFIG_LOCATION`
