@@ -166,6 +166,5 @@ services:
       - '443:443/tcp'
     volumes:
       - ${BASE_DIR}/caddy:/root/.caddy
-      - ./Caddyfile:/etc/Caddyfile
     restart: unless-stopped
 
