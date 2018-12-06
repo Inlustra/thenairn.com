@@ -68,6 +68,8 @@ services:
       - ${BASE_DIR}/transmission:/downloads
       - ${CONFIG_DIR}/transmission:/config/transmission
     restart: unless-stopped
+    depends_on:
+      - wireguard-azire
     network_mode: "service:wireguard-azire"
 
   sonarr:
@@ -138,7 +140,7 @@ services:
         - ${CONFIG_DIR}/organizr:/config
     links:
       - fileserver
-      - transmission
+      - wireguard-azire
       - jackett
       - portainer
       - sonarr
@@ -154,7 +156,7 @@ services:
         plugins: reauth
     links:
       - fileserver
-      - transmission
+      - wireguard-azire
       - jackett
       - portainer
       - sonarr
