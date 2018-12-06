@@ -15,11 +15,11 @@ echo ""
 
 azireoutput=`curl -s -d username=$AZIRE_USERNAME --data-urlencode password=$AZIRE_PASSWORD --data-urlencode pubkey=$publickey https://api.azirevpn.com/v1/wireguard/connect/$AZIRE_LOCATION`
 echo "$azireoutput"
-status=`echo azireoutput | jq -r '.status'`
-WG_DNS=`echo azireoutput | jq -r '.data.DNS'`
-WG_ADDRESS=`echo azireoutput | jq -r '.data.Address'`
-WG_PUBLIC_KEY=`echo azireoutput | jq -r '.data.PublicKey'`
-WG_ENDPOINT=`echo azireoutput | jq -r '.data.Endpoint'`
+status=`jq -r '.status' <<< "$azireoutput"`
+WG_DNS=`jq -r '.data.DNS' <<< "$azireoutput"`
+WG_ADDRESS=`jq -r '.data.Address' <<< "$azireoutput"`
+WG_PUBLIC_KEY=`jq -r '.data.PublicKey' <<< "$azireoutput"`
+WG_ENDPOINT=`jq -r '.data.Endpoint' <<< "$azireoutput"`
 
 
 
