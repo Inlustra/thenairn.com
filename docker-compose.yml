@@ -166,7 +166,7 @@ services:
         plugins: reauth
     links:
       - transmission
-      - organizr
+      - organizrtest
     ports:
       - '80:80/tcp'
       - '443:443/tcp'
