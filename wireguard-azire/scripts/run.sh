@@ -12,19 +12,10 @@ apt update
 apt install -y wireguard
 
 CONFIG_LOCATION=/etc/wireguard/azire-wireguard.conf
+
 source /scripts/configure-azire.sh
 
 echo "$(date): Starting Wireguard on interface $CONFIG_LOCATION"
 wg-quick up $CONFIG_LOCATION
 
-# Handle shutdown behavior
-finish () {
-    echo "$(date): Shutting down Wireguard"
-    wg-quick down $interface
-    exit 0
-}
-
-trap finish SIGTERM SIGINT SIGQUIT
-
-sleep infinity &
-wait $!
+source /scripts/ensure-connected.sh
