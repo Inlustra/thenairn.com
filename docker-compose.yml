@@ -130,17 +130,6 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     restart: unless-stopped
 
-  organizrtest:
-    image: tronyx/docker-organizr-v2
-    container_name: organizr-test
-    restart: unless-stopped
-    volumes:
-        - ${CONFIG_DIR}/organizr:/config
-    links:
-      - transmission
-    environment:
-      - TZ=Europe/London
-
   organizr:
     image: tronyx/docker-organizr-v2
     container_name: organizr
@@ -158,24 +147,9 @@ services:
     environment:
       - TZ=Europe/London
 
-  caddytest:
-    build:
-      context: ./caddy
-      args:
-        plugins: reauth
-    links:
-      - transmission
-      - organizrtest
-    ports:
-      - '80:80/tcp'
-      - '443:443/tcp'
-    volumes:
-      - ${BASE_DIR}/caddy:/root/.caddy
-    restart: unless-stopped
-
   caddy:
     build:
-      context: https://github.com/abiosoft/caddy-docker.git
+      context: ./caddy
       args:
         plugins: reauth
     links:
