@@ -13,7 +13,7 @@ echo "$AZIRE_PASSWORD"
 echo "$AZIRE_LOCATION"
 echo ""
 
-azireoutput=`curl -s username=$AZIRE_USERNAME --data-urlencode password=$AZIRE_PASSWORD --data-urlencode pubkey=$publickey https://api.azirevpn.com/v1/wireguard/connect/$AZIRE_LOCATION`
+azireoutput=`curl -s -d username=$AZIRE_USERNAME --data-urlencode password=$AZIRE_PASSWORD --data-urlencode pubkey=$publickey https://api.azirevpn.com/v1/wireguard/connect/$AZIRE_LOCATION`
 echo "$azireoutput"
 status=`echo azireoutput | jq '.status'`
 WG_DNS=`echo azireoutput | jq '.data.DNS'`
@@ -28,3 +28,6 @@ echo "$WG_PRIVATE_KEY"
 echo "$WG_DNS"
 echo "$WG_PUBLIC_KEY"
 echo "$WG_ENDPOINT"
+
+envsubst < /scripts/azire-wireguard.conf > /etc/wireguard/azire-wireguard.conf
+echo `cat /etc/wireguard/azire-wireguard.conf` 
