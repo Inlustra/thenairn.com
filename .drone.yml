@@ -22,6 +22,7 @@ steps:
       AZIRE_LOCATION:
         from_secret: AZIRE_LOCATION
     commands:
+      - cat Caddfile
       - docker-compose up -d --build  --force-recreate caddytest  
     volumes:
     - name: dockersock
