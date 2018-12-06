@@ -22,7 +22,7 @@ steps:
       AZIRE_LOCATION:
         from_secret: AZIRE_LOCATION
     commands:
-      - docker-compose up -d --build  --force-recreate caddy-test  
+      - docker-compose up -d --build  --force-recreate caddytest  
     volumes:
     - name: dockersock
       path: /var/run/docker.sock

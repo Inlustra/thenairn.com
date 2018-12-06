@@ -131,9 +131,9 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     restart: unless-stopped
 
-  organizr-test:
+  organizrtest:
     image: tronyx/docker-organizr-v2
-    container_name: organizr
+    container_name: organizr-test
     restart: unless-stopped
     volumes:
         - ${CONFIG_DIR}/organizr:/config
@@ -159,7 +159,7 @@ services:
     environment:
       - TZ=Europe/London
 
-  caddy-test:
+  caddytest:
     build:
       context: https://github.com/abiosoft/caddy-docker.git
       args:
