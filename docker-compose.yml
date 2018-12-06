@@ -159,6 +159,22 @@ organizr-test:
     environment:
       - TZ=Europe/London
 
+  caddy-test:
+    build:
+      context: https://github.com/abiosoft/caddy-docker.git
+      args:
+        plugins: reauth
+    links:
+      - transmission
+      - organizr
+    ports:
+      - '80:80/tcp'
+      - '443:443/tcp'
+    volumes:
+      - ${BASE_DIR}/caddy:/root/.caddy
+      - ./Caddyfile:/etc/Caddyfile
+    restart: unless-stopped
+
   caddy:
     build:
       context: https://github.com/abiosoft/caddy-docker.git
