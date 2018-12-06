@@ -131,7 +131,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     restart: unless-stopped
 
-organizr-test:
+  organizr-test:
     image: tronyx/docker-organizr-v2
     container_name: organizr
     restart: unless-stopped
