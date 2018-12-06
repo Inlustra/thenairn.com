@@ -178,6 +178,7 @@ services:
       - radarr
       - organizr
       - plex
+      - tautulli
     ports:
       - '80:80/tcp'
       - '443:443/tcp'
