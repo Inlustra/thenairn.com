@@ -1,4 +1,4 @@
-FROM https://github.com/abiosoft/caddy-docker.git
+FROM abiosoft/caddy
 
 COPY Caddyfile /etc/Caddyfile
 
