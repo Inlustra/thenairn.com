@@ -45,7 +45,7 @@ transmission.thenairn.com {
     #    upstream url=https://media.thenairn.com/api/?v1/auth&group=4,cookies=true
 	#}
 
-    proxy / wireguardazire:9091
+    proxy / wireguard-azire:9091
 }
 
 radarr.thenairn.com {
