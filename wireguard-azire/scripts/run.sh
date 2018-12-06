@@ -22,7 +22,7 @@ fi
 
 interface=`echo $interfaces | head -n 1`
 
-echo "$(date): Starting Wireguard"
+echo "$(date): Starting Wireguard on interface $(interface)"
 wg-quick up $interface
 
 # Handle shutdown behavior
