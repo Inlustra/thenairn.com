@@ -69,6 +69,7 @@ services:
       - ${CONFIG_DIR}/transmission:/config
       - ./transmission/settings.json:/config/settings.json
     restart: unless-stopped
+    network_mode: "service:wireguard-azire"
 
   sonarr:
     image: linuxserver/sonarr
@@ -129,6 +130,17 @@ services:
       - ${BASE_DIR}/portainer:/data
       - /var/run/docker.sock:/var/run/docker.sock
     restart: unless-stopped
+
+organizr-test:
+    image: tronyx/docker-organizr-v2
+    container_name: organizr
+    restart: unless-stopped
+    volumes:
+        - ${CONFIG_DIR}/organizr:/config
+    links:
+      - transmission
+    environment:
+      - TZ=Europe/London
 
   organizr:
     image: tronyx/docker-organizr-v2
