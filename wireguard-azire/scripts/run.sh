@@ -1,5 +1,9 @@
 #!/bin/bash
 
+if [ -z "$AZIRE_USERNAME" ]; then echo 'Environment variable AZIRE_USERNAME must be specified. Exiting.'; exit 1; fi
+if [ -z "$AZIRE_PASSWORD" ]; then echo 'Environment variable AZIRE_PASSWORD must be specified. Exiting.'; exit 1; fi
+if [ -z "$AZIRE_LOCATION" ]; then echo 'Environment variable AZIRE_LOCATION must be specified. Exiting.'; exit 1; fi
+
 set -e
 
 # Install Wireguard. This has to be done dynamically since the kernel
@@ -7,7 +11,7 @@ set -e
 apt update
 apt install -y wireguard
 
-exec /scripts/configure-azire.sh
+source /scripts/configure-azire.sh
 
 # Find a Wireguard interface
 interfaces=`find /etc/wireguard -type f`
