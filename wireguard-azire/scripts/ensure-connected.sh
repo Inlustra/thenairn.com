@@ -22,6 +22,7 @@ finish () {
 # the vpn
 trap finish TERM INT
 
+echo "$(date) Initialising IP checks!"
 # Every minute we check to our IP address
 while [[ has_vpn_ip ]]; do
     sleep 60;
