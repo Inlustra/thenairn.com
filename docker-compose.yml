@@ -50,6 +50,8 @@ services:
       - /lib/modules:/lib/modules
     ports:
       - 5555:5555
+      - '51413:51413/tcp'
+      - '51413:51413/udp'
     sysctls:
         - net.ipv6.conf.all.disable_ipv6=0
     cap_add:
@@ -61,9 +63,6 @@ services:
     environment:
       - PGID=0
       - PUID=0
-    ports:
-      - '51413:51413/tcp'
-      - '51413:51413/udp'
     volumes:
       - ${BASE_DIR}/transmission:/downloads
       - ${CONFIG_DIR}/transmission:/config
