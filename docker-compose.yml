@@ -59,14 +59,14 @@ services:
       - SYS_MODULE
 
   transmission:
-    image: linuxserver/transmission
+    build:
+      context: ./transmission
     environment:
       - PGID=0
       - PUID=0
     volumes:
       - ${BASE_DIR}/transmission:/downloads
       - ${CONFIG_DIR}/transmission:/config/transmission
-      - ./transmission/settings.json:/config/settings.json
     restart: unless-stopped
     network_mode: "service:wireguard-azire"
 
@@ -160,7 +160,7 @@ services:
 
   caddytest:
     build:
-      context: https://github.com/abiosoft/caddy-docker.git
+      context: ./caddy
       args:
         plugins: reauth
     links:
