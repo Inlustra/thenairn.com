@@ -38,6 +38,7 @@ services:
     restart: unless-stopped
 
   wireguard-azire:
+    privileged: true
     build:
       context: ./wireguard-azire
     environment:
