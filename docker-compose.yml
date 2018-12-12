@@ -27,17 +27,17 @@ services:
       - ${BASE_DIR}/transmission/completed:/data/completed
     restart: unless-stopped
 
-  files:
-    container_name: files
+  download:
+    container_name: download
     image: filebrowser/filebrowser
-    command: "--auth.method='none'"
+    command: "--auth.method='none' --allow-edit=false --allow-new=false --allow-commands=false"
     volumes:
       - ${BASE_DIR}/transmission:/srv/transmission
       - ${BASE_DIR}/plex/media/Movies:/srv/movies
       - ${BASE_DIR}/plex/media/Shows:/srv/tv
       - ${BASE_DIR}/plex/media/Anime:/srv/anime
-      - ${CONFIG_DIR}/files/config.json:/etc/config.json
-      - ${CONFIG_DIR}/files/database.db:/etc/database.db
+      - ${CONFIG_DIR}/download/config.json:/etc/config.json
+      - ${CONFIG_DIR}/download/database.db:/etc/database.db
     restart: unless-stopped
 
   tautulli:
@@ -185,16 +185,19 @@ services:
       FTP_USER_PASS: ${FTP_USER_PASS}
       FTP_USER_HOME: /home/user
 
-  ftpdfiles:
-    container_name: ftpdfiles
+  admin:
+    container_name: admin
     image: filebrowser/filebrowser
     command: "--auth.method='none'"
     volumes:
-      - ${BASE_DIR}/ftpd:/srv
-      - ${CONFIG_DIR}/ftpdfiles/config.json:/etc/config.json
-      - ${CONFIG_DIR}/ftpdfiles/database.db:/etc/database.db
+      - ${BASE_DIR}/transmission:/srv/transmission
+      - ${BASE_DIR}/plex/media/Movies:/srv/movies
+      - ${BASE_DIR}/plex/media/Shows:/srv/tv
+      - ${BASE_DIR}/plex/media/Anime:/srv/anime
+      - ${BASE_DIR}/ftpd:/srv/camera
+      - ${CONFIG_DIR}/admin/config.json:/etc/config.json
+      - ${CONFIG_DIR}/admin/database.db:/etc/database.db
     restart: unless-stopped
-
 
   caddy:
     build:
@@ -202,8 +205,8 @@ services:
       args:
         plugins: reauth
     links:
-      - files
-      - ftpdfiles
+      - download
+      - admin
       - wireguard-azire
       - jackett
       - portainer
