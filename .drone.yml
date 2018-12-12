@@ -21,14 +21,17 @@ steps:
         from_secret: AZIRE_PASSWORD
       AZIRE_LOCATION:
         from_secret: AZIRE_LOCATION
+      FTP_USER_NAME:
+        from_secret: FTP_USER_NAME
+      FTP_USER_PASS:
+        from_secret: FTP_USER_PASS
     commands:
       - docker-compose up ftpd
     volumes:
-    - name: dockersock
-      path: /var/run/docker.sock
-
+      - name: dockersock
+        path: /var/run/docker.sock
 
 volumes:
-- name: dockersock
-  host:
-    path: /var/run/docker.sock
+  - name: dockersock
+    host:
+      path: /var/run/docker.sock

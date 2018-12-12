@@ -180,8 +180,6 @@ services:
       PUBLICHOST: thenairn.com
       FTP_USER_UID: 0
       FTP_USER_GID: 0
-      FTP_USER_NAME: ${FTP_USER_NAME}
-      FTP_USER_PASS: ${FTP_USER_PASS}
       FTP_USER_HOME: /home/user
 
   ftpdfiles:
