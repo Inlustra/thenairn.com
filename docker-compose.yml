@@ -179,6 +179,8 @@ services:
     environment:
       PUBLICHOST: "localhost"
       FTP_USER_HOME: /home/user
+      FTP_USER_UID: 0
+      FTP_USER_GID: 0
 
   ftpdfiles:
     container_name: ftpdfiles
