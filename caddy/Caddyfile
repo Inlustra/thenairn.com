@@ -45,7 +45,7 @@ ftpdfiles.thenairn.com {
         upstream url=https://media.thenairn.com/api/?v1/auth&group=1,cookies=true
 	}
 
-    proxy / ftpdfiles:8080 {
+    proxy / ftpdfiles:80 {
         transparent
     }
 }
