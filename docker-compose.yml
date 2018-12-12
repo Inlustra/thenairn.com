@@ -155,6 +155,7 @@ services:
         - ${CONFIG_DIR}/organizr:/config
     links:
       - fileserver
+      - ftpdfiles
       - wireguard-azire
       - jackett
       - portainer
