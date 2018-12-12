@@ -30,7 +30,7 @@ services:
   download:
     container_name: download
     image: filebrowser/filebrowser
-    command: "--auth.method='none' --allow-edit=false --allow-new=false --allow-commands=false"
+    command: "--auth.method='none' --defaults.allowEdit=false --defaults.allowNew=false --defaults.allowCommands=false"
     volumes:
       - ${BASE_DIR}/transmission:/srv/transmission
       - ${BASE_DIR}/plex/media/Movies:/srv/movies
