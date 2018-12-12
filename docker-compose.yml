@@ -27,14 +27,17 @@ services:
       - ${BASE_DIR}/transmission/completed:/data/completed
     restart: unless-stopped
 
-  fileserver:
-    build:
-      context: fileserver
+  files:
+    container_name: files
+    image: filebrowser/filebrowser
+    command: "--auth.method='none'"
     volumes:
-      - ${BASE_DIR}/transmission:/data
-      - ${BASE_DIR}/plex/media/Movies:/data/movies
-      - ${BASE_DIR}/plex/media/Shows:/data/tv
-      - ${BASE_DIR}/plex/media/Anime:/data/anime
+      - ${BASE_DIR}/transmission:/srv/transmission
+      - ${BASE_DIR}/plex/media/Movies:/srv/movies
+      - ${BASE_DIR}/plex/media/Shows:/srv/tv
+      - ${BASE_DIR}/plex/media/Anime:/srv/anime
+      - ${CONFIG_DIR}/files/config.json:/etc/config.json
+      - ${CONFIG_DIR}/files/database.db:/etc/database.db
     restart: unless-stopped
 
   tautulli:
@@ -154,7 +157,7 @@ services:
     volumes:
         - ${CONFIG_DIR}/organizr:/config
     links:
-      - fileserver
+      - files
       - ftpdfiles
       - wireguard-azire
       - jackett
@@ -199,7 +202,7 @@ services:
       args:
         plugins: reauth
     links:
-      - fileserver
+      - files
       - ftpdfiles
       - wireguard-azire
       - jackett
