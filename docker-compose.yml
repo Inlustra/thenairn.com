@@ -178,9 +178,11 @@ services:
       - "${CONFIG_DIR}/ftpd/ssl:/etc/ssl/private/"
     environment:
       PUBLICHOST: "localhost"
-      FTP_USER_HOME: /home/user
       FTP_USER_UID: 0
       FTP_USER_GID: 0
+      FTP_USER_NAME: ${FTP_USER_NAME}
+      FTP_USER_PASS: ${FTP_USER_PASS}
+      FTP_USER_HOME: /home/user
 
   ftpdfiles:
     container_name: ftpdfiles
