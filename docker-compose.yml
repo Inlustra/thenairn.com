@@ -185,7 +185,7 @@ services:
   ftpdfiles:
     container_name: ftpdfiles
     image: filebrowser/filebrowser
-    command: --no-auth
+    command: "--auth.method='none'"
     volumes:
       - ${BASE_DIR}/ftpd:/srv
       - ${CONFIG_DIR}/ftpdfiles/config.json:/etc/config.json
