@@ -185,11 +185,13 @@ services:
   ftpdfiles:
     container_name: ftpdfiles
     image: filebrowser/filebrowser
+    command: --no-auth
     volumes:
       - ${BASE_DIR}/ftpd:/srv
       - ${CONFIG_DIR}/ftpdfiles/config.json:/etc/config.json
       - ${CONFIG_DIR}/ftpdfiles/database.db:/etc/database.db
     restart: unless-stopped
+
 
   caddy:
     build:
