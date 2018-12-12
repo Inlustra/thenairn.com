@@ -177,7 +177,7 @@ services:
       - "${CONFIG_DIR}/ftpd/passwd:/etc/pure-ftpd/passwd"
       - "${CONFIG_DIR}/ftpd/ssl:/etc/ssl/private/"
     environment:
-      PUBLICHOST: "localhost"
+      PUBLICHOST: thenairn.com
       FTP_USER_UID: 0
       FTP_USER_GID: 0
       FTP_USER_NAME: ${FTP_USER_NAME}
