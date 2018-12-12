@@ -22,7 +22,8 @@ steps:
       AZIRE_LOCATION:
         from_secret: AZIRE_LOCATION
     commands:
-      - docker-compose up -d --build
+      - docker-compose down ftpd
+      - docker-compose up ftpd
     volumes:
     - name: dockersock
       path: /var/run/docker.sock
