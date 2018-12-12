@@ -157,8 +157,8 @@ services:
     volumes:
         - ${CONFIG_DIR}/organizr:/config
     links:
-      - files
-      - ftpdfiles
+      - admin
+      - download
       - wireguard-azire
       - jackett
       - portainer
