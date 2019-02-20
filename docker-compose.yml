@@ -236,6 +236,9 @@ services:
       - plex
       - tautulli
       - bazarr
+
+    networks:
+      - hostexternal
     external_links:
       - drone:drone
     ports:
@@ -245,3 +248,7 @@ services:
       - ${BASE_DIR}/caddy:/root/.caddy
     restart: unless-stopped
 
+
+networks:
+  hostexternal:
+    external: true
