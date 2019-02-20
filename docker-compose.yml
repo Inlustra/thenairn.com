@@ -239,6 +239,7 @@ services:
     external_links:
       - drone
     networks: 
+      - default
       - dronenet
     ports:
       - '80:80/tcp'
