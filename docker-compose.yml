@@ -187,7 +187,7 @@ services:
       - drone
     networks: 
       - default
-      - dronenetwork
+      - dronenet
     environment:
       - TZ=Europe/London
 
@@ -243,7 +243,7 @@ services:
       - drone
     networks: 
       - default
-      - dronenetwork
+      - dronenet
     ports:
       - '80:80/tcp'
       - '443:443/tcp'
@@ -253,5 +253,5 @@ services:
 
 
 networks:
-  dronenetwork:
-    name: dronenetwork
+  dronenet:
+    name: dronenet
