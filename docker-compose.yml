@@ -183,6 +183,8 @@ services:
       - radarr
       - plex
       - bazarr
+    external_links:
+      - drone
     environment:
       - TZ=Europe/London
 
@@ -234,6 +236,8 @@ services:
       - plex
       - tautulli
       - bazarr
+    external_links:
+      - drone
     ports:
       - '80:80/tcp'
       - '443:443/tcp'

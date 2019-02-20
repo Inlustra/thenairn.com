@@ -141,7 +141,7 @@ bazarr.thenairn.com {
         upstream url=https://media.thenairn.com/api/?v1/auth&group=3,cookies=true
 	}
 
-    proxy / sonarr:6767 {
+    proxy / bazarr:6767 {
 	    transparent
     }
 }
@@ -154,7 +154,7 @@ drone.thenairn.com {
         upstream url=https://media.thenairn.com/api/?v1/auth&group=3,cookies=true
 	}
 
-    proxy / 0.0.0.0:6080 {
+    proxy / drone:6080 {
         transparent
     }
 
