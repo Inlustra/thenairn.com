@@ -237,7 +237,7 @@ services:
       - tautulli
       - bazarr
     external_links:
-      - drone
+      - drone:drone
     ports:
       - '80:80/tcp'
       - '443:443/tcp'
