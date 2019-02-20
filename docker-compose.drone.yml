@@ -4,7 +4,7 @@ services:
     container_name: drone
     image: drone/drone:1.0.0-rc.1
     networks: 
-      - dronenet
+      - dronenetwork
     environment:
       - DRONE_GITHUB_SERVER=https://github.com
       - DRONE_GITHUB_CLIENT_ID=${DRONE_GITHUB_CLIENT_ID}
@@ -23,4 +23,5 @@ services:
       - /home/data/config/drone:/data
 
 networks:
-  dronenet:
+  dronenetwork:
+    external: true
