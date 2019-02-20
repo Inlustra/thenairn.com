@@ -1,6 +1,7 @@
 version: "3"
 services:
   drone:
+    container_name: drone
     image: drone/drone:1.0.0-rc.1
     networks: 
       - dronenet
