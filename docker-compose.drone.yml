@@ -13,9 +13,6 @@ services:
       - DRONE_SERVER_PROTO=http
       - DRONE_USER_FILTER=Inlustra
       - DRONE_USER_CREATE=username:Inlustra,machine:false,admin:true
-    ports: 
-      - 6081:80
-      - 6444:443
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /home/data/config/drone:/data
