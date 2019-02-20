@@ -238,9 +238,9 @@ services:
       - bazarr
 
     networks:
-      - hostexternal
+      - caddydrone
     external_links:
-      - drone:drone
+      - drone
     ports:
       - '80:80/tcp'
       - '443:443/tcp'
@@ -250,5 +250,5 @@ services:
 
 
 networks:
-  hostexternal:
+  caddydrone:
     external: true
