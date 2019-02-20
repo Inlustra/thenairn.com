@@ -238,6 +238,8 @@ services:
       - bazarr
     external_links:
       - drone
+    networks: 
+      - dronenet
     ports:
       - '80:80/tcp'
       - '443:443/tcp'
