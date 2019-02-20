@@ -237,8 +237,6 @@ services:
       - tautulli
       - bazarr
 
-    networks:
-      - caddydrone
     external_links:
       - drone
     ports:
