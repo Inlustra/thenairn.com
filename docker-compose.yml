@@ -236,7 +236,6 @@ services:
       - plex
       - tautulli
       - bazarr
-
     external_links:
       - drone
     ports:
