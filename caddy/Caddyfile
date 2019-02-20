@@ -148,12 +148,6 @@ bazarr.thenairn.com {
 
 drone.thenairn.com {
 
-    reauth {
-        path /  
-        failure redirect target=https://media.thenairn.com
-        upstream url=https://media.thenairn.com/api/?v1/auth&group=3,cookies=true
-	}
-
     proxy / drone:80 {
         transparent
     }
