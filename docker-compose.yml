@@ -248,5 +248,5 @@ services:
 
 
 networks:
-  caddydrone:
+  dronenet:
     external: true
