@@ -45,7 +45,9 @@ steps:
       - echo $DRONE_GITHUB_CLIENT_SECRET
       - docker-compose -f docker-compose.drone.yml up -d --build
     volumes:
-      - name: .drone_env
+      - name: dockersock
+        path: /var/run/docker.sock
+      - name: drone_data
         path: /data
         
 
@@ -54,7 +56,6 @@ volumes:
   - name: dockersock
     host:
       path: /var/run/docker.sock
-
   - name: drone_data
     host:
       path: /data
