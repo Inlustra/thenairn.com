@@ -1,0 +1,24 @@
+version: "3"
+services:
+  drone:
+    image: drone/drone:1.0.0-rc.1
+    environment:
+      - DRONE_GITHUB_SERVER=https://github.com
+      - DRONE_GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
+      - DRONE_GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
+      - DRONE_RUNNER_CAPACITY=2
+      - DRONE_ADMIN=Inlustra
+      - DRONE_SERVER_HOST=drone.thenairn.com
+      - DRONE_SERVER_PROTO=http
+      - DRONE_USER_FILTER=Inlustra
+      - DRONE_USER_CREATE=username:Inlustra,machine:false,admin:true
+    ports: 
+      - 80:6080
+      - 443:6443
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /home/data/config/drone:/data
+
+networks:
+  default:
+    name: dronenet
