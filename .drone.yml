@@ -31,7 +31,31 @@ steps:
       - name: dockersock
         path: /var/run/docker.sock
 
+  - name: deploy-drone
+    image: docker/compose:1.23.2
+    environment:
+      DRONE_GITHUB_CLIENT_ID:
+        from_secret: DRONE_GITHUB_CLIENT_ID
+      DRONE_GITHUB_CLIENT_SECRET:
+        from_secret: DRONE_GITHUB_CLIENT_SECRET
+    commands:
+      - docker-compose up -d --build
+    volumes:
+      - name: dockersock
+        path: /var/run/docker.sock
+        
+
 volumes:
   - name: dockersock
     host:
       path: /var/run/docker.sock
+
+---
+kind: secret
+external_data:
+  DRONE_GITHUB_CLIENT_ID:
+    path: /data/.env
+    name: DRONE_GITHUB_CLIENT_ID
+  DRONE_GITHUB_CLIENT_SECRET:
+    path: /data/.env
+    name: DRONE_GITHUB_CLIENT_SECRET
