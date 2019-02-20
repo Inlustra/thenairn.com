@@ -185,6 +185,9 @@ services:
       - bazarr
     external_links:
       - drone
+    networks: 
+      - default
+      - dronenet
     environment:
       - TZ=Europe/London
 
