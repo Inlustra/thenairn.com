@@ -34,7 +34,8 @@ steps:
   - name: deploy-drone
     image: docker/compose:1.23.2
     commands:
-      - source /.env && docker-compose -f docker-compose.drone.yml up -d --build
+      - source /.env
+      - DRONE_GITHUB_CLIENT_ID=$DRONE_GITHUB_CLIENT_ID DRONE_GITHUB_CLIENT_SECRET=$DRONE_GITHUB_CLIENT_SECRET docker-compose -f docker-compose.drone.yml up -d --build
     volumes:
       - name: dockersock
         path: /var/run/docker.sock
