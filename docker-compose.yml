@@ -141,6 +141,23 @@ services:
       - ${BASE_DIR}/jackett/downloads:/downloads
     restart: unless-stopped
 
+  bazarr:
+    image: linuxserver/bazarr
+    container_name: bazarr
+    restart: always
+    environment:
+      - PGID=0
+      - PUID=0
+      - TZ=Europe/London
+    volumes:
+      - ${CONFIG_DIR}/bazarr:/config
+      - ${BASE_DIR}/bazarr/downloads:/downloads
+      - ${BASE_DIR}/plex/media/Movies:/movies
+      - ${BASE_DIR}/plex/media/Anime:/anime
+      - ${BASE_DIR}/plex/media/Shows:/tv
+      - ${BASE_DIR}/transmission:/downloads
+    restart: unless-stopped
+
   portainer:
     image: portainer/portainer
     container_name: portainer
@@ -165,6 +182,7 @@ services:
       - sonarr
       - radarr
       - plex
+      - bazarr
     environment:
       - TZ=Europe/London
 
@@ -215,6 +233,7 @@ services:
       - organizr
       - plex
       - tautulli
+      - bazarr
     ports:
       - '80:80/tcp'
       - '443:443/tcp'
