@@ -254,4 +254,4 @@ services:
 
 networks:
   dronenet:
-    - name: dronenet
+    name: dronenet
