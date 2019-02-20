@@ -39,13 +39,14 @@ steps:
       DRONE_GITHUB_CLIENT_SECRET:
         from_secret: DRONE_GITHUB_CLIENT_SECRET
     commands:
+      - ls /data
       - source /data/.env
       - echo $DRONE_GITHUB_CLIENT_ID
       - echo $DRONE_GITHUB_CLIENT_SECRET
       - docker-compose -f docker-compose.drone.yml up -d --build
     volumes:
       - name: .drone_env
-        path: /data/.env
+        path: /data
         
 
 
@@ -54,6 +55,6 @@ volumes:
     host:
       path: /var/run/docker.sock
 
-  - name: drone_env
+  - name: drone_data
     host:
-      path: /data/.env
+      path: /data
