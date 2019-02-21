@@ -156,6 +156,9 @@ services:
       - ${BASE_DIR}/plex/media/Anime:/anime
       - ${BASE_DIR}/plex/media/Shows:/tv
       - ${BASE_DIR}/transmission:/downloads
+    links:
+      - sonarr
+      - radarr
     restart: unless-stopped
 
   portainer:
