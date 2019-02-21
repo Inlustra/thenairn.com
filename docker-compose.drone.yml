@@ -11,6 +11,7 @@ services:
       - DRONE_ADMIN=Inlustra
       - DRONE_SERVER_HOST=drone.thenairn.com
       - DRONE_SERVER_PROTO=https
+      - DRONE_TLS_AUTOCERT=false
       - DRONE_USER_FILTER=Inlustra
       - DRONE_USER_CREATE=username:Inlustra,machine:false,admin:true
     volumes:
