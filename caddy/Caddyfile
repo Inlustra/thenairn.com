@@ -148,7 +148,12 @@ bazarr.thenairn.com {
 
 drone.thenairn.com {
 
+    gzip {
+        not /api/stream/
+    }
+
     proxy / drone:80 {
+        websocket
         transparent
     }
 
