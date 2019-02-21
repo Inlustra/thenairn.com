@@ -8,7 +8,7 @@ services:
       - DRONE_GITHUB_CLIENT_ID=${DRONE_GITHUB_CLIENT_ID}
       - DRONE_GITHUB_CLIENT_SECRET=${DRONE_GITHUB_CLIENT_SECRET}
       - DRONE_RUNNER_CAPACITY=2
-      - DRONE_ADMIN=Inlustra
+      - DRONE_ADMIN=Inlustra,magalhaes93
       - DRONE_SERVER_HOST=drone.thenairn.com
       - DRONE_SERVER_PROTO=https
       - DRONE_TLS_AUTOCERT=false
