@@ -149,7 +149,7 @@ bazarr.thenairn.com {
 drone.thenairn.com {
 
     gzip {
-        not /stream/
+        not /api/stream/
     }
 
     proxy / drone:80 {
