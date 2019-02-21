@@ -26,7 +26,7 @@ steps:
       FTP_USER_PASS:
         from_secret: FTP_USER_PASS
     commands:
-      - docker-compose up -d --build
+      - docker-compose up -d --build -p project-media
     volumes:
       - name: dockersock
         path: /var/run/docker.sock
@@ -35,7 +35,7 @@ steps:
     image: docker/compose:1.23.2
     commands:
       - source /.env
-      - DRONE_GITHUB_CLIENT_ID=$DRONE_GITHUB_CLIENT_ID DRONE_GITHUB_CLIENT_SECRET=$DRONE_GITHUB_CLIENT_SECRET docker-compose -f docker-compose.drone.yml up -d --build
+      - DRONE_GITHUB_CLIENT_ID=$DRONE_GITHUB_CLIENT_ID DRONE_GITHUB_CLIENT_SECRET=$DRONE_GITHUB_CLIENT_SECRET docker-compose -f docker-compose.drone.yml up -d --build -p project-drone
     volumes:
       - name: dockersock
         path: /var/run/docker.sock
