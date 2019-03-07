@@ -146,6 +146,20 @@ bazarr.thenairn.com {
     }
 }
 
+books.thenairn.com {
+    
+    reauth {
+        path /  
+        failure redirect target=https://media.thenairn.com
+        upstream url=https://media.thenairn.com/api/?v1/auth&group=3,cookies=true
+	}
+
+    proxy / lazylibarian:5299 {
+	    transparent
+    }
+}
+
+
 drone.thenairn.com {
 
     gzip {
