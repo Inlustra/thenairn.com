@@ -1,6 +1,4 @@
 #!/bin/bash
-apt install -y jq
-
 wg genkey | tee privatekey | wg pubkey > publickey
 
 export WG_PRIVATE_KEY=`cat privatekey`
