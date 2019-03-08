@@ -9,7 +9,7 @@ set -e
 # Install Wireguard. This has to be done dynamically since the kernel
 # module depends on the host kernel version.
 apt update
-apt install -y wireguard
+apt install -y wireguard --force
 
 CONFIG_LOCATION=/etc/wireguard/azire-wireguard.conf
 
