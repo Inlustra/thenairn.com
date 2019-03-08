@@ -172,6 +172,26 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     restart: unless-stopped
 
+  lazylibrarian:
+    container_name: lazylibrarian
+    image: linuxserver/lazylibrarian
+    restart: always
+    depends_on:
+      - transmission
+    environment:
+      - PGID=0
+      - PUID=0
+      - TZ=Europe/London
+    links: 
+      - jackett
+      - plex
+    volumes:
+      - ${CONFIG_DIR}/lazylibrarian:/config
+      - ${BASE_DIR}/lazylibrarian/downloads:/downloads
+      - ${BASE_DIR}/plex/media/Books:/books
+      - ${BASE_DIR}/transmission:/downloads
+    restart: unless-stopped
+
   organizr:
     container_name: organizr
     image: tronyx/docker-organizr-v2
@@ -188,6 +208,7 @@ services:
       - radarr
       - plex
       - bazarr
+      - lazylibrarian
     external_links:
       - drone
     networks: 
@@ -245,6 +266,7 @@ services:
       - plex
       - tautulli
       - bazarr
+      - lazylibrarian
     external_links:
       - drone
     networks: 
