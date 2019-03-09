@@ -3,5 +3,9 @@
     "incomplete-dir": "/downloads/",
     "incomplete-dir-enabled": true,
     "rpc-host-whitelist-enabled": false,
-    "rpc-whitelist-enabled": false
+    "rpc-whitelist-enabled": false,
+    "idle-seeding-limit": true,
+    "idle-seeding-limit-enabled": true,
+    "ratio-limit": 2.0,
+    "ratio-limit-enabled": true,
 }
