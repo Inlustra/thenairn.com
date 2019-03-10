@@ -17,6 +17,8 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /home/data/config/drone:/data
+    restart: always
+    
 
 networks:
   default:
