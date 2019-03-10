@@ -76,6 +76,8 @@ services:
     cap_add:
       - NET_ADMIN
       - SYS_MODULE
+    restart: always
+
 
   transmission:
     container_name: transmission
@@ -87,7 +89,7 @@ services:
     volumes:
       - ${BASE_DIR}/transmission:/downloads
       - ${CONFIG_DIR}/transmission:/config/transmission
-    restart: unless-stopped
+    restart: always
     depends_on:
       - wireguard-azire
     network_mode: "service:wireguard-azire"
