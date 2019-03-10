@@ -43,6 +43,8 @@ services:
   tautulli:
     container_name: tautull
     image: linuxserver/tautulli
+    links:
+      - plex
     environment:
       - TZ=Europe/Paris
       - PGID=0
