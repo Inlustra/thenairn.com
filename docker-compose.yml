@@ -260,6 +260,7 @@ services:
     container_name: projectsend
     image: linuxserver/projectsend
     restart: unless-stopped
+    command: -DBIG_SECURITY_HOLE
     environment:
       - PGID=0
       - PUID=0
