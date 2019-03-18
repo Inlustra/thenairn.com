@@ -159,15 +159,6 @@ books.thenairn.com {
     }
 }
 
-send.thenairn.com {
-
-    proxy / projectsend:80 {
-        transparent
-    }
-
-}
-
-
 drone.thenairn.com {
 
     gzip {

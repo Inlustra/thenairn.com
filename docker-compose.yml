@@ -30,7 +30,7 @@ services:
   download:
     container_name: download
     image: filebrowser/filebrowser
-    command: "--noauth --defaults.allowEdit=false --defaults.allowNew=false --defaults.allowCommands=false"
+    command: "--auth.method=noauth --defaults.allowEdit=false --defaults.allowNew=false --defaults.allowCommands=false"
     volumes:
       - ${BASE_DIR}/transmission:/srv/transmission
       - ${BASE_DIR}/plex/media/Movies:/srv/movies
@@ -245,7 +245,7 @@ services:
   admin:
     container_name: admin
     image: filebrowser/filebrowser
-    command: "--noauth"
+    command: "--auth.method=noauth"
     volumes:
       - ${BASE_DIR}/transmission:/srv/transmission
       - ${BASE_DIR}/plex/media/Movies:/srv/movies
@@ -255,22 +255,6 @@ services:
       - ${CONFIG_DIR}/admin/config.json:/etc/config.json
       - ${CONFIG_DIR}/admin/database.db:/etc/database.db
     restart: unless-stopped
-
-  projectsend:
-    container_name: projectsend
-    image: linuxserver/projectsend
-    restart: unless-stopped
-    command: -DBIG_SECURITY_HOLE
-    environment:
-      - PGID=0
-      - PUID=0
-      - TZ=Europe/London
-    volumes:
-      - ${CONFIG_DIR}/projectsend:/config
-      - ${BASE_DIR}/transmission:/srv/transmission
-      - ${BASE_DIR}/plex/media/Movies:/srv/movies
-      - ${BASE_DIR}/plex/media/Shows:/srv/tv
-      - ${BASE_DIR}/plex/media/Anime:/srv/anime
 
   caddy:
     container_name: caddy
@@ -293,7 +277,6 @@ services:
       - tautulli
       - bazarr
       - lazylibrarian
-      - projectsend
     external_links:
       - drone
     networks: 
