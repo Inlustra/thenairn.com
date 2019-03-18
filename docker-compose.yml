@@ -43,6 +43,8 @@ services:
   tautulli:
     container_name: tautull
     image: linuxserver/tautulli
+    links:
+      - plex
     environment:
       - TZ=Europe/Paris
       - PGID=0
@@ -56,6 +58,8 @@ services:
   wireguard-azire:
     container_name: wireguard-azire
     privileged: true
+    labels:
+      com.centurylinklabs.watchtower.enable: "false"
     build:
       context: ./wireguard-azire
     environment:
@@ -76,9 +80,13 @@ services:
     cap_add:
       - NET_ADMIN
       - SYS_MODULE
+    restart: always
+
 
   transmission:
     container_name: transmission
+    labels:
+      com.centurylinklabs.watchtower.enable: "false"
     build:
       context: ./transmission
     environment:
@@ -87,7 +95,7 @@ services:
     volumes:
       - ${BASE_DIR}/transmission:/downloads
       - ${CONFIG_DIR}/transmission:/config/transmission
-    restart: unless-stopped
+    restart: always
     depends_on:
       - wireguard-azire
     network_mode: "service:wireguard-azire"
@@ -250,6 +258,8 @@ services:
 
   caddy:
     container_name: caddy
+    labels:
+      com.centurylinklabs.watchtower.enable: "false"
     build:
       context: ./caddy
       args:
@@ -278,6 +288,19 @@ services:
     volumes:
       - ${BASE_DIR}/caddy:/root/.caddy
     restart: unless-stopped
+
+
+  watchtower:
+    container_name: watchtower
+    image: v2tec/watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --interval 10800
+    environment:
+      WATCHTOWER_NOTIFICATIONS: slack
+      WATCHTOWER_NOTIFICATION_SLACK_HOOK_URL: ${WATCHTOWER_NOTIFICATION_SLACK_HOOK_URL}
+
 
 
 networks:

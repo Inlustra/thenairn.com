@@ -25,6 +25,8 @@ steps:
         from_secret: FTP_USER_NAME
       FTP_USER_PASS:
         from_secret: FTP_USER_PASS
+      WATCHTOWER_NOTIFICATION_SLACK_HOOK_URL:
+        from_secret: WATCHTOWER_NOTIFICATION_SLACK_HOOK_URL
     commands:
       - COMPOSE_PROJECT_NAME=project-media docker-compose up -d --build
     volumes:
