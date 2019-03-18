@@ -58,6 +58,8 @@ services:
   wireguard-azire:
     container_name: wireguard-azire
     privileged: true
+    labels:
+      com.centurylinklabs.watchtower.enable: "false"
     build:
       context: ./wireguard-azire
     environment:
@@ -83,6 +85,8 @@ services:
 
   transmission:
     container_name: transmission
+    labels:
+      com.centurylinklabs.watchtower.enable: "false"
     build:
       context: ./transmission
     environment:
@@ -254,6 +258,8 @@ services:
 
   caddy:
     container_name: caddy
+    labels:
+      com.centurylinklabs.watchtower.enable: "false"
     build:
       context: ./caddy
       args:
