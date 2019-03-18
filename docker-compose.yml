@@ -256,6 +256,21 @@ services:
       - ${CONFIG_DIR}/admin/database.db:/etc/database.db
     restart: unless-stopped
 
+  projectsend:
+    container_name: projectsend
+    image: linuxserver/projectsend
+    restart: unless-stopped
+    environment:
+      - PGID=0
+      - PUID=0
+      - TZ=Europe/London
+    volumes:
+      - ${CONFIG_DIR}/projectsend:/config
+      - ${BASE_DIR}/transmission:/srv/transmission
+      - ${BASE_DIR}/plex/media/Movies:/srv/movies
+      - ${BASE_DIR}/plex/media/Shows:/srv/tv
+      - ${BASE_DIR}/plex/media/Anime:/srv/anime
+
   caddy:
     container_name: caddy
     labels:
@@ -277,6 +292,7 @@ services:
       - tautulli
       - bazarr
       - lazylibrarian
+      - projectsend
     external_links:
       - drone
     networks: 
