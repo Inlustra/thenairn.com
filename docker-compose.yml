@@ -285,7 +285,9 @@ services:
 
 
   watchtower:
+    container_name: watchtower
     image: v2tec/watchtower
+    restart: unless-stopped
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     command: --interval 30
