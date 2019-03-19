@@ -3,8 +3,8 @@ services:
   plex:
     container_name: plex
     labels:
-    image: plexinc/pms-docker:latest
       com.centurylinklabs.watchtower.enable: "true"
+    image: plexinc/pms-docker:latest
     hostname: Artemis
     environment:
       - TZ=Europe/Paris
