@@ -33,7 +33,7 @@ services:
     container_name: download
     labels:
       com.centurylinklabs.watchtower.enable: "false"
-    image: filebrowser/filebrowser:1.11.0
+    image: filebrowser/filebrowser:v1.11.0
     command: "--auth.method='none' --defaults.allowEdit=false --defaults.allowNew=false --defaults.allowCommands=false"
     volumes:
       - ${BASE_DIR}/transmission:/srv/transmission
@@ -268,7 +268,7 @@ services:
     container_name: admin
     labels:
       com.centurylinklabs.watchtower.enable: "false"
-    image: filebrowser/filebrowser:1.11.0
+    image: filebrowser/filebrowser:v1.11.0
     command: "--auth.method='none'"
     volumes:
       - ${BASE_DIR}/transmission:/srv/transmission
