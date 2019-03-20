@@ -34,7 +34,7 @@ services:
     labels:
       com.centurylinklabs.watchtower.enable: "false"
     image: filebrowser/filebrowser:v1.11.0
-    command: "--auth.method='none' --defaults.allowEdit=false --defaults.allowNew=false --defaults.allowCommands=false"
+    command: "--auth.method='none' --defaults.allowNew=false --defaults.allowCommands=false"
     volumes:
       - ${BASE_DIR}/transmission:/srv/transmission
       - ${BASE_DIR}/plex/media/Movies:/srv/movies
