@@ -33,7 +33,8 @@ media.thenairn.com {
 download.thenairn.com {
 
     reauth {
-        path /  
+        path /
+        except /share
         failure redirect target=https://media.thenairn.com
         upstream url=https://media.thenairn.com/api/?v1/auth&group=3,cookies=true
 	}
@@ -46,7 +47,8 @@ download.thenairn.com {
 admin.thenairn.com {
 
     reauth {
-        path /  
+        path /
+        except /share
         failure redirect target=https://media.thenairn.com
         upstream url=https://media.thenairn.com/api/?v1/auth&group=1,cookies=true
 	}

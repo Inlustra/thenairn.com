@@ -1,8 +1,10 @@
 version: '3.5'
 services:
   plex:
-    image: plexinc/pms-docker:latest
     container_name: plex
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+    image: plexinc/pms-docker:latest
     hostname: Artemis
     environment:
       - TZ=Europe/Paris
@@ -29,8 +31,10 @@ services:
 
   download:
     container_name: download
-    image: filebrowser/filebrowser
-    command: "--auth.method=noauth --defaults.allowEdit=false --defaults.allowNew=false --defaults.allowCommands=false"
+    labels:
+      com.centurylinklabs.watchtower.enable: "false"
+    image: filebrowser/filebrowser:v1.11.0
+    command: "--auth.method='none' --defaults.allowNew=false --defaults.allowCommands=false"
     volumes:
       - ${BASE_DIR}/transmission:/srv/transmission
       - ${BASE_DIR}/plex/media/Movies:/srv/movies
@@ -42,6 +46,8 @@ services:
 
   tautulli:
     container_name: tautull
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
     image: linuxserver/tautulli
     links:
       - plex
@@ -102,6 +108,8 @@ services:
 
   sonarr:
     container_name: sonarr
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
     image: linuxserver/sonarr
     depends_on:
       - transmission
@@ -121,6 +129,8 @@ services:
 
   radarr:
     container_name: radarr
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
     image: linuxserver/radarr
     depends_on:
       - transmission
@@ -140,6 +150,8 @@ services:
 
   jackett:
     container_name: jackett
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
     image: linuxserver/jackett
     restart: always
     environment:
@@ -153,6 +165,8 @@ services:
 
   bazarr:
     container_name: bazarr
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
     image: linuxserver/bazarr
     restart: always
     environment:
@@ -173,6 +187,8 @@ services:
 
   portainer:
     container_name: portainer
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
     image: portainer/portainer
     command: -H unix:///var/run/docker.sock --no-auth
     volumes:
@@ -182,6 +198,8 @@ services:
 
   lazylibrarian:
     container_name: lazylibrarian
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
     image: linuxserver/lazylibrarian
     restart: always
     depends_on:
@@ -202,6 +220,8 @@ services:
 
   organizr:
     container_name: organizr
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
     image: tronyx/docker-organizr-v2
     restart: unless-stopped
     volumes:
@@ -227,6 +247,8 @@ services:
 
   ftpd:
     container_name: ftpd
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
     image: stilliard/pure-ftpd:hardened
     restart: unless-stopped
     ports:
@@ -244,8 +266,10 @@ services:
 
   admin:
     container_name: admin
-    image: filebrowser/filebrowser
-    command: "--auth.method=noauth"
+    labels:
+      com.centurylinklabs.watchtower.enable: "false"
+    image: filebrowser/filebrowser:v1.11.0
+    command: "--auth.method='none'"
     volumes:
       - ${BASE_DIR}/transmission:/srv/transmission
       - ${BASE_DIR}/plex/media/Movies:/srv/movies
@@ -291,14 +315,13 @@ services:
       - ${BASE_DIR}/caddy:/root/.caddy
     restart: unless-stopped
 
-
   watchtower:
     container_name: watchtower
     image: v2tec/watchtower
     restart: unless-stopped
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-    command: --interval 10800
+    command: --interval 10800 --label-enable --cleanup
     environment:
       WATCHTOWER_NOTIFICATIONS: slack
       WATCHTOWER_NOTIFICATION_SLACK_HOOK_URL: ${WATCHTOWER_NOTIFICATION_SLACK_HOOK_URL}
