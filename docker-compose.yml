@@ -326,10 +326,8 @@ services:
       WATCHTOWER_NOTIFICATIONS: slack
       WATCHTOWER_NOTIFICATION_SLACK_HOOK_URL: ${WATCHTOWER_NOTIFICATION_SLACK_HOOK_URL}
 
-
-
 networks:
   dronenet:
     name: dronenet
-  homepage:
+  homenet:
     name: homenet
