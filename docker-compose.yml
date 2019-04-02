@@ -279,9 +279,11 @@ services:
       - lazylibrarian
     external_links:
       - drone
+      - homepage
     networks: 
       - default
       - dronenet
+      - homenet
     ports:
       - '80:80/tcp'
       - '443:443/tcp'
@@ -306,3 +308,5 @@ services:
 networks:
   dronenet:
     name: dronenet
+  homepage:
+    name: homenet

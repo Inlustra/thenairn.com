@@ -7,6 +7,12 @@
 # auth_request /auth-998; #=Logged In
 # auth_request /auth-999; #=Guest
 
+thenairn.com {
+    proxy / homepage:3000 {
+        transparent
+    }
+}
+
 media.thenairn.com {
     redir 301 {
         if {>X-Forwarded-Proto} is http
