@@ -218,6 +218,26 @@ services:
       - ${BASE_DIR}/transmission:/downloads
     restart: unless-stopped
 
+  cops:
+    container_name: cops
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+    image: linuxserver/cops
+    restart: always
+    depends_on:
+      - lazylibrarian
+    environment:
+      - PGID=0
+      - PUID=0
+      - TZ=Europe/London
+    links: 
+      - jackett
+      - lazylibrarian
+    volumes:
+      - ${CONFIG_DIR}/cops:/config
+      - ${BASE_DIR}/plex/media/Books:/books
+    restart: unless-stopped
+
   organizr:
     container_name: organizr
     labels:
