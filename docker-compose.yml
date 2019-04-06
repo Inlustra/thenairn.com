@@ -215,7 +215,6 @@ services:
       - ${CONFIG_DIR}/lazylibrarian:/config
       - ${BASE_DIR}/lazylibrarian/downloads:/downloads
       - ${BASE_DIR}/plex/media/Books:/books
-      - ${BASE_DIR}/plex/media/Books/Calibre:/library
       - ${BASE_DIR}/transmission:/downloads
     restart: unless-stopped
 
@@ -231,7 +230,7 @@ services:
       - EDGE=0
       - WIDTH=1280
       - HEIGHT=720
-      - LIBRARYINTERNALPATH=/books
+      - LIBRARYINTERNALPATH=/Calibre
       - TZ=Europe/London
     links: 
       - jackett
@@ -239,6 +238,7 @@ services:
     volumes:
       - ${CONFIG_DIR}/calibre:/config
       - ${BASE_DIR}/plex/media/Books:/books
+      - ${BASE_DIR}/plex/media/Calibre:/Calibre
     restart: unless-stopped
 
   organizr:
