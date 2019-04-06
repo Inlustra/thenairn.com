@@ -226,8 +226,6 @@ services:
       com.centurylinklabs.watchtower.enable: "true"
     image: aptalca/docker-rdp-calibre
     restart: always
-    depends_on:
-      - lazylibrarian
     environment:
       - PGID=0
       - PUID=0
