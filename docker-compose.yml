@@ -211,10 +211,12 @@ services:
     links: 
       - jackett
       - plex
+      - calibre
     volumes:
       - ${CONFIG_DIR}/lazylibrarian:/config
       - ${BASE_DIR}/lazylibrarian/downloads:/downloads
       - ${BASE_DIR}/plex/media/Books:/books
+      - ${BASE_DIR}/plex/media/Calibre:/Calibre
       - ${BASE_DIR}/transmission:/downloads
     restart: unless-stopped
 
@@ -227,6 +229,8 @@ services:
     depends_on:
       - lazylibrarian
     environment:
+      - PGID=0
+      - PUID=0
       - EDGE=0
       - WIDTH=1280
       - HEIGHT=720
