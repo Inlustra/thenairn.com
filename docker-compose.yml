@@ -215,6 +215,7 @@ services:
       - ${CONFIG_DIR}/lazylibrarian:/config
       - ${BASE_DIR}/lazylibrarian/downloads:/downloads
       - ${BASE_DIR}/plex/media/Books:/books
+      - ${BASE_DIR}/plex/media/Books/Calibre:/library
       - ${BASE_DIR}/transmission:/downloads
     restart: unless-stopped
 
