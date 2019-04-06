@@ -238,7 +238,6 @@ services:
       - TZ=Europe/London
     links: 
       - jackett
-      - lazylibrarian
     volumes:
       - ${CONFIG_DIR}/calibre:/config
       - ${BASE_DIR}/plex/media/Books:/books
