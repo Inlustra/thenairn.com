@@ -321,6 +321,7 @@ services:
       - tautulli
       - bazarr
       - lazylibrarian
+      - cops
     external_links:
       - drone
       - homepage
