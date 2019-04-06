@@ -218,23 +218,25 @@ services:
       - ${BASE_DIR}/transmission:/downloads
     restart: unless-stopped
 
-  cops:
-    container_name: cops
+  calibre:
+    container_name: calibre
     labels:
       com.centurylinklabs.watchtower.enable: "true"
-    image: linuxserver/cops
+    image: aptalca/docker-rdp-calibre
     restart: always
     depends_on:
       - lazylibrarian
     environment:
-      - PGID=0
-      - PUID=0
+      - EDGE=0
+      - WIDTH=1280
+      - HEIGHT=720
+      - LIBRARYINTERNALPATH=/books
       - TZ=Europe/London
     links: 
       - jackett
       - lazylibrarian
     volumes:
-      - ${CONFIG_DIR}/cops:/config
+      - ${CONFIG_DIR}/calibre:/config
       - ${BASE_DIR}/plex/media/Books:/books
     restart: unless-stopped
 
@@ -321,7 +323,7 @@ services:
       - tautulli
       - bazarr
       - lazylibrarian
-      - cops
+      - calibre
     external_links:
       - drone
       - homepage
