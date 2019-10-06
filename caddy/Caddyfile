@@ -11,6 +11,9 @@ thenairn.com {
     proxy / ghost_frontend:3000 {
         transparent
     }
+    proxy /content ghost_backend:2368 {
+        transparent
+    }    
     proxy /ghost ghost_backend:2368 {
         transparent
     }    
