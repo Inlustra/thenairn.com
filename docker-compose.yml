@@ -183,6 +183,10 @@ services:
     links:
       - sonarr
       - radarr
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
     restart: unless-stopped
 
   portainer:
