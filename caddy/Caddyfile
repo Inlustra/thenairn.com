@@ -11,12 +11,9 @@ thenairn.com {
     proxy / ghost_frontend:3000 {
         transparent
     }
-}
-
-ghost.thenairn.com {
-    proxy / ghost_backend:2368 {
+    proxy /ghost ghost_backend:2368/ghost {
         transparent
-    }
+    }    
 }
 
 storybook.thenairn.com {
