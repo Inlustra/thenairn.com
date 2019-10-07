@@ -8,15 +8,9 @@
 # auth_request /auth-999; #=Guest
 
 thenairn.com {
-    proxy / ghost_frontend:3000 {
+    proxy / homepage:80 {
         transparent
     }
-    proxy /content ghost_backend:2368 {
-        transparent
-    }    
-    proxy /ghost ghost_backend:2368 {
-        transparent
-    }    
 }
 
 storybook.thenairn.com {

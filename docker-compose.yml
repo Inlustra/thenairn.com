@@ -332,9 +332,7 @@ services:
       - calibre
     external_links:
       - drone
-      - ghost_frontend
-      - ghost_backend
-      - framework_storybook
+      - homepage
     networks: 
       - default
       - dronenet
