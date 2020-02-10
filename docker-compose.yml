@@ -312,6 +312,8 @@ services:
     container_name: caddy
     labels:
       com.centurylinklabs.watchtower.enable: "false"
+    environment:
+      - TRANSMISSION_PASSWORD=${TRANSMISSION_PASSWORD}
     build:
       context: ./caddy
       args:

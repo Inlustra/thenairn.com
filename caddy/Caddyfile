@@ -69,6 +69,13 @@ transmission.thenairn.com {
     proxy / wireguard-azire:9091
 }
 
+webtransmission.thenairn.com {
+
+    basicauth / user {$TRANSMISSION_PASSWORD}
+
+    proxy / wireguard-azire:9091
+}
+
 tautulli.thenairn.com {
     
     reauth {
