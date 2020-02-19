@@ -317,7 +317,7 @@ services:
       - ${BASE_DIR}/dwarffortress:/df_linux/data/save
     environment:
       DFREMOTE_PWD: ${DF_PASSWORD}
-    password:
+    ports:
       - "1235:1235/udp"
     restart: unless-stopped
 
