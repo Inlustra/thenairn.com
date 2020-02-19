@@ -29,6 +29,8 @@ steps:
         from_secret: TRANSMISSION_PASSWORD
       WATCHTOWER_NOTIFICATION_SLACK_HOOK_URL:
         from_secret: WATCHTOWER_NOTIFICATION_SLACK_HOOK_URL
+      DF_PASSWORD:
+        from_secret: DF_PASSWORD
     commands:
       - COMPOSE_PROJECT_NAME=project-media docker-compose up -d --build
     volumes:
