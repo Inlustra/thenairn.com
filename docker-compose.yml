@@ -375,6 +375,7 @@ services:
       - DOCKER_USR=root
       - SLACK_WEBHOOK_URL=${NETDATA_SLACK_WEBHOOK_URL}
       - SLACK_CHANNEL=${NETDATA_SLACK_CHANNEL}
+      - DEFAULT_RECIPIENT_SLACK=${NETDATA_SLACK_CHANNEL}
 
   caddy:
     container_name: caddy
