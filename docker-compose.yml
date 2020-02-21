@@ -371,7 +371,7 @@ services:
       - /sys:/host/sys:ro
       - ${BASE_DIR}/netdata:/etc/netdata
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      environment: 
+    environment: 
       - DOCKER_USR=root
       - SLACK_WEBHOOK_URL=${NETDATA_SLACK_WEBHOOK_URL}
       - SLACK_CHANNEL=${NETDATA_SLACK_CHANNEL}
