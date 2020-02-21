@@ -342,14 +342,29 @@ services:
     image: mysql:5.7
     labels:
       com.centurylinklabs.watchtower.enable: "false"
-    environment:
-      - MYSQL_ROOT_PASSWORD=${MONICA_DB_ROOT_PW}
-      - MYSQL_DATABASE=monica
-      - MYSQL_USER=homestead
-      - MYSQL_PASSWORD=secret
-    volumes:
-      - ${BASE_DIR}/monica/db:/var/lib/mysql
+      environment:
+        - MYSQL_ROOT_PASSWORD=${MONICA_DB_ROOT_PW}
+        - MYSQL_DATABASE=monica
+        - MYSQL_USER=homestead
+        - MYSQL_PASSWORD=secret
+        volumes:
+          - ${BASE_DIR}/monica/db:/var/lib/mysql
+          restart: always
+          
+  netdata:
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
     restart: always
+    hostname: netdata.thenairn.com
+    image: netdata/netdata
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - apparmor:unconfined
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
 
   caddy:
     container_name: caddy
@@ -376,6 +391,7 @@ services:
       - lazylibrarian
       - calibre
       - monica
+      - netdata
     external_links:
       - drone
       - homepage
