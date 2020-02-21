@@ -326,8 +326,8 @@ services:
     image: monicahq/monicahq
     labels:
       com.centurylinklabs.watchtower.enable: "true"
-    depends_on:
-      - mysql
+    links:
+      - monicadb
     environment:
       - APP_KEY=${MONICA_APP_KEY}
       - DB_HOST=monicadb
