@@ -365,6 +365,9 @@ services:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment: 
+      - SLACK_WEBHOOK_URL=${NETDATA_SLACK_WEBHOOK_URL}
+      - SLACK_CHANNEL=${NETDATA_SLACK_CHANNEL}
 
   caddy:
     container_name: caddy

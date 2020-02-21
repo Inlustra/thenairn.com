@@ -35,6 +35,10 @@ steps:
         from_secret: MONICA_APP_KEY
       MONICA_DB_ROOT_PW:
         from_secret: MONICA_DB_ROOT_PW
+      NETDATA_SLACK_WEBHOOK_URL:
+        from_secret: NETDATA_SLACK_WEBHOOK_URL
+      NETDATA_SLACK_CHANNEL:
+        from_secret: NETDATA_SLACK_CHANNEL
     commands:
       - COMPOSE_PROJECT_NAME=project-media docker-compose up -d --build
     volumes:
