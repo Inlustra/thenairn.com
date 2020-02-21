@@ -331,6 +331,9 @@ services:
     environment:
       - APP_KEY=${MONICA_APP_KEY}
       - DB_HOST=monicadb
+      - APP_TRUSTED_PROXIES=
+      - APP_TRUSTED_CLOUDFLARE=false
+      - APP_ENV=production
     volumes:
       - ${BASE_DIR}/monica/app:/var/www/monica/storage
     restart: always
