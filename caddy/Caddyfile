@@ -199,3 +199,12 @@ drone.thenairn.com {
     }
 
 }
+
+monica.thenairn.com {
+
+    proxy / monica:80 {
+        websocket
+        transparent
+    }
+
+}

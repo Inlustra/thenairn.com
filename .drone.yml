@@ -31,6 +31,10 @@ steps:
         from_secret: WATCHTOWER_NOTIFICATION_SLACK_HOOK_URL
       DF_PASSWORD:
         from_secret: DF_PASSWORD
+      MONICA_APP_KEY:
+        from_secret: MONICA_APP_KEY
+      MONICA_DB_ROOT_PW:
+        from_secret: MONICA_DB_ROOT_PW
     commands:
       - COMPOSE_PROJECT_NAME=project-media docker-compose up -d --build
     volumes:

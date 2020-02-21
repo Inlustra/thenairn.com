@@ -321,6 +321,33 @@ services:
       - "1235:1235/udp"
     restart: unless-stopped
 
+  
+  monica:
+    image: monicahq/monicahq
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+    depends_on:
+      - mysql
+    environment:
+      - APP_KEY=${MONICA_APP_KEY}
+      - DB_HOST=monicadb
+    volumes:
+      - ${BASE_DIR}/monica/app:/var/www/monica/storage
+    restart: always
+
+  monicadb:
+    image: mysql:5.7
+    labels:
+      com.centurylinklabs.watchtower.enable: "false"
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MONICA_DB_ROOT_PW}
+      - MYSQL_DATABASE=monica
+      - MYSQL_USER=homestead
+      - MYSQL_PASSWORD=secret
+    volumes:
+      - ${BASE_DIR}/monica/db:/var/lib/mysql
+    restart: always
+
   caddy:
     container_name: caddy
     labels:
@@ -345,6 +372,7 @@ services:
       - bazarr
       - lazylibrarian
       - calibre
+      - monica
     external_links:
       - drone
       - homepage
