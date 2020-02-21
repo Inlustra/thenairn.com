@@ -367,9 +367,10 @@ services:
     volumes:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
       - ${BASE_DIR}/netdata:/etc/netdata
-    environment: 
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      environment: 
+      - DOCKER_USR=root
       - SLACK_WEBHOOK_URL=${NETDATA_SLACK_WEBHOOK_URL}
       - SLACK_CHANNEL=${NETDATA_SLACK_CHANNEL}
 
