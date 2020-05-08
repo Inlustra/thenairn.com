@@ -159,11 +159,10 @@ services:
       - TZ=Europe/London
     volumes:
       - ${CONFIG_DIR}/bazarr:/config
-      - ${BASE_DIR}/bazarr/downloads:/downloads
       - ${MEDIA_DIR}/Movies:/movies
       - ${MEDIA_DIR}/Anime:/anime
       - ${MEDIA_DIR}/Shows:/tv
-      - ${MEDIA_DIR}/Downloads/completed:/downloads
+      - ${DOWNLOADS_DIR}/bazarr:/downloads
     links:
       - sonarr
       - radarr
