@@ -10,6 +10,7 @@ services:
       - TZ=Europe/Paris
       - PLEX_CLAIM=${PLEX_CLAIM}
       - ADVERTISE_IP=${PLEX_ADVERTISE_IP}
+      - NVIDIA_VISIBLE_DEVICES=all
     ports:
       - 32400:32400/tcp
       - 3005:3005/tcp
@@ -21,31 +22,15 @@ services:
       - 32413:32413/udp
       - 32414:32414/udp
     volumes:
+      - /tmp:/transcode
       - ${CONFIG_DIR}/plex:/config
-      - ${BASE_DIR}/plex/transcode:/transcode
-      - ${BASE_DIR}/plex/media/Shows:/data/shows
-      - ${BASE_DIR}/plex/media/Movies:/data/movies
-      - ${BASE_DIR}/plex/media/Anime:/data/anime
-      - ${BASE_DIR}/transmission/completed:/data/completed
-    restart: unless-stopped
-
-  download:
-    container_name: download
-    labels:
-      com.centurylinklabs.watchtower.enable: "false"
-    image: filebrowser/filebrowser:v1.11.0
-    command: "--auth.method='none' --defaults.allowNew=false --defaults.allowCommands=false"
-    volumes:
-      - ${BASE_DIR}/transmission:/srv/transmission
-      - ${BASE_DIR}/plex/media/Movies:/srv/movies
-      - ${BASE_DIR}/plex/media/Shows:/srv/tv
-      - ${BASE_DIR}/plex/media/Anime:/srv/anime
-      - ${CONFIG_DIR}/download/config.json:/etc/config.json
-      - ${CONFIG_DIR}/download/database.db:/etc/database.db
+      - ${MEDIA_DIR}/Shows:/data/shows
+      - ${MEDIA_DIR}/Movies:/data/movies
+      - ${MEDIA_DIR}/Anime:/data/anime
     restart: unless-stopped
 
   tautulli:
-    container_name: tautull
+    container_name: tautulli
     labels:
       com.centurylinklabs.watchtower.enable: "true"
     image: linuxserver/tautulli
@@ -99,7 +84,8 @@ services:
       - PGID=0
       - PUID=0
     volumes:
-      - ${BASE_DIR}/transmission:/downloads
+      - ${DOWNLOADS_DIR}/incomplete:/downloads
+      - ${DOWNLOADS_DIR}/completed:/completed
       - ${CONFIG_DIR}/transmission:/config/transmission
     restart: always
     depends_on:
@@ -110,7 +96,7 @@ services:
     container_name: sonarr
     labels:
       com.centurylinklabs.watchtower.enable: "true"
-    image: linuxserver/sonarr
+    image: linuxserver/sonarr:preview
     depends_on:
       - transmission
     links: 
@@ -118,9 +104,9 @@ services:
       - plex
     volumes:            
       - ${CONFIG_DIR}/sonarr:/config
-      - ${BASE_DIR}/plex/media/Shows:/tv
-      - ${BASE_DIR}/plex/media/Anime:/anime
-      - ${BASE_DIR}/transmission:/downloads
+      - ${MEDIA_DIR}/Shows:/tv
+      - ${MEDIA_DIR}/Anime:/anime
+      - ${DOWNLOADS_DIR}/completed:/downloads
     environment:
       - PGID=0
       - PUID=0
@@ -139,9 +125,9 @@ services:
       - plex
     volumes:
       - ${CONFIG_DIR}/radarr:/config
-      - ${BASE_DIR}/plex/media/Movies:/movies
-      - ${BASE_DIR}/plex/media/Anime:/anime
-      - ${BASE_DIR}/transmission:/downloads
+      - ${MEDIA_DIR}/Movies:/movies
+      - ${MEDIA_DIR}/Anime:/anime
+      - ${DOWNLOADS_DIR}/completed:/downloads
     environment:
       - PGID=0
       - PUID=0
@@ -153,14 +139,13 @@ services:
     labels:
       com.centurylinklabs.watchtower.enable: "true"
     image: linuxserver/jackett
-    restart: always
     environment:
       - PGID=0
       - PUID=0
       - TZ=Europe/London
     volumes:
       - ${CONFIG_DIR}/jackett:/config
-      - ${BASE_DIR}/jackett/downloads:/downloads
+      - ${DOWNLOADS_DIR}/jackett:/downloads
     restart: unless-stopped
 
   bazarr:
@@ -168,7 +153,6 @@ services:
     labels:
       com.centurylinklabs.watchtower.enable: "true"
     image: linuxserver/bazarr
-    restart: always
     environment:
       - PGID=0
       - PUID=0
@@ -176,10 +160,10 @@ services:
     volumes:
       - ${CONFIG_DIR}/bazarr:/config
       - ${BASE_DIR}/bazarr/downloads:/downloads
-      - ${BASE_DIR}/plex/media/Movies:/movies
-      - ${BASE_DIR}/plex/media/Anime:/anime
-      - ${BASE_DIR}/plex/media/Shows:/tv
-      - ${BASE_DIR}/transmission:/downloads
+      - ${MEDIA_DIR}/Movies:/movies
+      - ${MEDIA_DIR}/Anime:/anime
+      - ${MEDIA_DIR}/Shows:/tv
+      - ${MEDIA_DIR}/Downloads/completed:/downloads
     links:
       - sonarr
       - radarr
@@ -196,7 +180,7 @@ services:
     image: portainer/portainer
     command: -H unix:///var/run/docker.sock --no-auth
     volumes:
-      - ${BASE_DIR}/portainer:/data
+      - ${CONFIG_DIR}/portainer:/data
       - /var/run/docker.sock:/var/run/docker.sock
     restart: unless-stopped
 
@@ -205,7 +189,6 @@ services:
     labels:
       com.centurylinklabs.watchtower.enable: "true"
     image: linuxserver/lazylibrarian
-    restart: always
     depends_on:
       - transmission
     environment:
@@ -218,10 +201,9 @@ services:
       - calibre
     volumes:
       - ${CONFIG_DIR}/lazylibrarian:/config
-      - ${BASE_DIR}/lazylibrarian/downloads:/downloads
-      - ${BASE_DIR}/plex/media/Books:/books
-      - ${BASE_DIR}/plex/media/Calibre:/Calibre
-      - ${BASE_DIR}/transmission:/downloads
+      - ${MEDIA_DIR}/Books:/books
+      - ${MEDIA_DIR}/Calibre:/Calibre
+      - ${DOWNLOADS_DIR}/completed:/downloads
     restart: unless-stopped
 
   calibre:
@@ -229,7 +211,6 @@ services:
     labels:
       com.centurylinklabs.watchtower.enable: "true"
     image: aptalca/docker-rdp-calibre
-    restart: always
     environment:
       - PGID=0
       - PUID=0
@@ -242,8 +223,8 @@ services:
       - jackett
     volumes:
       - ${CONFIG_DIR}/calibre:/config
-      - ${BASE_DIR}/plex/media/Books:/books
-      - ${BASE_DIR}/plex/media/Calibre:/Calibre
+      - ${MEDIA_DIR}/Books:/books
+      - ${MEDIA_DIR}/Calibre:/Calibre
     restart: unless-stopped
 
   organizr:
@@ -265,11 +246,6 @@ services:
       - plex
       - bazarr
       - lazylibrarian
-    external_links:
-      - drone
-    networks: 
-      - default
-      - dronenet
     environment:
       - TZ=Europe/London
 
@@ -283,9 +259,7 @@ services:
       - "21:21"
       - "30000-30009:30000-30009"
     volumes:
-      - "${BASE_DIR}/ftpd:/home/user"
-      - "${CONFIG_DIR}/ftpd/passwd:/etc/pure-ftpd/passwd"
-      - "${CONFIG_DIR}/ftpd/ssl:/etc/ssl/private/"
+      - "${INTERNAL_DIR}/ftpd:/home/user"
     environment:
       PUBLICHOST: thenairn.com
       FTP_USER_NAME: ${FTP_USER_NAME}
@@ -299,11 +273,9 @@ services:
     image: filebrowser/filebrowser:v1.11.0
     command: "--auth.method='none'"
     volumes:
-      - ${BASE_DIR}/transmission:/srv/transmission
-      - ${BASE_DIR}/plex/media/Movies:/srv/movies
-      - ${BASE_DIR}/plex/media/Shows:/srv/tv
-      - ${BASE_DIR}/plex/media/Anime:/srv/anime
-      - ${BASE_DIR}/ftpd:/srv/camera
+      - ${DOWNLOADS_DIR}:/srv/Downloads
+      - ${MEDIA_DIR}:/srv/Media
+      - ${INTERNAL_DIR}:/srv/Internal
       - ${CONFIG_DIR}/admin/config.json:/etc/config.json
       - ${CONFIG_DIR}/admin/database.db:/etc/database.db
     restart: unless-stopped
@@ -314,7 +286,7 @@ services:
       com.centurylinklabs.watchtower.enable: "false"
     image: mifki/dfremote
     volumes:
-      - ${BASE_DIR}/dwarffortress:/df_linux/data/save
+      - ${CONFIG_DIR}/dwarffortress:/df_linux/data/save
     environment:
       DFREMOTE_PWD: ${DF_PASSWORD}
     ports:
@@ -336,7 +308,7 @@ services:
       - APP_TRUSTED_CLOUDFLARE=false
       - APP_ENV=production
     volumes:
-      - ${BASE_DIR}/monica/app:/var/www/monica/storage
+      - ${CONFIG_DIR}/monica/app:/var/www/monica/storage
     restart: always
 
   monicadb:
@@ -350,7 +322,7 @@ services:
       - MYSQL_USER=homestead
       - MYSQL_PASSWORD=secret
     volumes:
-      - ${BASE_DIR}/monica/db:/var/lib/mysql
+      - ${CONFIG_DIR}/monica/db:/var/lib/mysql
     restart: always
           
   netdata:
@@ -369,7 +341,7 @@ services:
       - /etc/group:/host/etc/group:ro
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
-      - ${BASE_DIR}/netdata:/etc/netdata
+      - ${CONFIG_DIR}/netdata:/etc/netdata
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment: 
       - DOCKER_USR=root
@@ -403,18 +375,11 @@ services:
       - calibre
       - monica
       - netdata
-    external_links:
-      - drone
-      - homepage
-    networks: 
-      - default
-      - dronenet
-      - homenet
     ports:
       - '80:80/tcp'
       - '443:443/tcp'
     volumes:
-      - ${BASE_DIR}/caddy:/root/.caddy
+      - ${CONFIG_DIR}/caddy:/root/.caddy
     restart: unless-stopped
 
   watchtower:
@@ -427,9 +392,3 @@ services:
     environment:
       WATCHTOWER_NOTIFICATIONS: slack
       WATCHTOWER_NOTIFICATION_SLACK_HOOK_URL: ${WATCHTOWER_NOTIFICATION_SLACK_HOOK_URL}
-
-networks:
-  dronenet:
-    name: dronenet
-  homenet:
-    name: homenet
