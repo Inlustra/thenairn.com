@@ -7,5 +7,5 @@
     "idle-seeding-limit": true,
     "idle-seeding-limit-enabled": true,
     "ratio-limit": 2.0,
-    "ratio-limit-enabled": true,
+    "ratio-limit-enabled": true
 }

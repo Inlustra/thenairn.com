@@ -1,6 +1,7 @@
-version: '3.5'
+version: "2.4"
 services:
   plex:
+    runtime: nvidia
     container_name: plex
     labels:
       com.centurylinklabs.watchtower.enable: "true"
@@ -10,7 +11,8 @@ services:
       - TZ=Europe/Paris
       - PLEX_CLAIM=${PLEX_CLAIM}
       - ADVERTISE_IP=${PLEX_ADVERTISE_IP}
-      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_VISIBLE_DEVICES=GPU-c1d14a88-b2fa-5786-e47d-64af7a34ea34
+      - NVIDIA_DRIVER_CAPABILITIES=all
     ports:
       - 32400:32400/tcp
       - 3005:3005/tcp
@@ -29,6 +31,41 @@ services:
       - ${MEDIA_DIR}/Anime:/data/anime
     restart: unless-stopped
 
+  vscode:
+    container_name: vscode
+    labels:
+      com.centurylinklabs.watchtower.enable: "false"
+    build:
+      context: ./vscode
+    volumes:
+      - ${DOWNLOADS_DIR}:/srv/Downloads
+      - ${CONFIG_DIR}/vscode:/config
+      - /root/.ssh:/config/.ssh
+      - ${INTERNAL_DIR}:/Internal:cached
+      - ${CONFIG_DIR}:/ServerConfig
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - 19000-20000:19000-20000
+    environment:
+      - GPG_PASSPHRASE=${VSCODE_GPG_PASSPHRASE}
+      - PGID=0
+      - PUID=0
+      - DOCKER_MODS=linuxserver/mods:code-server-docker|linuxserver/mods:code-server-golang|linuxserver/mods:code-server-nodejs|linuxserver/mods:code-server-shellcheck|linuxserver/mods:code-server-python3
+    restart: unless-stopped
+
+  download:
+    container_name: download
+    labels:
+      com.centurylinklabs.watchtower.enable: "false"
+    image: filebrowser/filebrowser:v1.11.0
+    command: "--auth.method='none' --defaults.allowNew=false --defaults.allowCommands=false"
+    volumes:
+      - ${DOWNLOADS_DIR}:/srv/Downloads
+      - ${MEDIA_DIR}:/srv/Media
+      - ${CONFIG_DIR}/admin/config.json:/etc/config.json
+      - ${CONFIG_DIR}/admin/database.db:/etc/database.db
+    restart: unless-stopped
+
   tautulli:
     container_name: tautulli
     labels:
@@ -45,34 +82,21 @@ services:
       - ${BASE_DIR}/tautulli/logs:/logs:ro
     restart: unless-stopped
 
-
-  wireguard-azire:
-    container_name: wireguard-azire
-    privileged: true
-    labels:
-      com.centurylinklabs.watchtower.enable: "false"
-    build:
-      context: ./wireguard-azire
-    environment:
-      - AZIRE_USERNAME=${AZIRE_USERNAME}
-      - AZIRE_PASSWORD=${AZIRE_PASSWORD}
-      - AZIRE_LOCATION=${AZIRE_LOCATION}
-    volumes:
-      - /etc/wireguard:/etc/wireguard
-      - /lib/wireguard:/lib/wireguard
-      - /lib/modules:/lib/modules
-    ports:
-      - 5555:5555
-      - '51413:51413/tcp'
-      - '51413:51413/udp'
-    sysctls:
-        - net.ipv4.conf.all.rp_filter=2
-        - net.ipv6.conf.all.disable_ipv6=0
+  vpn:
+    container_name: vpn
+    image: bubuntux/nordvpn:openvpn
     cap_add:
-      - NET_ADMIN
-      - SYS_MODULE
-    restart: always
-
+      - NET_ADMIN               # Required
+    ports: 
+      - "51413:51413/tcp"
+      - "51413:51413/udp"
+    devices:
+      - /dev/net/tun            # Required
+    environment:                # Review https://github.com/bubuntux/nordvpn#environment-variables
+      - USER=${NORD_USERNAME}     # Required
+      - PASS=${NORD_PASSWORD}        # Required
+      - CONNECT=Netherlands
+      - TECHNOLOGY=OpenVPN
 
   transmission:
     container_name: transmission
@@ -89,8 +113,8 @@ services:
       - ${CONFIG_DIR}/transmission:/config/transmission
     restart: always
     depends_on:
-      - wireguard-azire
-    network_mode: "service:wireguard-azire"
+      - vpn
+    network_mode: "service:vpn"
 
   sonarr:
     container_name: sonarr
@@ -99,14 +123,14 @@ services:
     image: linuxserver/sonarr:preview
     depends_on:
       - transmission
-    links: 
-      - jackett
+    links:
+      - vpn
       - plex
-    volumes:            
+    volumes:
       - ${CONFIG_DIR}/sonarr:/config
       - ${MEDIA_DIR}/Shows:/tv
       - ${MEDIA_DIR}/Anime:/anime
-      - ${DOWNLOADS_DIR}/completed:/downloads
+      - ${DOWNLOADS_DIR}/completed:/completed
     environment:
       - PGID=0
       - PUID=0
@@ -120,14 +144,14 @@ services:
     image: linuxserver/radarr
     depends_on:
       - transmission
-    links: 
-      - jackett
+    links:
+      - vpn
       - plex
     volumes:
       - ${CONFIG_DIR}/radarr:/config
       - ${MEDIA_DIR}/Movies:/movies
       - ${MEDIA_DIR}/Anime:/anime
-      - ${DOWNLOADS_DIR}/completed:/downloads
+      - ${DOWNLOADS_DIR}/completed:/completed
     environment:
       - PGID=0
       - PUID=0
@@ -137,7 +161,7 @@ services:
   jackett:
     container_name: jackett
     labels:
-      com.centurylinklabs.watchtower.enable: "true"
+      com.centurylinklabs.watchtower.enable: "false"
     image: linuxserver/jackett
     environment:
       - PGID=0
@@ -146,6 +170,9 @@ services:
     volumes:
       - ${CONFIG_DIR}/jackett:/config
       - ${DOWNLOADS_DIR}/jackett:/downloads
+    depends_on:
+      - vpn
+    network_mode: "service:vpn"
     restart: unless-stopped
 
   bazarr:
@@ -166,21 +193,6 @@ services:
     links:
       - sonarr
       - radarr
-    deploy:
-      resources:
-        limits:
-          cpus: '0.2'
-    restart: unless-stopped
-
-  portainer:
-    container_name: portainer
-    labels:
-      com.centurylinklabs.watchtower.enable: "true"
-    image: portainer/portainer
-    command: -H unix:///var/run/docker.sock --no-auth
-    volumes:
-      - ${CONFIG_DIR}/portainer:/data
-      - /var/run/docker.sock:/var/run/docker.sock
     restart: unless-stopped
 
   lazylibrarian:
@@ -194,8 +206,8 @@ services:
       - PGID=0
       - PUID=0
       - TZ=Europe/London
-    links: 
-      - jackett
+    links:
+      - vpn
       - plex
       - calibre
     volumes:
@@ -218,8 +230,8 @@ services:
       - HEIGHT=720
       - LIBRARYINTERNALPATH=/Calibre
       - TZ=Europe/London
-    links: 
-      - jackett
+    links:
+      - vpn
     volumes:
       - ${CONFIG_DIR}/calibre:/config
       - ${MEDIA_DIR}/Books:/books
@@ -233,13 +245,12 @@ services:
     image: tronyx/docker-organizr-v2
     restart: unless-stopped
     volumes:
-        - ${CONFIG_DIR}/organizr:/config
+      - ${CONFIG_DIR}/organizr:/config
     links:
+      - host
       - admin
       - download
-      - wireguard-azire
-      - jackett
-      - portainer
+      - vpn
       - sonarr
       - radarr
       - plex
@@ -247,23 +258,6 @@ services:
       - lazylibrarian
     environment:
       - TZ=Europe/London
-
-  ftpd:
-    container_name: ftpd
-    labels:
-      com.centurylinklabs.watchtower.enable: "true"
-    image: stilliard/pure-ftpd:hardened
-    restart: unless-stopped
-    ports:
-      - "21:21"
-      - "30000-30009:30000-30009"
-    volumes:
-      - "${INTERNAL_DIR}/ftpd:/home/user"
-    environment:
-      PUBLICHOST: thenairn.com
-      FTP_USER_NAME: ${FTP_USER_NAME}
-      FTP_USER_PASS: ${FTP_USER_PASS}
-      FTP_USER_HOME: /home/user
 
   admin:
     container_name: admin
@@ -292,7 +286,6 @@ services:
       - "1235:1235/udp"
     restart: unless-stopped
 
-  
   monica:
     container_name: monica
     image: monicahq/monicahq
@@ -323,7 +316,7 @@ services:
     volumes:
       - ${CONFIG_DIR}/monica/db:/var/lib/mysql
     restart: always
-          
+
   netdata:
     container_name: netdata
     labels:
@@ -342,11 +335,17 @@ services:
       - /sys:/host/sys:ro
       - ${CONFIG_DIR}/netdata:/etc/netdata
       - /var/run/docker.sock:/var/run/docker.sock:ro
-    environment: 
+    environment:
       - DOCKER_USR=root
       - SLACK_WEBHOOK_URL=${NETDATA_SLACK_WEBHOOK_URL}
       - SLACK_CHANNEL=${NETDATA_SLACK_CHANNEL}
       - DEFAULT_RECIPIENT_SLACK=${NETDATA_SLACK_CHANNEL}
+
+  host:
+    container_name: host
+    image: qoomon/docker-host
+    cap_add: [ 'NET_ADMIN', 'NET_RAW' ]
+    restart: on-failure
 
   caddy:
     container_name: caddy
@@ -359,11 +358,11 @@ services:
       args:
         plugins: reauth
     links:
+      - host
       - download
       - admin
-      - wireguard-azire
+      - vpn
       - jackett
-      - portainer
       - sonarr
       - radarr
       - organizr
@@ -375,10 +374,12 @@ services:
       - monica
       - netdata
     ports:
-      - '80:80/tcp'
-      - '443:443/tcp'
+      - "80:80/tcp"
+      - "443:443/tcp"
     volumes:
-      - ${CONFIG_DIR}/caddy:/root/.caddy
+      - ${CONFIG_DIR}/caddy/www:/root/.caddy
+      - ${CONFIG_DIR}/caddy/certs:/caddy/certs
+      - ./Playground:/Playground
     restart: unless-stopped
 
   watchtower:

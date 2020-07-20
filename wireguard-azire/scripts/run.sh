@@ -6,11 +6,6 @@ if [ -z "$AZIRE_LOCATION" ]; then echo 'Environment variable AZIRE_LOCATION must
 
 set -e
 
-# Install Wireguard. This has to be done dynamically since the kernel
-# module depends on the host kernel version.
-apt update
-apt install -y wireguard
-
 CONFIG_LOCATION=/etc/wireguard/azire-wireguard.conf
 
 source /scripts/configure-azire.sh

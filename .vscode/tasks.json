@@ -1,0 +1,46 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "clean",
+      "command": "rm",
+      "args": ["nohup.out"],
+      "type": "shell"
+    },
+    {
+      "label": "Deploy all",
+      "dependsOn": ["clean"],
+      "command": "nohup",
+      "args": ["/docker-compose", "up", "-d", "--build"],
+      "type": "shell"
+    },
+    {
+      "label": "Deploy Specific",
+      "dependsOn": ["clean"],
+      "command": "nohup",
+      "args": [
+        "/docker-compose",
+        "up",
+        "-d",
+        "--build",
+        "--force-recreate",
+        "$(input:svc)"
+      ],
+      "type": "shell"
+    }
+  ],
+  "inputs": [
+    {
+      "type": "pickString",
+      "id": "svc",
+      "description": "Which service should we deploy?",
+      "options": [
+        "vpn",
+      ],
+      "default": "component"
+    }
+  ]
+}

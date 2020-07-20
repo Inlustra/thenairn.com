@@ -7,13 +7,9 @@
 # auth_request /auth-998; #=Logged In
 # auth_request /auth-999; #=Guest
 
-thenairn.com {
-    proxy / homepage:80 {
-        transparent
-    }
-}
 
 media.thenairn.com {
+
     redir 301 {
         if {>X-Forwarded-Proto} is http
         /  https://{host}{uri}
@@ -32,6 +28,48 @@ media.thenairn.com {
 	    transparent
     }
 
+}
+
+
+playground.thenairn.com {
+
+    redir 301 {
+        if {>X-Forwarded-Proto} is http
+        /  https://{host}{uri}
+    }
+
+    root /Playground
+
+}
+
+unraid.thenairn.com {
+
+    reauth {
+        path /
+        except /share
+        failure redirect target=https://media.thenairn.com
+        upstream url=https://media.thenairn.com/api/?v1/auth&group=1,cookies=true
+	}
+
+    proxy / host:6059 {
+        websocket
+        transparent
+    }
+}
+
+code.thenairn.com {
+
+    reauth {
+        path /
+        except /share
+        failure redirect target=https://media.thenairn.com
+        upstream url=https://media.thenairn.com/api/?v1/auth&group=1,cookies=true
+	}
+
+    proxy / vscode:8443 {
+        websocket
+        transparent
+    }
 }
 
 download.thenairn.com {
@@ -70,18 +108,18 @@ transmission.thenairn.com {
         upstream url=https://media.thenairn.com/api/?v1/auth&group=3,cookies=true
 	}
 
-    proxy / wireguard-azire:9091
+    proxy / vpn:9091
 }
 
 webtransmission.thenairn.com {
 
     basicauth / user {$TRANSMISSION_PASSWORD}
 
-    proxy / wireguard-azire:9091
+    proxy / vpn:9091
 }
 
 tautulli.thenairn.com {
-    
+        
     reauth {
         path /  
         failure redirect target=https://media.thenairn.com
@@ -105,7 +143,7 @@ radarr.thenairn.com {
     }
 }
 
-jackett.thenairn.com {
+jackett.thenairn.com {    
     
     reauth {
         path /  
@@ -113,12 +151,12 @@ jackett.thenairn.com {
         upstream url=https://media.thenairn.com/api/?v1/auth&group=3,cookies=true
 	}
     
-    proxy / jackett:9117 {
+    proxy / vpn:9117 {
 	    transparent
     }
 }
 
-sonarr.thenairn.com {
+sonarr.thenairn.com {    
     
     reauth {
         path /  
@@ -132,13 +170,14 @@ sonarr.thenairn.com {
 }
 
 plex.thenairn.com {
+    
     gzip
     proxy / plex:32400 {
         transparent
     }
 }
 
-portainer.thenairn.com {
+portainer.thenairn.com {    
     
     reauth {
         path /  
@@ -152,7 +191,7 @@ portainer.thenairn.com {
     }
 }
 
-bazarr.thenairn.com {
+bazarr.thenairn.com {    
     
     reauth {
         path /  
@@ -165,7 +204,7 @@ bazarr.thenairn.com {
     }
 }
 
-books.thenairn.com {
+books.thenairn.com {    
     
     reauth {
         path /  
@@ -178,7 +217,7 @@ books.thenairn.com {
     }
 }
 
-library.thenairn.com {
+library.thenairn.com {    
     
     reauth {
         path /  
@@ -191,7 +230,7 @@ library.thenairn.com {
     }
 }
 
-netdata.thenairn.com {
+netdata.thenairn.com {    
     
     reauth {
         path /  
@@ -203,19 +242,6 @@ netdata.thenairn.com {
     proxy / netdata:19999 {
 	    transparent
     }
-}
-
-drone.thenairn.com {
-
-    gzip {
-        not /api/stream/
-    }
-
-    proxy / drone:80 {
-        websocket
-        transparent
-    }
-
 }
 
 monica.thenairn.com {
