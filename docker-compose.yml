@@ -44,12 +44,11 @@ services:
       - ${INTERNAL_DIR}:/Internal:cached
       - ${CONFIG_DIR}:/ServerConfig
       - /var/run/docker.sock:/var/run/docker.sock
-    ports:
-      - 19000-20000:19000-20000
     environment:
       - GPG_PASSPHRASE=${VSCODE_GPG_PASSPHRASE}
       - PGID=0
       - PUID=0
+      - PROXY_DOMAIN=code.thenairn.com
       - DOCKER_MODS=linuxserver/mods:code-server-docker|linuxserver/mods:code-server-golang|linuxserver/mods:code-server-nodejs|linuxserver/mods:code-server-shellcheck|linuxserver/mods:code-server-python3
     restart: unless-stopped
 
@@ -269,6 +268,7 @@ services:
       - ${DOWNLOADS_DIR}:/srv/Downloads
       - ${MEDIA_DIR}:/srv/Media
       - ${INTERNAL_DIR}:/srv/Internal
+      - ${BACKUP_DIR}:/srv/Backup
       - ${CONFIG_DIR}/admin/config.json:/etc/config.json
       - ${CONFIG_DIR}/admin/database.db:/etc/database.db
     restart: unless-stopped
