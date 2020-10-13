@@ -1,4 +1,6 @@
 #!/usr/bin/with-contenv bash
 
+cat > ~/.zshrc <<EOL
 eval `ssh-agent -s`
 ssh-add -K ~/.ssh/id_rsa
+EOL

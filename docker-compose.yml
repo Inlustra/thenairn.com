@@ -26,6 +26,7 @@ services:
     volumes:
       - /tmp:/transcode
       - ${CONFIG_DIR}/plex:/config
+      - ${AMEDIA_DIR}/A:/data/ashows
       - ${MEDIA_DIR}/Shows:/data/shows
       - ${MEDIA_DIR}/Movies:/data/movies
       - ${MEDIA_DIR}/Anime:/data/anime
@@ -113,6 +114,8 @@ services:
     restart: always
     depends_on:
       - vpn
+    labels:
+      com.centurylinklabs.watchtower.depends-on: vpn
     network_mode: "service:vpn"
 
   sonarr:
@@ -129,6 +132,26 @@ services:
       - ${CONFIG_DIR}/sonarr:/config
       - ${MEDIA_DIR}/Shows:/tv
       - ${MEDIA_DIR}/Anime:/anime
+      - ${DOWNLOADS_DIR}/completed:/completed
+    environment:
+      - PGID=0
+      - PUID=0
+      - TZ=Europe/London
+    restart: unless-stopped
+
+  asonarr:
+    container_name: asonarr
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+    image: linuxserver/sonarr:preview
+    depends_on:
+      - transmission
+    links:
+      - vpn
+      - plex
+    volumes:
+      - ${CONFIG_DIR}/asonarr:/config
+      - ${AMEDIA_DIR}/A:/shows
       - ${DOWNLOADS_DIR}/completed:/completed
     environment:
       - PGID=0
@@ -171,6 +194,8 @@ services:
       - ${DOWNLOADS_DIR}/jackett:/downloads
     depends_on:
       - vpn
+    labels:
+      com.centurylinklabs.watchtower.depends-on: vpn
     network_mode: "service:vpn"
     restart: unless-stopped
 
@@ -267,6 +292,7 @@ services:
     volumes:
       - ${DOWNLOADS_DIR}:/srv/Downloads
       - ${MEDIA_DIR}:/srv/Media
+      - ${AMEDIA_DIR}:/srv/AMedia
       - ${INTERNAL_DIR}:/srv/Internal
       - ${BACKUP_DIR}:/srv/Backup
       - ${CONFIG_DIR}/admin/config.json:/etc/config.json
@@ -352,11 +378,14 @@ services:
     labels:
       com.centurylinklabs.watchtower.enable: "false"
     environment:
-      - TRANSMISSION_PASSWORD=${TRANSMISSION_PASSWORD}
+      - OAUTH_GOOGLE_CLIENT_ID=${OAUTH_GOOGLE_CLIENT_ID}
+      - OAUTH_GOOGLE_CLIENT_SECRET=${OAUTH_GOOGLE_CLIENT_SECRET}
+      - OAUTH_GITHUB_CLIENT_ID=${OAUTH_GITHUB_CLIENT_ID}
+      - OAUTH_GITHUB_CLIENT_SECRET=${OAUTH_GITHUB_CLIENT_SECRET}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_ISSUER=${JWT_ISSUER}
     build:
       context: ./caddy
-      args:
-        plugins: reauth
     links:
       - host
       - download
@@ -364,6 +393,7 @@ services:
       - vpn
       - jackett
       - sonarr
+      - asonarr
       - radarr
       - organizr
       - plex
@@ -373,12 +403,16 @@ services:
       - calibre
       - monica
       - netdata
+      - mayan
     ports:
       - "80:80/tcp"
       - "443:443/tcp"
     volumes:
       - ${CONFIG_DIR}/caddy/www:/root/.caddy
       - ${CONFIG_DIR}/caddy/certs:/caddy/certs
+      - ${CONFIG_DIR}/caddy2/data:/data
+      - ${CONFIG_DIR}/caddy2/config:/config
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile
       - ./Playground:/Playground
     restart: unless-stopped
 
@@ -392,3 +426,64 @@ services:
     environment:
       WATCHTOWER_NOTIFICATIONS: slack
       WATCHTOWER_NOTIFICATION_SLACK_HOOK_URL: ${WATCHTOWER_NOTIFICATION_SLACK_HOOK_URL}
+
+  mayandb:
+    image: postgres:10
+    container_name: mayandb
+    environment:
+      POSTGRES_DB: mayan
+      POSTGRES_PASSWORD: m-pass
+      POSTGRES_USER: mayan
+    volumes:
+      - ${CONFIG_DIR}/mayan/db:/var/lib/postgresql/data
+
+  mayan:
+    image: mayanedms/mayanedms:3
+    container_name: mayan
+    depends_on:
+      - mayandb
+      - mayanredis
+    links:
+      - mayandb
+      - mayanredis
+    environment:
+      MAYAN_DATABASE_ENGINE: django.db.backends.postgresql
+      MAYAN_DATABASE_HOST: mayandb
+      MAYAN_DATABASE_NAME: mayan
+      MAYAN_DATABASE_PASSWORD: m-pass
+      MAYAN_DATABASE_USER: mayan
+      MAYAN_DATABASE_CONN_MAX_AGE: 60
+      MAYAN_CELERY_BROKER_URL: redis://:mayanredispassword@mayanredis:6379/0
+      MAYAN_CELERY_RESULT_BACKEND: redis://:mayanredispassword@mayanredis:6379/1
+      MAYAN_DOCUMENTS_STORAGE_BACKEND_ARGUMENTS: "location: /srv/files"
+    volumes:
+      - ${SCANS_DIR}:/srv/scans
+      - ${DOCS_DIR}/files:/srv/files
+      - ${DOCS_DIR}/staging:/srv/staging
+      - ${CONFIG_DIR}/mayan/app:/var/lib/mayan
+
+  mayanredis:
+    container_name: mayanredis
+    command:
+      - redis-server
+      - --appendonly
+      - "no"
+      - --databases
+      - "2"
+      - --maxmemory
+      - "100mb"
+      - --maxclients
+      - "500"
+      - --maxmemory-policy
+      - "allkeys-lru"
+      - --save
+      - ""
+      - --tcp-backlog
+      - "256"
+      - --requirepass
+      - "mayanredispassword"
+    image: redis:5.0-alpine
+    
+    restart: unless-stopped
+    volumes:
+      - ${CONFIG_DIR}/mayan/redis:/data
