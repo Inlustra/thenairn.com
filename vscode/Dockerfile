@@ -1,4 +1,4 @@
-FROM linuxserver/code-server
+FROM linuxserver/code-server:v3.6.2-ls56
 
 # Install Expo Globally
 RUN npm i -g expo-cli

@@ -2,3 +2,6 @@
 
 cd $HOME/.dotfiles
 ./script/install
+
+echo 'eval `ssh-agent -s`' >> $HOME/.dotfiles/zsh/zshrc.symlink
+echo 'ssh-add $HOME/.ssh/id_rsa' >> $HOME/.dotfiles/zsh/zshrc.symlink

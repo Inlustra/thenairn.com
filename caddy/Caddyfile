@@ -64,7 +64,7 @@
                 token_name access_token
                 token_secret {$JWT_SECRET}
                 token_issuer {$JWT_ISSUER}
-                token_lifetime 3600
+                token_lifetime 36000
             }
             cookie_domain thenairn.com
             cookie_path /
@@ -72,9 +72,24 @@
     }
  }
 
- transmission.thenairn.com {
-    import admin
-    reverse_proxy vpn:9091
+transmission.thenairn.com {
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle @internal {
+        reverse_proxy vpn:9091
+    }
+    handle {
+        import admin
+        reverse_proxy vpn:9091
+    }
+}
+
+http://transmission.thenairn.com {
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    reverse_proxy @internal vpn:9091
 }
  
  media.thenairn.com {
@@ -93,13 +108,19 @@
 
 
 home.thenairn.com {
-    import admin
-    reverse_proxy 192.168.1.12:8123
+    reverse_proxy 192.168.96.15:8123
+}
+
+frigate.thenairn.com {
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    reverse_proxy @internal frigate:5000
 }
 
 unifi.thenairn.com {
     import admin
-    reverse_proxy https://192.168.1.12:8443 {
+    reverse_proxy https://192.168.96.15:8443 {
         transport http {
             tls_insecure_skip_verify
         }

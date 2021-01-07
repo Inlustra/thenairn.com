@@ -30,6 +30,7 @@ services:
       - ${MEDIA_DIR}/Shows:/data/shows
       - ${MEDIA_DIR}/Movies:/data/movies
       - ${MEDIA_DIR}/Anime:/data/anime
+      - ${PERSONAL_MEDIA_DIR}/:/data/personal
     restart: unless-stopped
 
   vscode:
@@ -372,6 +373,27 @@ services:
     image: qoomon/docker-host
     cap_add: [ 'NET_ADMIN', 'NET_RAW' ]
     restart: on-failure
+    
+  frigate:
+    container_name: frigate
+    restart: unless-stopped
+    privileged: true
+    image: blakeblackshear/frigate:stable-amd64
+    volumes:
+      - /dev/bus/usb:/dev/bus/usb
+      - /etc/localtime:/etc/localtime:ro
+      - ${CONFIG_DIR}/frigate:/config
+      - ${CAMERA_DIR}/frigate:/clips      
+      - type: tmpfs # 1GB of memory, reduces SSD/SD Card wear
+        target: /cache
+        tmpfs:
+          size: 100000000
+    healthcheck:
+      test: ["CMD", "wget" , "-q", "-O-", "http://localhost:5000"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 3m
 
   caddy:
     container_name: caddy
@@ -404,9 +426,11 @@ services:
       - monica
       - netdata
       - mayan
+      - frigate
     ports:
       - "80:80/tcp"
       - "443:443/tcp"
+      - 9091:9091
     volumes:
       - ${CONFIG_DIR}/caddy/www:/root/.caddy
       - ${CONFIG_DIR}/caddy/certs:/caddy/certs
@@ -430,6 +454,7 @@ services:
   mayandb:
     image: postgres:10
     container_name: mayandb
+    restart: unless-stopped
     environment:
       POSTGRES_DB: mayan
       POSTGRES_PASSWORD: m-pass
@@ -439,6 +464,7 @@ services:
 
   mayan:
     image: mayanedms/mayanedms:3
+    restart: unless-stopped
     container_name: mayan
     depends_on:
       - mayandb
