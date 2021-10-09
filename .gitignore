@@ -1,3 +1,4 @@
 .env
+.env.*
 nohup.out
 **/node_modules

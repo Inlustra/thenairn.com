@@ -16,23 +16,25 @@
     }
 }
 
+(work) {
+    jwt {
+        allow roles admin work
+    }
+}
+
 # SERVER DEFAULTS
 
 {
     order jwt first
+
+    acme_dns gandi {$GANDI_API_KEY}
 }
 
 *.thenairn.com {
     jwt {
         primary yes
-        trusted_tokens {
-            static_secret {
-                token_name access_token
-                token_secret {$JWT_SECRET}
-                token_issuer {$JWT_ISSUER}
-            }
-        }
-        auth_url "https://auth.thenairn.com/auth/oauth2/google"
+        crypto key verify {$JWT_SECRET}
+        set auth url "https://auth.thenairn.com/auth/oauth2/google"
         allow roles admin
     }
     tls { 
@@ -40,12 +42,13 @@
     }
  }
 
+
  # DOMAINS
 
  auth.thenairn.com {
     route /auth* {
-        auth_portal {
-            path /auth
+        authp {
+            
             backends {
                 google_oauth2_backend {
                     method oauth2
@@ -55,19 +58,16 @@
                     client_secret {$OAUTH_GOOGLE_CLIENT_SECRET}
                     
                     scopes openid email profile
-                    user thomas@thenairn.com add role admin
-                    user tjnairn@gmail.com add role admin
-                    user frankiedhazell.fdh@gmail.com add role user
                 }
             }
-            jwt {
-                token_name access_token
-                token_secret {$JWT_SECRET}
-                token_issuer {$JWT_ISSUER}
-                token_lifetime 36000
+            transform user {
+                    exact match email thomas@thenairn.com
+                    action add role admin
             }
-            cookie_domain thenairn.com
-            cookie_path /
+            crypto default token lifetime 3600
+            crypto key sign-verify {$JWT_SECRET}
+            cookie domain thenairn.com
+            cookie path /
         }
     }
  }
@@ -77,11 +77,11 @@ transmission.thenairn.com {
         remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
     }
     handle @internal {
-        reverse_proxy vpn:9091
+        reverse_proxy transmission:9091
     }
     handle {
         import admin
-        reverse_proxy vpn:9091
+        reverse_proxy transmission:9091
     }
 }
 
@@ -89,14 +89,20 @@ http://transmission.thenairn.com {
     @internal {
         remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
     }
-    reverse_proxy @internal vpn:9091
-}
- 
- media.thenairn.com {
-    import user
-    reverse_proxy organizr:80
+    reverse_proxy @internal transmission:9091
 }
 
+media.thenairn.com {
+    reverse_proxy overseerr:5055
+}
+
+gaps.thenairn.com {
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    reverse_proxy @internal gaps:8484
+}
+ 
 *.code.thenairn.com {
 
     tls { 
@@ -133,13 +139,37 @@ unraid.thenairn.com {
 }
 
 code.thenairn.com {
-    import admin
-    reverse_proxy vscode:8443
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle @internal {
+        reverse_proxy vscode:8443
+    }
+    handle {
+        import admin
+        reverse_proxy vscode:8443
+    }
+}
+
+http://code.thenairn.com {
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle @internal {
+        reverse_proxy vscode:8443
+    }
 }
 
 download.thenairn.com {
-    import admin
-    reverse_proxy admin:80
+
+    handle /share/* {
+        reverse_proxy admin:80
+    }
+
+    handle {
+        import admin
+        reverse_proxy admin:80
+    }
 }
 
 radarr.thenairn.com {
@@ -147,50 +177,110 @@ radarr.thenairn.com {
     reverse_proxy radarr:7878
 }
 
-jackett.thenairn.com {    
-    import superuser
-    reverse_proxy vpn:9117
-}
+http://sonarr.thenairn.com {
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle @internal {
+        reverse_proxy sonarr:8989
+    }
+}   
 
-asonarr.thenairn.com {    
-    import admin
-    reverse_proxy asonarr:8989
-}
-
-sonarr.thenairn.com {    
-    import user
-    reverse_proxy sonarr:8989
-}
+sonarr.thenairn.com {
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle @internal {
+        reverse_proxy sonarr:8989
+    }
+    handle {
+        import user
+        reverse_proxy sonarr:8989
+    }
+}    
 
 plex.thenairn.com {
     encode gzip
     reverse_proxy plex:32400
 }
 
-bazarr.thenairn.com {    
-    import user
-    reverse_proxy bazarr:6767
-}
-
-books.thenairn.com {  
-    import user  
-    reverse_proxy lazylibrarian:5299
-}
-
-library.thenairn.com {   
-    import user
-    reverse_proxy calibre:8080
-}
-
-netdata.thenairn.com {        
-    import user
-    reverse_proxy netdata:19999
-}
-
-monica.thenairn.com {
-    reverse_proxy monica:80
-}
-
 docs.thenairn.com {
-    reverse_proxy mayan:8000
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle @internal {
+        reverse_proxy teedy:8080
+    }
+    handle {
+        import user
+        reverse_proxy teedy:8080
+    }
 }
+
+vault.thenairn.com {
+    reverse_proxy bitwarden:80 {
+        header_up X-Real-IP {remote_host}
+    }
+}
+
+handbrake.thenairn.com {
+    reverse_proxy handbrake:5800
+}
+
+prowlarr.thenairn.com {
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle @internal {
+        reverse_proxy prowlarr:9696
+    }
+    handle {
+        import user
+        reverse_proxy prowlarr:9696
+    }
+}
+
+cloud.thenairn.com {
+    root * /var/www/html
+    file_server
+
+    php_fastcgi nextcloudapp:9000 {
+        env front_controller_active true
+    }   
+    
+    header {
+            # enable HSTS
+            # Strict-Transport-Security max-age=31536000;
+    }
+
+    redir /.well-known/carddav /remote.php/dav 301
+    redir /.well-known/caldav /remote.php/dav 301
+
+    @forbidden {
+            path    /.htaccess
+            path    /data/*
+            path    /config/*
+            path    /db_structure
+            path    /.xml
+            path    /README
+            path    /3rdparty/*
+            path    /lib/*
+            path    /templates/*
+            path    /occ
+            path    /console.php
+    }
+
+    respond @forbidden 404
+}
+
+todo.thenairn.com {
+    reverse_proxy /api/* vikunjaapi:3456
+    reverse_proxy /.well-known/* vikunjaapi:3456
+    reverse_proxy /dav/* vikunjaapi:3456
+    reverse_proxy vikunjafrontend:80
+}
+
+dashboard.thenairn.com {
+    reverse_proxy plugsy:3000
+}
+

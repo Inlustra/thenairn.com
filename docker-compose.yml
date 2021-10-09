@@ -5,6 +5,10 @@ services:
     container_name: plex
     labels:
       com.centurylinklabs.watchtower.enable: "true"
+      dockerDash.name: 'Plex'
+      dockerDash.category: 'Media'
+      dockerDash.icon: '@styled-icons/simple-icons/Plex'
+      dockerDash.link: https://plex.thenairn.com
     image: plexinc/pms-docker:latest
     hostname: Artemis
     environment:
@@ -30,6 +34,7 @@ services:
       - ${MEDIA_DIR}/Shows:/data/shows
       - ${MEDIA_DIR}/Movies:/data/movies
       - ${MEDIA_DIR}/Anime:/data/anime
+      - ${MEDIA_DIR}/Audiobooks:/data/audiobooks
       - ${PERSONAL_MEDIA_DIR}/:/data/personal
     restart: unless-stopped
 
@@ -37,11 +42,16 @@ services:
     container_name: vscode
     labels:
       com.centurylinklabs.watchtower.enable: "false"
+      dockerDash.name: 'VSCode'
+      dockerDash.category: 'Code'
+      dockerDash.icon: '@styled-icons/simple-icons/Visualstudiocode'
+      dockerDash.link: https://code.thenairn.com
     build:
       context: ./vscode
     volumes:
       - ${DOWNLOADS_DIR}:/srv/Downloads
       - ${CONFIG_DIR}/vscode:/config
+      - ${BOOT_DIR}:/ServerBoot
       - /root/.ssh:/config/.ssh
       - ${INTERNAL_DIR}:/Internal:cached
       - ${CONFIG_DIR}:/ServerConfig
@@ -51,108 +61,62 @@ services:
       - PGID=0
       - PUID=0
       - PROXY_DOMAIN=code.thenairn.com
-      - DOCKER_MODS=linuxserver/mods:code-server-docker|linuxserver/mods:code-server-golang|linuxserver/mods:code-server-nodejs|linuxserver/mods:code-server-shellcheck|linuxserver/mods:code-server-python3
+      - DOCKER_MODS=linuxserver/mods:code-server-docker|linuxserver/mods:code-server-nodejs|linuxserver/mods:code-server-shellcheck
+    
     restart: unless-stopped
 
-  download:
-    container_name: download
-    labels:
-      com.centurylinklabs.watchtower.enable: "false"
-    image: filebrowser/filebrowser:v1.11.0
-    command: "--auth.method='none' --defaults.allowNew=false --defaults.allowCommands=false"
-    volumes:
-      - ${DOWNLOADS_DIR}:/srv/Downloads
-      - ${MEDIA_DIR}:/srv/Media
-      - ${CONFIG_DIR}/admin/config.json:/etc/config.json
-      - ${CONFIG_DIR}/admin/database.db:/etc/database.db
-    restart: unless-stopped
-
-  tautulli:
-    container_name: tautulli
-    labels:
-      com.centurylinklabs.watchtower.enable: "true"
-    image: linuxserver/tautulli
-    links:
-      - plex
-    environment:
-      - TZ=Europe/Paris
-      - PGID=0
-      - PUID=0
-    volumes:
-      - ${CONFIG_DIR}/tautulli:/config
-      - ${BASE_DIR}/tautulli/logs:/logs:ro
-    restart: unless-stopped
-
-  vpn:
-    container_name: vpn
-    image: bubuntux/nordvpn:openvpn
+  proxy:
+    container_name: proxy
+    image: jeroenslot/nordvpn-proxy
     cap_add:
       - NET_ADMIN               # Required
-    ports: 
-      - "51413:51413/tcp"
-      - "51413:51413/udp"
-    devices:
-      - /dev/net/tun            # Required
     environment:                # Review https://github.com/bubuntux/nordvpn#environment-variables
-      - USER=${NORD_USERNAME}     # Required
-      - PASS=${NORD_PASSWORD}        # Required
-      - CONNECT=Netherlands
-      - TECHNOLOGY=OpenVPN
+      - USERNAME=${NORD_USERNAME}     # Required
+      - PASSWORD=${NORD_PASSWORD}        # Required
+      - COUNTRY=NL
+      - LOCAL_NETWORK=192.168.96.0/24   
+    volumes:
+      - ${CONFIG_DIR}/proxy:/app/ovpn/config 
 
   transmission:
     container_name: transmission
-    labels:
-      com.centurylinklabs.watchtower.enable: "false"
-    build:
-      context: ./transmission
-    environment:
-      - PGID=0
-      - PUID=0
+    cap_add:
+        - NET_ADMIN
     volumes:
-      - ${DOWNLOADS_DIR}/incomplete:/downloads
-      - ${DOWNLOADS_DIR}/completed:/completed
-      - ${CONFIG_DIR}/transmission:/config/transmission
+        - ${DOWNLOADS_DIR}/incomplete:/data/downloads
+        - ${DOWNLOADS_DIR}/completed:/data/completed
+        - ${CONFIG_DIR}/transmission:/data/transmission-home
+        - ${DOWNLOADS_DIR}:/data
+    environment:
+        - OPENVPN_PROVIDER=NORDVPN
+        - NORDVPN_COUNTRY=NL
+        - OPENVPN_USERNAME=${NORD_USERNAME}
+        - OPENVPN_PASSWORD=${NORD_PASSWORD}
+        - LOCAL_NETWORK=192.168.0.0/16
+        - TRANSMISSION_WEB_UI=flood-for-transmission
+        - OPENVPN_OPTS=--inactive 3600 --ping 10 --ping-exit 60
+    image: haugene/transmission-openvpn
     restart: always
-    depends_on:
-      - vpn
-    labels:
-      com.centurylinklabs.watchtower.depends-on: vpn
-    network_mode: "service:vpn"
 
   sonarr:
     container_name: sonarr
     labels:
       com.centurylinklabs.watchtower.enable: "true"
-    image: linuxserver/sonarr:preview
+      dockerDash.name: 'Sonarr'
+      dockerDash.category: 'Media'
+      dockerDash.icon: '@styled-icons/feather/Tv'
+      dockerDash.link: https://sonarr.thenairn.com
+    image: linuxserver/sonarr:latest
     depends_on:
       - transmission
     links:
-      - vpn
       - plex
+      - gaps
     volumes:
       - ${CONFIG_DIR}/sonarr:/config
       - ${MEDIA_DIR}/Shows:/tv
       - ${MEDIA_DIR}/Anime:/anime
-      - ${DOWNLOADS_DIR}/completed:/completed
-    environment:
-      - PGID=0
-      - PUID=0
-      - TZ=Europe/London
-    restart: unless-stopped
-
-  asonarr:
-    container_name: asonarr
-    labels:
-      com.centurylinklabs.watchtower.enable: "true"
-    image: linuxserver/sonarr:preview
-    depends_on:
-      - transmission
-    links:
-      - vpn
-      - plex
-    volumes:
-      - ${CONFIG_DIR}/asonarr:/config
-      - ${AMEDIA_DIR}/A:/shows
+      - ${AMEDIA_DIR}/A:/amedia
       - ${DOWNLOADS_DIR}/completed:/completed
     environment:
       - PGID=0
@@ -164,11 +128,15 @@ services:
     container_name: radarr
     labels:
       com.centurylinklabs.watchtower.enable: "true"
+      dockerDash.name: 'Radarr'
+      dockerDash.category: 'Media'
+      dockerDash.icon: '@styled-icons/feather/Film'
+      dockerDash.link: https://radarr.thenairn.com
     image: linuxserver/radarr
     depends_on:
       - transmission
     links:
-      - vpn
+      - gaps
       - plex
     volumes:
       - ${CONFIG_DIR}/radarr:/config
@@ -181,113 +149,14 @@ services:
       - TZ=Europe/London
     restart: unless-stopped
 
-  jackett:
-    container_name: jackett
-    labels:
-      com.centurylinklabs.watchtower.enable: "false"
-    image: linuxserver/jackett
-    environment:
-      - PGID=0
-      - PUID=0
-      - TZ=Europe/London
-    volumes:
-      - ${CONFIG_DIR}/jackett:/config
-      - ${DOWNLOADS_DIR}/jackett:/downloads
-    depends_on:
-      - vpn
-    labels:
-      com.centurylinklabs.watchtower.depends-on: vpn
-    network_mode: "service:vpn"
-    restart: unless-stopped
-
-  bazarr:
-    container_name: bazarr
-    labels:
-      com.centurylinklabs.watchtower.enable: "true"
-    image: linuxserver/bazarr
-    environment:
-      - PGID=0
-      - PUID=0
-      - TZ=Europe/London
-    volumes:
-      - ${CONFIG_DIR}/bazarr:/config
-      - ${MEDIA_DIR}/Movies:/movies
-      - ${MEDIA_DIR}/Anime:/anime
-      - ${MEDIA_DIR}/Shows:/tv
-      - ${DOWNLOADS_DIR}/bazarr:/downloads
-    links:
-      - sonarr
-      - radarr
-    restart: unless-stopped
-
-  lazylibrarian:
-    container_name: lazylibrarian
-    labels:
-      com.centurylinklabs.watchtower.enable: "true"
-    image: linuxserver/lazylibrarian
-    depends_on:
-      - transmission
-    environment:
-      - PGID=0
-      - PUID=0
-      - TZ=Europe/London
-    links:
-      - vpn
-      - plex
-      - calibre
-    volumes:
-      - ${CONFIG_DIR}/lazylibrarian:/config
-      - ${MEDIA_DIR}/Books:/books
-      - ${MEDIA_DIR}/Calibre:/Calibre
-      - ${DOWNLOADS_DIR}/completed:/downloads
-    restart: unless-stopped
-
-  calibre:
-    container_name: calibre
-    labels:
-      com.centurylinklabs.watchtower.enable: "true"
-    image: aptalca/docker-rdp-calibre
-    environment:
-      - PGID=0
-      - PUID=0
-      - EDGE=0
-      - WIDTH=1280
-      - HEIGHT=720
-      - LIBRARYINTERNALPATH=/Calibre
-      - TZ=Europe/London
-    links:
-      - vpn
-    volumes:
-      - ${CONFIG_DIR}/calibre:/config
-      - ${MEDIA_DIR}/Books:/books
-      - ${MEDIA_DIR}/Calibre:/Calibre
-    restart: unless-stopped
-
-  organizr:
-    container_name: organizr
-    labels:
-      com.centurylinklabs.watchtower.enable: "true"
-    image: tronyx/docker-organizr-v2
-    restart: unless-stopped
-    volumes:
-      - ${CONFIG_DIR}/organizr:/config
-    links:
-      - host
-      - admin
-      - download
-      - vpn
-      - sonarr
-      - radarr
-      - plex
-      - bazarr
-      - lazylibrarian
-    environment:
-      - TZ=Europe/London
-
   admin:
     container_name: admin
     labels:
       com.centurylinklabs.watchtower.enable: "false"
+      dockerDash.name: 'File Manager'
+      dockerDash.category: 'Media'
+      dockerDash.icon: '@styled-icons/icomoon/FilesEmpty'
+      dockerDash.link: https://download.thenairn.com
     image: filebrowser/filebrowser:v1.11.0
     command: "--auth.method='none'"
     volumes:
@@ -304,6 +173,9 @@ services:
     container_name: dwarffortress
     labels:
       com.centurylinklabs.watchtower.enable: "false"
+      dockerDash.name: 'Dwarf Fortress'
+      dockerDash.category: 'Games'
+      dockerDash.icon: '@styled-icons/boxicons-regular/Game'
     image: mifki/dfremote
     volumes:
       - ${CONFIG_DIR}/dwarffortress:/df_linux/data/save
@@ -312,61 +184,6 @@ services:
     ports:
       - "1235:1235/udp"
     restart: unless-stopped
-
-  monica:
-    container_name: monica
-    image: monicahq/monicahq
-    labels:
-      com.centurylinklabs.watchtower.enable: "true"
-    links:
-      - monicadb
-    environment:
-      - APP_KEY=${MONICA_APP_KEY}
-      - DB_HOST=monicadb
-      - APP_TRUSTED_PROXIES=
-      - APP_TRUSTED_CLOUDFLARE=false
-      - APP_ENV=production
-    volumes:
-      - ${CONFIG_DIR}/monica/app:/var/www/monica/storage
-    restart: always
-
-  monicadb:
-    container_name: monicadb
-    image: mysql:5.7
-    labels:
-      com.centurylinklabs.watchtower.enable: "false"
-    environment:
-      - MYSQL_ROOT_PASSWORD=${MONICA_DB_ROOT_PW}
-      - MYSQL_DATABASE=monica
-      - MYSQL_USER=homestead
-      - MYSQL_PASSWORD=secret
-    volumes:
-      - ${CONFIG_DIR}/monica/db:/var/lib/mysql
-    restart: always
-
-  netdata:
-    container_name: netdata
-    labels:
-      com.centurylinklabs.watchtower.enable: "true"
-    restart: always
-    hostname: netdata.thenairn.com
-    image: netdata/netdata
-    cap_add:
-      - SYS_PTRACE
-    security_opt:
-      - apparmor:unconfined
-    volumes:
-      - /etc/passwd:/host/etc/passwd:ro
-      - /etc/group:/host/etc/group:ro
-      - /proc:/host/proc:ro
-      - /sys:/host/sys:ro
-      - ${CONFIG_DIR}/netdata:/etc/netdata
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    environment:
-      - DOCKER_USR=root
-      - SLACK_WEBHOOK_URL=${NETDATA_SLACK_WEBHOOK_URL}
-      - SLACK_CHANNEL=${NETDATA_SLACK_CHANNEL}
-      - DEFAULT_RECIPIENT_SLACK=${NETDATA_SLACK_CHANNEL}
 
   host:
     container_name: host
@@ -378,12 +195,22 @@ services:
     container_name: frigate
     restart: unless-stopped
     privileged: true
+    labels: 
+      dockerDash.name: 'Frigate'
+      dockerDash.category: 'Home'
+      dockerDash.icon: '@styled-icons/boxicons-regular/Cctv'
+      dockerDash.link: 'https://frigate.thenairn.com'
     image: blakeblackshear/frigate:stable-amd64
+    ports: 
+      - '1935:1935'
+    environment:
+      FRIGATE_RTSP_PASSWORD: ${FRIGATE_RTSP_PASSWORD}
     volumes:
       - /dev/bus/usb:/dev/bus/usb
       - /etc/localtime:/etc/localtime:ro
       - ${CONFIG_DIR}/frigate:/config
       - ${CAMERA_DIR}/frigate:/clips      
+      - ${CAMERA_DIR}/frigate:/media/frigate      
       - type: tmpfs # 1GB of memory, reduces SSD/SD Card wear
         target: /cache
         tmpfs:
@@ -400,6 +227,7 @@ services:
     labels:
       com.centurylinklabs.watchtower.enable: "false"
     environment:
+      - GANDI_API_KEY=${GANDI_API_KEY}
       - OAUTH_GOOGLE_CLIENT_ID=${OAUTH_GOOGLE_CLIENT_ID}
       - OAUTH_GOOGLE_CLIENT_SECRET=${OAUTH_GOOGLE_CLIENT_SECRET}
       - OAUTH_GITHUB_CLIENT_ID=${OAUTH_GITHUB_CLIENT_ID}
@@ -409,24 +237,20 @@ services:
     build:
       context: ./caddy
     links:
+      - bitwarden
       - host
-      - download
       - admin
-      - vpn
-      - jackett
       - sonarr
-      - asonarr
       - radarr
-      - organizr
       - plex
-      - tautulli
-      - bazarr
-      - lazylibrarian
-      - calibre
-      - monica
-      - netdata
-      - mayan
       - frigate
+      - vikunjaapi
+      - vikunjafrontend
+      - teedy
+      - plugsy
+      - prowlarr
+      - overseerr
+      - gaps
     ports:
       - "80:80/tcp"
       - "443:443/tcp"
@@ -438,7 +262,31 @@ services:
       - ${CONFIG_DIR}/caddy2/config:/config
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile
       - ./Playground:/Playground
+    volumes_from:
+      - nextcloudapp
     restart: unless-stopped
+
+  overseerr:
+    image: lscr.io/linuxserver/overseerr
+    container_name: overseerr
+    environment:
+      - PUID=0
+      - PGID=0
+      - TZ=Europe/Paris
+    links:
+      - sonarr
+      - radarr
+    volumes:
+      - ${CONFIG_DIR}/overseer:/config
+    restart: unless-stopped
+
+  gaps:
+    image: housewrecker/gaps
+    container_name: gaps
+    links:
+      - plex
+    volumes: 
+      - ${CONFIG_DIR}/gaps:/usr/data
 
   watchtower:
     container_name: watchtower
@@ -451,65 +299,198 @@ services:
       WATCHTOWER_NOTIFICATIONS: slack
       WATCHTOWER_NOTIFICATION_SLACK_HOOK_URL: ${WATCHTOWER_NOTIFICATION_SLACK_HOOK_URL}
 
-  mayandb:
-    image: postgres:10
-    container_name: mayandb
-    restart: unless-stopped
+  bitwarden:
+    image: bitwardenrs/server:latest
+    container_name: bitwarden
+    labels: 
+      dockerDash.name: 'BitWarden'
+      dockerDash.category: 'Home'
+      dockerDash.icon: '@styled-icons/simple-icons/Bitwarden'
+      dockerDash.link: https://vault.thenairn.com
     environment:
-      POSTGRES_DB: mayan
-      POSTGRES_PASSWORD: m-pass
-      POSTGRES_USER: mayan
+      - WEBSOCKET_ENABLED=true  # Enable WebSocket notifications.
+      - ADMIN_TOKEN=${BITWARDEN_ADMIN_TOKEN}
+      - DOMAIN=${BITWARDEN_DOMAIN}
     volumes:
-      - ${CONFIG_DIR}/mayan/db:/var/lib/postgresql/data
+      - ${CONFIG_DIR}/bw-data/:/data/
 
-  mayan:
-    image: mayanedms/mayanedms:3
+  handbrake:
+    runtime: nvidia
+    image: zocker160/handbrake-nvenc:latest
+    container_name: handbrake
+    labels:
+      dockerDash.name: 'Handbrake'
+      dockerDash.category: 'Media'
+      dockerDash.icon: '@styled-icons/material-outlined/MovieFilter'
+      dockerDash.link: 'https://handbrake.thenairn.com'
+    environment: 
+      - NVIDIA_VISIBLE_DEVICES=GPU-c1d14a88-b2fa-5786-e47d-64af7a34ea34
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    volumes:
+      - ${CONFIG_DIR}/handbrake/:/config/
+      - ${MEDIA_DIR}:/storage/
+
+  nextclouddb: 
+    image: mariadb
+    container_name: nextclouddb
     restart: unless-stopped
-    container_name: mayan
-    depends_on:
-      - mayandb
-      - mayanredis
-    links:
-      - mayandb
-      - mayanredis
-    environment:
-      MAYAN_DATABASE_ENGINE: django.db.backends.postgresql
-      MAYAN_DATABASE_HOST: mayandb
-      MAYAN_DATABASE_NAME: mayan
-      MAYAN_DATABASE_PASSWORD: m-pass
-      MAYAN_DATABASE_USER: mayan
-      MAYAN_DATABASE_CONN_MAX_AGE: 60
-      MAYAN_CELERY_BROKER_URL: redis://:mayanredispassword@mayanredis:6379/0
-      MAYAN_CELERY_RESULT_BACKEND: redis://:mayanredispassword@mayanredis:6379/1
-      MAYAN_DOCUMENTS_STORAGE_BACKEND_ARGUMENTS: "location: /srv/files"
+    labels:
+      dockerDash.name: 'DB'
+      dockerDash.icon: '@styled-icons/feather/Database'
+      dockerDash.parents: 'Nextcloud'
     volumes:
-      - ${SCANS_DIR}:/srv/scans
-      - ${DOCS_DIR}/files:/srv/files
-      - ${DOCS_DIR}/staging:/srv/staging
-      - ${CONFIG_DIR}/mayan/app:/var/lib/mayan
+      - ${NEXTCLOUD_DIR}/db:/var/lib/mysql
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      - MYSQL_ROOT_PASSWORD=${NEXTCLOUD_DB_ROOT_PASS}
+      - MYSQL_PASSWORD=${NEXTCLOUD_DB_PASS}
+      - MYSQL_DATABASE=nextcloud
+      - MYSQL_USER=nextcloud
+    restart: unless-stopped
 
-  mayanredis:
-    container_name: mayanredis
-    command:
-      - redis-server
-      - --appendonly
-      - "no"
-      - --databases
-      - "2"
-      - --maxmemory
-      - "100mb"
-      - --maxclients
-      - "500"
-      - --maxmemory-policy
-      - "allkeys-lru"
-      - --save
-      - ""
-      - --tcp-backlog
-      - "256"
-      - --requirepass
-      - "mayanredispassword"
-    image: redis:5.0-alpine
     
+  nextcloudapp:
+    image: nextcloud:fpm
+    container_name: nextcloudapp
     restart: unless-stopped
+    labels:
+      dockerDash.name: 'Nextcloud'
+      dockerDash.category: 'Home'
+      dockerDash.icon: '@styled-icons/simple-icons/Nextcloud'
+      dockerDash.link: 'https://cloud.thenairn.com/'
+    links:
+      - nextclouddb
     volumes:
-      - ${CONFIG_DIR}/mayan/redis:/data
+      - ${NEXTCLOUD_DIR}/app:/var/www/html
+      - ./nextcloudapp/settings.config.php:/var/www/html/config/settings.config.php
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      - MYSQL_PASSWORD=${NEXTCLOUD_DB_PASS}
+      - MYSQL_DATABASE=nextcloud
+      - MYSQL_USER=nextcloud
+      - MYSQL_HOST=nextclouddb
+    restart: unless-stopped
+
+  vikunjadb:
+    image: mariadb:10
+    labels:
+      dockerDash.name: 'DB'
+      dockerDash.parents: 'Todo'
+      dockerDash.icon: '@styled-icons/feather/Database'
+    container_name: vikunjadb
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_ROOT_PASSWORD: ${VIKUNJA_DB_PASS}
+      MYSQL_DATABASE: vikunja
+    volumes:
+      - ${CONFIG_DIR}/vikunja/db:/var/lib/mysql
+    restart: unless-stopped
+  vikunjaapi:
+    labels:
+      dockerDash.name: 'API'
+      dockerDash.parents: 'Todo'
+      dockerDash.icon: '@styled-icons/feather/Server'
+    container_name: vikunjaapi
+    image: vikunja/api
+    environment:
+      VIKUNJA_DATABASE_HOST: vikunjadb
+      VIKUNJA_DATABASE_PASSWORD: ${VIKUNJA_DB_PASS}
+      VIKUNJA_DATABASE_TYPE: mysql
+      VIKUNJA_DATABASE_USER: root
+      VIKUNJA_DATABASE_DATABASE: vikunja
+    volumes: 
+      - ${CONFIG_DIR}/vikunja/files:/app/vikunja/files
+    links:
+      - vikunjadb
+    restart: unless-stopped
+  vikunjafrontend:
+    image: vikunja/frontend
+    container_name: vikunjafrontend
+    restart: unless-stopped
+    labels:
+      dockerDash.name: 'Todo'
+      dockerDash.category: 'Home'
+      dockerDash.icon: '@styled-icons/remix-fill/CalendarTodo'
+      dockerDash.link: https://todo.thenairn.com
+
+  teedy:
+    container_name: teedy
+    image: sismics/docs:v1.9
+    restart: unless-stopped
+    labels: 
+      dockerDash.name: 'Docs'
+      dockerDash.category: 'Home'
+      dockerDash.icon: '@styled-icons/boxicons-solid/FilePdf'
+      dockerDash.link: https://docs.thenairn.com
+    environment:
+      # Base url to be used
+      DOCS_BASE_URL: "https://docs.thenairn.com"
+      # Set the admin email
+      DOCS_ADMIN_EMAIL_INIT: ${TEEDY_ADMIN_EMAIL}
+      # Set the admin password (in this example: "superSecure")
+      DOCS_ADMIN_PASSWORD_INIT: ${TEEDY_ADMIN_PASSWORD}
+    volumes:
+      - ${NEW_DOCS_DIR}:/data
+      
+  teedy-import-uk:
+    container_name: teedy-import-uk
+    restart: unless-stopped
+    labels:
+      dockerDash.name: 'Importer: UK'
+      dockerDash.parents: 'Docs'
+      dockerDash.icon: '@styled-icons/material-outlined/Scanner'
+    environment:
+        - TEEDY_ADDTAGS=false
+        - TEEDY_LANG=eng
+        - 'TEEDY_URL=https://docs.thenairn.com'
+        - TEEDY_USERNAME=${TEEDY_USERNAME}
+        - TEEDY_PASSWORD=${TEEDY_PASSWORD}
+    volumes:
+        - '/mnt/user/Scans/English:/import'
+    image: 'sismics/docs-importer:latest'
+  teedy-import-fr:
+    labels:
+      dockerDash.name: 'Importer: FR'
+      dockerDash.parents: 'Docs'
+      dockerDash.icon: '@styled-icons/material-outlined/Scanner'
+    container_name: teedy-import-fr
+    restart: unless-stopped
+    environment:
+        - TEEDY_ADDTAGS=false
+        - TEEDY_LANG=fra
+        - 'TEEDY_URL=https://docs.thenairn.com'
+        - TEEDY_USERNAME=${TEEDY_USERNAME}
+        - TEEDY_PASSWORD=${TEEDY_PASSWORD}
+    volumes:
+        - '/mnt/user/Scans/French:/import'
+    image: 'sismics/docs-importer:latest'
+
+  prowlarr:
+    container_name: prowlarr
+    image: ghcr.io/linuxserver/prowlarr:develop
+    environment:
+      PUID: 0
+      PGID: 0
+      TZ: Europe/London
+      com.centurylinklabs.watchtower.enable: "false"
+      dockerDash.name: 'Prowlarr'
+      dockerDash.category: 'Media'
+      dockerDash.icon: '@styled-icons/fluentui-system-filled/GlobeSearch'
+      dockerDash.link: https://prowlarr.thenairn.com
+    volumes:
+      - ${CONFIG_DIR}/prowlarr:/config
+    restart: unless-stopped
+    links:
+      - sonarr
+      - radarr
+      - proxy
+    
+  plugsy:
+    container_name: plugsy
+    image: plugsy/core:latest
+    restart: unless-stopped
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./autodash.json:/config.json

@@ -1,0 +1,43 @@
+{
+  "$schema": "https://github.com/plugsy/core/releases/download/v3.0.1/config-schema.json",
+  "connectors": [
+    {
+      "type": "DOCKER",
+      "config": {}
+    },
+    {
+      "type": "WEBSITE",
+      "config": {
+        "sites": [
+          {
+            "request": "https://home.thenairn.com",
+            "display": {
+              "name": "Home Assistant",
+              "category": "Home",
+              "icon": "@styled-icons/simple-icons/Homeassistant",
+              "link": "https://home.thenairn.com"
+            }
+          },
+          {
+            "request": "https://unifi.thenairn.com",
+            "display": {
+              "name": "Unifi",
+              "category": "Home",
+              "icon": "@styled-icons/simple-icons/Ubiquiti",
+              "link": "https://unifi.thenairn.com"
+            }
+          },
+          {
+            "request": "https://unraid.thenairn.com",
+            "display": {
+              "name": "Unraid",
+              "category": "Home",
+              "icon": "@styled-icons/simple-icons/Unraid",
+              "link": "https://unraid.thenairn.com"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
