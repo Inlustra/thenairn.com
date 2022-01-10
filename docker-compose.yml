@@ -5,10 +5,10 @@ services:
     container_name: plex
     labels:
       com.centurylinklabs.watchtower.enable: "true"
-      dockerDash.name: 'Plex'
-      dockerDash.category: 'Media'
-      dockerDash.icon: '@styled-icons/simple-icons/Plex'
-      dockerDash.link: https://plex.thenairn.com
+      plugsy.name: 'Plex'
+      plugsy.category: 'Media'
+      plugsy.icon: '@styled-icons/simple-icons/Plex'
+      plugsy.link: https://plex.thenairn.com
     image: plexinc/pms-docker:latest
     hostname: Artemis
     environment:
@@ -17,6 +17,8 @@ services:
       - ADVERTISE_IP=${PLEX_ADVERTISE_IP}
       - NVIDIA_VISIBLE_DEVICES=GPU-c1d14a88-b2fa-5786-e47d-64af7a34ea34
       - NVIDIA_DRIVER_CAPABILITIES=all
+      - PLEX_UID=0
+      - PLEX_GID=0
     ports:
       - 32400:32400/tcp
       - 3005:3005/tcp
@@ -42,10 +44,10 @@ services:
     container_name: vscode
     labels:
       com.centurylinklabs.watchtower.enable: "false"
-      dockerDash.name: 'VSCode'
-      dockerDash.category: 'Code'
-      dockerDash.icon: '@styled-icons/simple-icons/Visualstudiocode'
-      dockerDash.link: https://code.thenairn.com
+      plugsy.name: 'VSCode'
+      plugsy.category: 'Code'
+      plugsy.icon: '@styled-icons/simple-icons/Visualstudiocode'
+      plugsy.link: https://code.thenairn.com
     build:
       context: ./vscode
     volumes:
@@ -102,10 +104,10 @@ services:
     container_name: sonarr
     labels:
       com.centurylinklabs.watchtower.enable: "true"
-      dockerDash.name: 'Sonarr'
-      dockerDash.category: 'Media'
-      dockerDash.icon: '@styled-icons/feather/Tv'
-      dockerDash.link: https://sonarr.thenairn.com
+      plugsy.name: 'Sonarr'
+      plugsy.category: 'Media'
+      plugsy.icon: '@styled-icons/feather/Tv'
+      plugsy.link: https://sonarr.thenairn.com
     image: linuxserver/sonarr:latest
     depends_on:
       - transmission
@@ -121,17 +123,17 @@ services:
     environment:
       - PGID=0
       - PUID=0
-      - TZ=Europe/London
+      - TZ=Europe/Paris
     restart: unless-stopped
 
   radarr:
     container_name: radarr
     labels:
       com.centurylinklabs.watchtower.enable: "true"
-      dockerDash.name: 'Radarr'
-      dockerDash.category: 'Media'
-      dockerDash.icon: '@styled-icons/feather/Film'
-      dockerDash.link: https://radarr.thenairn.com
+      plugsy.name: 'Radarr'
+      plugsy.category: 'Media'
+      plugsy.icon: '@styled-icons/feather/Film'
+      plugsy.link: https://radarr.thenairn.com
     image: linuxserver/radarr
     depends_on:
       - transmission
@@ -146,17 +148,17 @@ services:
     environment:
       - PGID=0
       - PUID=0
-      - TZ=Europe/London
+      - TZ=Europe/Paris
     restart: unless-stopped
 
   admin:
     container_name: admin
     labels:
       com.centurylinklabs.watchtower.enable: "false"
-      dockerDash.name: 'File Manager'
-      dockerDash.category: 'Media'
-      dockerDash.icon: '@styled-icons/icomoon/FilesEmpty'
-      dockerDash.link: https://download.thenairn.com
+      plugsy.name: 'File Manager'
+      plugsy.category: 'Media'
+      plugsy.icon: '@styled-icons/icomoon/FilesEmpty'
+      plugsy.link: https://download.thenairn.com
     image: filebrowser/filebrowser:v1.11.0
     command: "--auth.method='none'"
     volumes:
@@ -167,22 +169,6 @@ services:
       - ${BACKUP_DIR}:/srv/Backup
       - ${CONFIG_DIR}/admin/config.json:/etc/config.json
       - ${CONFIG_DIR}/admin/database.db:/etc/database.db
-    restart: unless-stopped
-
-  dwarffortress:
-    container_name: dwarffortress
-    labels:
-      com.centurylinklabs.watchtower.enable: "false"
-      dockerDash.name: 'Dwarf Fortress'
-      dockerDash.category: 'Games'
-      dockerDash.icon: '@styled-icons/boxicons-regular/Game'
-    image: mifki/dfremote
-    volumes:
-      - ${CONFIG_DIR}/dwarffortress:/df_linux/data/save
-    environment:
-      DFREMOTE_PWD: ${DF_PASSWORD}
-    ports:
-      - "1235:1235/udp"
     restart: unless-stopped
 
   host:
@@ -196,10 +182,10 @@ services:
     restart: unless-stopped
     privileged: true
     labels: 
-      dockerDash.name: 'Frigate'
-      dockerDash.category: 'Home'
-      dockerDash.icon: '@styled-icons/boxicons-regular/Cctv'
-      dockerDash.link: 'https://frigate.thenairn.com'
+      plugsy.name: 'Frigate'
+      plugsy.category: 'Home'
+      plugsy.icon: '@styled-icons/boxicons-regular/Cctv'
+      plugsy.link: 'https://frigate.thenairn.com'
     image: blakeblackshear/frigate:stable-amd64
     ports: 
       - '1935:1935'
@@ -215,6 +201,10 @@ services:
         target: /cache
         tmpfs:
           size: 100000000
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
     healthcheck:
       test: ["CMD", "wget" , "-q", "-O-", "http://localhost:5000"]
       interval: 30s
@@ -244,13 +234,11 @@ services:
       - radarr
       - plex
       - frigate
-      - vikunjaapi
-      - vikunjafrontend
-      - teedy
       - plugsy
       - prowlarr
       - overseerr
       - gaps
+      - paperless
     ports:
       - "80:80/tcp"
       - "443:443/tcp"
@@ -265,6 +253,11 @@ services:
     volumes_from:
       - nextcloudapp
     restart: unless-stopped
+    external_links:
+        - crater_nginx_1:crater_nginx_1
+    networks:
+      - default
+      - crater
 
   overseerr:
     image: lscr.io/linuxserver/overseerr
@@ -303,10 +296,10 @@ services:
     image: bitwardenrs/server:latest
     container_name: bitwarden
     labels: 
-      dockerDash.name: 'BitWarden'
-      dockerDash.category: 'Home'
-      dockerDash.icon: '@styled-icons/simple-icons/Bitwarden'
-      dockerDash.link: https://vault.thenairn.com
+      plugsy.name: 'BitWarden'
+      plugsy.category: 'Home'
+      plugsy.icon: '@styled-icons/simple-icons/Bitwarden'
+      plugsy.link: https://vault.thenairn.com
     environment:
       - WEBSOCKET_ENABLED=true  # Enable WebSocket notifications.
       - ADMIN_TOKEN=${BITWARDEN_ADMIN_TOKEN}
@@ -314,30 +307,14 @@ services:
     volumes:
       - ${CONFIG_DIR}/bw-data/:/data/
 
-  handbrake:
-    runtime: nvidia
-    image: zocker160/handbrake-nvenc:latest
-    container_name: handbrake
-    labels:
-      dockerDash.name: 'Handbrake'
-      dockerDash.category: 'Media'
-      dockerDash.icon: '@styled-icons/material-outlined/MovieFilter'
-      dockerDash.link: 'https://handbrake.thenairn.com'
-    environment: 
-      - NVIDIA_VISIBLE_DEVICES=GPU-c1d14a88-b2fa-5786-e47d-64af7a34ea34
-      - NVIDIA_DRIVER_CAPABILITIES=all
-    volumes:
-      - ${CONFIG_DIR}/handbrake/:/config/
-      - ${MEDIA_DIR}:/storage/
-
   nextclouddb: 
     image: mariadb
     container_name: nextclouddb
     restart: unless-stopped
     labels:
-      dockerDash.name: 'DB'
-      dockerDash.icon: '@styled-icons/feather/Database'
-      dockerDash.parents: 'Nextcloud'
+      plugsy.name: 'DB'
+      plugsy.icon: '@styled-icons/feather/Database'
+      plugsy.parents: 'Nextcloud'
     volumes:
       - ${NEXTCLOUD_DIR}/db:/var/lib/mysql
       - /etc/localtime:/etc/localtime:ro
@@ -354,10 +331,10 @@ services:
     container_name: nextcloudapp
     restart: unless-stopped
     labels:
-      dockerDash.name: 'Nextcloud'
-      dockerDash.category: 'Home'
-      dockerDash.icon: '@styled-icons/simple-icons/Nextcloud'
-      dockerDash.link: 'https://cloud.thenairn.com/'
+      plugsy.name: 'Nextcloud'
+      plugsy.category: 'Home'
+      plugsy.icon: '@styled-icons/simple-icons/Nextcloud'
+      plugsy.link: 'https://cloud.thenairn.com/'
     links:
       - nextclouddb
     volumes:
@@ -371,99 +348,26 @@ services:
       - MYSQL_HOST=nextclouddb
     restart: unless-stopped
 
-  vikunjadb:
-    image: mariadb:10
-    labels:
-      dockerDash.name: 'DB'
-      dockerDash.parents: 'Todo'
-      dockerDash.icon: '@styled-icons/feather/Database'
-    container_name: vikunjadb
-    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
-    environment:
-      MYSQL_ROOT_PASSWORD: ${VIKUNJA_DB_PASS}
-      MYSQL_DATABASE: vikunja
-    volumes:
-      - ${CONFIG_DIR}/vikunja/db:/var/lib/mysql
-    restart: unless-stopped
-  vikunjaapi:
-    labels:
-      dockerDash.name: 'API'
-      dockerDash.parents: 'Todo'
-      dockerDash.icon: '@styled-icons/feather/Server'
-    container_name: vikunjaapi
-    image: vikunja/api
-    environment:
-      VIKUNJA_DATABASE_HOST: vikunjadb
-      VIKUNJA_DATABASE_PASSWORD: ${VIKUNJA_DB_PASS}
-      VIKUNJA_DATABASE_TYPE: mysql
-      VIKUNJA_DATABASE_USER: root
-      VIKUNJA_DATABASE_DATABASE: vikunja
-    volumes: 
-      - ${CONFIG_DIR}/vikunja/files:/app/vikunja/files
-    links:
-      - vikunjadb
-    restart: unless-stopped
-  vikunjafrontend:
-    image: vikunja/frontend
-    container_name: vikunjafrontend
-    restart: unless-stopped
-    labels:
-      dockerDash.name: 'Todo'
-      dockerDash.category: 'Home'
-      dockerDash.icon: '@styled-icons/remix-fill/CalendarTodo'
-      dockerDash.link: https://todo.thenairn.com
-
-  teedy:
-    container_name: teedy
-    image: sismics/docs:v1.9
-    restart: unless-stopped
+  paperless:
+    image: lscr.io/linuxserver/paperless-ng
+    container_name: paperless
     labels: 
-      dockerDash.name: 'Docs'
-      dockerDash.category: 'Home'
-      dockerDash.icon: '@styled-icons/boxicons-solid/FilePdf'
-      dockerDash.link: https://docs.thenairn.com
+      plugsy.name: 'Paperless'
+      plugsy.category: 'Home'
+      plugsy.icon: '@styled-icons/bootstrap/Paperclip'
+      plugsy.link: https://docs.thenairn.com
     environment:
-      # Base url to be used
-      DOCS_BASE_URL: "https://docs.thenairn.com"
-      # Set the admin email
-      DOCS_ADMIN_EMAIL_INIT: ${TEEDY_ADMIN_EMAIL}
-      # Set the admin password (in this example: "superSecure")
-      DOCS_ADMIN_PASSWORD_INIT: ${TEEDY_ADMIN_PASSWORD}
+      PGID: 0
+      PUID: 0
+      TZ: Europe/Paris
+      DOCKER_MODS: linuxserver/mods:papermerge-multilangocr
+      OCRLANG: fra,eng
+      PAPERLESS_CONSUMER_RECURSIVE: 1
+      PAPERLESS_CONSUMER_SUBDIRS_AS_TAGS: 1
     volumes:
-      - ${NEW_DOCS_DIR}:/data
-      
-  teedy-import-uk:
-    container_name: teedy-import-uk
-    restart: unless-stopped
-    labels:
-      dockerDash.name: 'Importer: UK'
-      dockerDash.parents: 'Docs'
-      dockerDash.icon: '@styled-icons/material-outlined/Scanner'
-    environment:
-        - TEEDY_ADDTAGS=false
-        - TEEDY_LANG=eng
-        - 'TEEDY_URL=https://docs.thenairn.com'
-        - TEEDY_USERNAME=${TEEDY_USERNAME}
-        - TEEDY_PASSWORD=${TEEDY_PASSWORD}
-    volumes:
-        - '/mnt/user/Scans/English:/import'
-    image: 'sismics/docs-importer:latest'
-  teedy-import-fr:
-    labels:
-      dockerDash.name: 'Importer: FR'
-      dockerDash.parents: 'Docs'
-      dockerDash.icon: '@styled-icons/material-outlined/Scanner'
-    container_name: teedy-import-fr
-    restart: unless-stopped
-    environment:
-        - TEEDY_ADDTAGS=false
-        - TEEDY_LANG=fra
-        - 'TEEDY_URL=https://docs.thenairn.com'
-        - TEEDY_USERNAME=${TEEDY_USERNAME}
-        - TEEDY_PASSWORD=${TEEDY_PASSWORD}
-    volumes:
-        - '/mnt/user/Scans/French:/import'
-    image: 'sismics/docs-importer:latest'
+      - ${CONFIG_DIR}/paperless:/config
+      - ${SCANS_DIR}:/data/consume
+      - ${PAPERLESS_DOCS_DIR}:/data/media
 
   prowlarr:
     container_name: prowlarr
@@ -473,10 +377,11 @@ services:
       PGID: 0
       TZ: Europe/London
       com.centurylinklabs.watchtower.enable: "false"
-      dockerDash.name: 'Prowlarr'
-      dockerDash.category: 'Media'
-      dockerDash.icon: '@styled-icons/fluentui-system-filled/GlobeSearch'
-      dockerDash.link: https://prowlarr.thenairn.com
+    labels: 
+      plugsy.name: 'Prowlarr'
+      plugsy.category: 'Media'
+      plugsy.icon: '@styled-icons/fluentui-system-filled/GlobeSearch'
+      plugsy.link: https://prowlarr.thenairn.com
     volumes:
       - ${CONFIG_DIR}/prowlarr:/config
     restart: unless-stopped
@@ -494,3 +399,63 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./autodash.json:/config.json
+
+  speedtest:
+    container_name: speedtest
+    image: henrywhitaker3/speedtest-tracker
+    volumes:
+        - ${CONFIG_DIR}/speedtest:/config
+    environment:
+        - OOKLA_EULA_GDPR=true
+    logging:
+        driver: "json-file"
+        options:
+            max-file: "10"
+            max-size: "200k"
+  tdarr:
+    container_name: tdarr
+    image: haveagitgat/tdarr:latest
+    restart: unless-stopped
+    environment:
+      - TZ=Europe/London
+      - PUID=0
+      - PGID=0
+      - UMASK_SET=002
+      - serverIP=0.0.0.0
+      - serverPort=8266
+      - webUIPort=8265
+    volumes:
+      - ${CONFIG_DIR}/tdarr/server:/app/server
+      - ${CONFIG_DIR}/tdarr/configs:/app/configs
+      - ${CONFIG_DIR}/tdarr/logs:/app/logs
+      - ${MEDIA_DIR}:/media
+      - /tmp:/temp
+
+  tdarr-node:
+    runtime: nvidia
+    container_name: tdarr-node
+    image: haveagitgat/tdarr_node:latest
+    restart: unless-stopped
+    network_mode: service:tdarr
+    environment:
+      - TZ=Europe/Paris
+      - PUID=0
+      - PGID=0
+      - UMASK_SET=002
+      - nodeID=MainNode
+      - nodeIP=0.0.0.0
+      - nodePort=8267
+      - serverIP=0.0.0.0
+      - serverPort=8266
+      - NVIDIA_VISIBLE_DEVICES=GPU-c1d14a88-b2fa-5786-e47d-64af7a34ea34
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    volumes:
+      - ${CONFIG_DIR}/tdarr/configs:/app/configs
+      - ${CONFIG_DIR}/tdarr/logs:/app/logs
+      - ${MEDIA_DIR}:/media
+      - /tmp:/temp
+
+networks:
+  crater: 
+    external: 
+      name: crater_crater

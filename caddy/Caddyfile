@@ -1,7 +1,9 @@
 # ROLES DEFINITION
 
 (admin) {
-    jwt
+    jwt {
+        allow roles admin
+    }
 }
 
 (superuser) {
@@ -13,12 +15,6 @@
 (user) {
     jwt {
         allow roles admin superuser user
-    }
-}
-
-(work) {
-    jwt {
-        allow roles admin work
     }
 }
 
@@ -121,21 +117,47 @@ frigate.thenairn.com {
     @internal {
         remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
     }
-    reverse_proxy @internal frigate:5000
-}
-
-unifi.thenairn.com {
-    import admin
-    reverse_proxy https://192.168.96.15:8443 {
-        transport http {
-            tls_insecure_skip_verify
-        }
+    handle @internal { 
+      reverse_proxy frigate:5000
+    }
+    handle {
+      import admin 
+      reverse_proxy frigate:5000
     }
 }
 
+unifi.thenairn.com {
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle @internal {
+        reverse_proxy https://192.168.96.15:8443 {
+            transport http {
+                tls_insecure_skip_verify
+            }
+        }
+    }
+    handle {
+        import admin
+        reverse_proxy https://192.168.96.15:8443 {
+            transport http {
+                tls_insecure_skip_verify
+            }
+        }
+    }    
+}
+
 unraid.thenairn.com {
-    import admin
-    reverse_proxy host:6059
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle @internal {
+        reverse_proxy host:6059
+    }
+    handle {
+        import admin
+        reverse_proxy host:6059
+    }
 }
 
 code.thenairn.com {
@@ -173,8 +195,16 @@ download.thenairn.com {
 }
 
 radarr.thenairn.com {
-    import user
-    reverse_proxy radarr:7878
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle @internal {
+        reverse_proxy radarr:7878
+    }
+    handle {
+        import user
+        reverse_proxy radarr:7878
+    }
 }
 
 http://sonarr.thenairn.com {
@@ -205,26 +235,13 @@ plex.thenairn.com {
 }
 
 docs.thenairn.com {
-    @internal {
-        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
-    }
-    handle @internal {
-        reverse_proxy teedy:8080
-    }
-    handle {
-        import user
-        reverse_proxy teedy:8080
-    }
+    reverse_proxy paperless:8000
 }
 
 vault.thenairn.com {
     reverse_proxy bitwarden:80 {
         header_up X-Real-IP {remote_host}
     }
-}
-
-handbrake.thenairn.com {
-    reverse_proxy handbrake:5800
 }
 
 prowlarr.thenairn.com {
@@ -281,6 +298,58 @@ todo.thenairn.com {
 }
 
 dashboard.thenairn.com {
-    reverse_proxy plugsy:3000
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle @internal {
+        reverse_proxy plugsy:3000
+    }
+    handle {
+        import admin
+        reverse_proxy plugsy:3000
+    }
+}
+
+speed.thenairn.com {
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle @internal {
+        reverse_proxy speedtest:80
+    }
+    handle {
+        import admin
+        reverse_proxy speedtest:80
+    }
+}
+
+invoice.thenairn.com { 
+    reverse_proxy crater_nginx_1:80
+}
+
+3dprint.thenairn.com { 
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle @internal {
+        reverse_proxy 192.168.120.40
+    }
+    handle {
+        import admin
+        reverse_proxy 192.168.120.40
+    }
+}
+
+tdarr.thenairn.com {
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle @internal {
+        reverse_proxy tdarr:8265
+    }
+    handle {
+        import admin
+        reverse_proxy tdarr:8265
+    }
 }
 
