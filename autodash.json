@@ -35,6 +35,15 @@
               "icon": "@styled-icons/simple-icons/Unraid",
               "link": "https://unraid.thenairn.com"
             }
+          },
+          {
+            "request": "https://3dprint.thenairn.com/",
+            "display": {
+              "name": "Klipper",
+              "category": "Home",
+              "icon": "@styled-icons/bootstrap/Badge3d",
+              "link": "https://3dprint.thenairn.com/"
+            }
           }
         ]
       }
