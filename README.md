@@ -12,6 +12,7 @@
   - /mnt/user/Paperless
   - /mnt/user/Config
   - /mnt/user/Nextcloud
+  - /mnt/user/PersonalMedia
 - Install the RClone Unraid plugin
 - Set RClone config
   - Replace CLIENT_ID
@@ -48,7 +49,15 @@ password2 = PASSWORD_2
 
 [gcloudnextcloud]
 type = crypt
-remote = gcloud:/config
+remote = gcloud:/nextcloud
+filename_encryption = obfuscate
+directory_name_encryption = false
+password = PASSWORD
+password2 = PASSWORD2
+
+[gcloudpersonal]
+type = crypt
+remote = gcloud:/personal
 filename_encryption = obfuscate
 directory_name_encryption = false
 password = PASSWORD
@@ -58,8 +67,6 @@ password2 = PASSWORD2
 
 - Start restore:
 
-
-Run restore:
 ```bash
 #!/bin/bash
 echo "starting paperless restore"
@@ -68,6 +75,21 @@ echo "starting config restore"
 rclone copy -v gcloudconfig: /mnt/user/Config/
 echo "starting nextcloud restore"
 rclone copy -v gcloudnextcloud: /mnt/user/Nextcloud/
+echo "starting nextcloud restore"
+rclone copy -v gscloudpersonal: /mnt/user/PersonalMedia/
+```
+
+Backup: 
+```bash
+#!/bin/bash
+echo "starting paperless backup"
+rclone copy -v /mnt/user/Paperless/ gclouddocs:
+echo "starting config backup"
+rclone copy -v /mnt/user/Config/ gcloudconfig: --exclude "plex/" --exclude "vscode/"
+echo "starting nextcloud backup"
+rclone copy -v /mnt/user/Nextcloud/ gcloudnextcloud:
+echo "starting nextcloud backup"
+rclone copy -v /mnt/user/PersonalMedia/ gcloudpersonal:
 ```
 
 - Start docker-compose
