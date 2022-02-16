@@ -1,4 +1,4 @@
-FROM linuxserver/code-server:4.0.1-focal
+FROM linuxserver/code-server:4.0.2
 
 # Install Expo Globally
 RUN npm i -g expo-cli
