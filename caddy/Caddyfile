@@ -1,38 +1,95 @@
 # ROLES DEFINITION
 
 (admin) {
-    jwt {
-        allow roles admin
-    }
+	authorize with adminpolicy
 }
 
 (superuser) {
-    jwt {
-        allow roles admin superuser
-    }
+	authorize with superuserpolicy
 }
 
 (user) {
-    jwt {
-        allow roles admin superuser user
-    }
+	authorize with userpolicy
 }
 
 # SERVER DEFAULTS
 
 {
-    order jwt first
+	order authenticate before respond
+	order authorize before basicauth
 
     acme_dns gandi {$GANDI_API_KEY}
+
+    security {
+
+        authentication portal myportal {
+			crypto default token lifetime 3600
+            crypto key sign-verify {env.JWT_SECRET}
+			# backend google {env.GOOGLE_CLIENT_ID} {env.GOOGLE_CLIENT_SECRET}
+			backends {
+				google_oauth2_backend {
+					method oauth2
+					realm google
+					provider google
+                    client_id {env.OAUTH_GOOGLE_CLIENT_ID}
+                    client_secret {env.OAUTH_GOOGLE_CLIENT_SECRET}
+					scopes openid email profile
+				}
+			}
+			cookie domain thenairn.com
+            cookie path /
+			ui {
+				links {
+					"My Identity" "/whoami" icon "las la-user"
+				}
+			}
+
+			transform user {
+				match realm google
+				action add role authp/user
+				ui link "File Server" https://assetq.myfiosgateway.com:8443/ icon "las la-star"
+			}
+
+            transform user {
+				match realm google
+                match email thomas@thenairn.com
+                action add role authp/admin
+            }
+
+            transform user {
+				match realm google
+                match email grace.nairn@gmail.com
+                action add role authp/superuser
+            }
+		}
+
+		authorization policy adminpolicy {
+            set auth url "https://auth.thenairn.com/oauth2/google"
+			crypto key verify {env.JWT_SHARED_KEY}
+			allow roles authp/admin
+			validate bearer header
+			inject headers with claims
+		}
+
+		authorization policy superuserpolicy {
+            set auth url "https://auth.thenairn.com/oauth2/google"
+			crypto key verify {env.JWT_SHARED_KEY}
+			allow roles authp/admin authp/superuser
+			validate bearer header
+			inject headers with claims
+		}
+
+		authorization policy userpolicy {
+            set auth url "https://auth.thenairn.com/oauth2/google"
+			crypto key verify {env.JWT_SHARED_KEY}
+			allow roles authp/admin authp/superuser authp/user
+			validate bearer header
+			inject headers with claims
+		}
+    }
 }
 
 *.thenairn.com {
-    jwt {
-        primary yes
-        crypto key verify {$JWT_SECRET}
-        set auth url "https://auth.thenairn.com/auth/oauth2/google"
-        allow roles admin
-    }
     tls { 
         on_demand
     }
@@ -42,30 +99,7 @@
  # DOMAINS
 
  auth.thenairn.com {
-    route /auth* {
-        authp {
-            
-            backends {
-                google_oauth2_backend {
-                    method oauth2
-                    realm google
-                    provider google
-                    client_id {$OAUTH_GOOGLE_CLIENT_ID}
-                    client_secret {$OAUTH_GOOGLE_CLIENT_SECRET}
-                    
-                    scopes openid email profile
-                }
-            }
-            transform user {
-                    exact match email thomas@thenairn.com
-                    action add role admin
-            }
-            crypto default token lifetime 3600
-            crypto key sign-verify {$JWT_SECRET}
-            cookie domain thenairn.com
-            cookie path /
-        }
-    }
+	authenticate with myportal
  }
 
 transmission.thenairn.com {
@@ -168,7 +202,7 @@ code.thenairn.com {
         reverse_proxy vscode:8443
     }
     handle {
-        import admin
+        import superuser
         reverse_proxy vscode:8443
     }
 }
@@ -290,12 +324,6 @@ cloud.thenairn.com {
     respond @forbidden 404
 }
 
-todo.thenairn.com {
-    reverse_proxy /api/* vikunjaapi:3456
-    reverse_proxy /.well-known/* vikunjaapi:3456
-    reverse_proxy /dav/* vikunjaapi:3456
-    reverse_proxy vikunjafrontend:80
-}
 
 dashboard.thenairn.com {
     @internal {
