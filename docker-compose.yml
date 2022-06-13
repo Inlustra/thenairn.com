@@ -54,16 +54,17 @@ services:
       - ${DOWNLOADS_DIR}:/srv/Downloads
       - ${CONFIG_DIR}/vscode:/config
       - ${BOOT_DIR}:/ServerBoot
-      - /root/.ssh:/config/.ssh
-      - ${INTERNAL_DIR}:/Internal:cached
       - ${CONFIG_DIR}:/ServerConfig
+      - ${INTERNAL_DIR}:/Internal:cached
+      - /boot/.ssh:/config/.ssh:ro
+      - /boot/.aws:/config/.aws:ro
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - GPG_PASSPHRASE=${VSCODE_GPG_PASSPHRASE}
       - PGID=0
       - PUID=0
       - PROXY_DOMAIN=code.thenairn.com
-      - DOCKER_MODS=linuxserver/mods:code-server-docker|linuxserver/mods:code-server-nodejs|linuxserver/mods:code-server-shellcheck
+      - DOCKER_MODS=linuxserver/mods:code-server-awscli|linuxserver/mods:universal-docker|linuxserver/mods:code-server-nodejs|linuxserver/mods:code-server-shellcheck|inlustra/docker-mods:pulumi
     
     restart: unless-stopped
 
@@ -224,6 +225,8 @@ services:
       - OAUTH_GITHUB_CLIENT_SECRET=${OAUTH_GITHUB_CLIENT_SECRET}
       - JWT_SECRET=${JWT_SECRET}
       - JWT_ISSUER=${JWT_ISSUER}
+      - RCLONE_AUTH_TOKEN=${RCLONE_AUTH_TOKEN}
+      - INVOICE_NINJA_ROOT=/invoiceninja
     build:
       context: ./caddy
     links:
@@ -239,6 +242,9 @@ services:
       - overseerr
       - gaps
       - paperless
+      - rclone
+      - n8n
+      - invoiceninja
     ports:
       - "80:80/tcp"
       - "443:443/tcp"
@@ -248,13 +254,14 @@ services:
       - ${CONFIG_DIR}/caddy/certs:/caddy/certs
       - ${CONFIG_DIR}/caddy2/data:/data
       - ${CONFIG_DIR}/caddy2/config:/config
+      - ${CONFIG_DIR}/invoiceninja:/var/www/app
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile
       - ./Playground:/Playground
     volumes_from:
       - nextcloudapp
     restart: unless-stopped
     external_links:
-        - crater_nginx_1:crater_nginx_1
+        - crater_nginx_2:crater_nginx_2
     networks:
       - default
       - crater
@@ -293,7 +300,7 @@ services:
       WATCHTOWER_NOTIFICATION_SLACK_HOOK_URL: ${WATCHTOWER_NOTIFICATION_SLACK_HOOK_URL}
 
   bitwarden:
-    image: bitwardenrs/server:latest
+    image: vaultwarden/server:latest
     container_name: bitwarden
     labels: 
       plugsy.name: 'BitWarden'
@@ -361,7 +368,7 @@ services:
     restart: unless-stopped
 
   paperless:
-    image: lscr.io/linuxserver/paperless-ng
+    image: lscr.io/linuxserver/paperless-ngx:latest
     container_name: paperless
     labels: 
       plugsy.name: 'Paperless'
@@ -376,6 +383,7 @@ services:
       OCRLANG: fra,eng
       PAPERLESS_CONSUMER_RECURSIVE: 1
       PAPERLESS_CONSUMER_SUBDIRS_AS_TAGS: 1
+      PAPERLESS_URL: "https://docs.thenairn.com"
     volumes:
       - ${CONFIG_DIR}/paperless:/config
       - ${SCANS_DIR}:/data/consume
@@ -466,6 +474,94 @@ services:
       - ${CONFIG_DIR}/tdarr/logs:/app/logs
       - ${MEDIA_DIR}:/media
       - ${LARGE_TEMP_DIR}:/temp
+
+  mqttexplorer:
+    build: 
+      context: ./mqttexplorer
+    volumes:
+      - ${CONFIG_DIR}/mqttexplorer:/app/.config:rw
+
+  rclone: 
+    container_name: rclone
+    image: rclone/rclone:latest
+    restart: unless-stopped
+    command: rcd -vvv --rc-web-gui --rc-serve --rc-user=${RCLONE_USERNAME} --rc-pass=${RCLONE_PASSWORD} --rc-allow-origin="https://rclone.thenairn.com" --rc-web-gui-no-open-browser --rc-addr 0.0.0.0:5775
+    volumes:
+      - ${CONFIG_DIR}/rclone:/config/rclone
+      - ${CONFIG_DIR}:/bkps/config
+      - ${NEXTCLOUD_DIR}:/bkps/nextcloud
+      - ${PAPERLESS_DOCS_DIR}:/bkps/paperless
+
+  n8n:
+    image: n8nio/n8n
+    container_name: n8n
+    restart: unless-stopped
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=false
+      - N8N_HOST=n8n.thenairn.com
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=https
+      - NODE_ENV=production
+      - WEBHOOK_URL=https://n8n.thenairn.com/
+      - GENERIC_TIMEZONE=Europe/Paris
+      - RCLONE_ENDPOINT="https://rclone.thenairn.com"
+    volumes:
+      - ${CONFIG_DIR}/n8n:/home/node/.n8n
+
+  invoiceninja:
+    image: invoiceninja/invoiceninja:5
+    container_name: invoiceninja
+    environment:
+      - QUEUE_CONNECTION=database
+      - APP_URL="https://invoice.thenairn.com"
+      - APP_KEY=${INVOICENINJA_APP_KEY}
+      - APP_CIPHER=AES-256-CBC
+      - DB_HOST=invoiceninjadb
+      - DB_DATABASE=ninja
+      - DB_USERNAME=ninja
+      - DB_PASSWORD=ninja
+      - GOOGLE_CLIENT_ID=${OAUTH_GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${OAUTH_GOOGLE_CLIENT_SECRET}
+      - GOOGLE_OAUTH_REDIRECT=https://invoice.thenairn.com/auth/google
+      - GOOGLE_MAPS_ENABLED=true
+      - GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY}
+
+      - MAIL_MAILER=smtp
+      - MAIL_HOST=${MAIL_HOST}
+      - MAIL_PORT=${MAIL_PORT}
+      - MAIL_USERNAME=${MAIL_USERNAME}
+      - MAIL_PASSWORD=${MAIL_PASSWORD}
+      - MAIL_ENCRYPTION=tls
+      - MAIL_FROM_ADDRESS="invoicing@thenairn.com"
+      - MAIL_FROM_NAME='Invoicing'
+      
+      # - APP_DEBUG=true
+    restart: always
+    volumes:
+      - ./hosts:/etc/hosts:ro
+      - ${CONFIG_DIR}/invoiceninja/public:/var/www/app/public:rw,delegated
+      - ${CONFIG_DIR}/invoiceninja/storage:/var/www/app/storage:rw,delegated
+    depends_on:
+      - invoiceninjadb
+    extra_hosts:
+      - "in5.localhost:192.168.0.124 "
+
+  invoiceninjadb:
+    restart: always
+    container_name: invoiceninjadb
+    image: bitnami/mysql:5
+    environment: 
+      - MYSQL_ROOT_PASSWORD=ninja
+      - MYSQL_USER=ninja
+      - MYSQL_PASSWORD=ninja
+      - MYSQL_DATABASE=ninja
+      - MYSQL_ROOT_HOST="%"
+
+    volumes:
+      - ./mysqld.cnf:/opt/bitnami/mysql/conf/my_custom.cnf:ro
+      - ${CONFIG_DIR}/invoiceninja/db:/bitnami/mysql/data:rw,delegated
+    extra_hosts:
+      - "in5.localhost:192.168.0.124 "
 
 networks:
   crater: 

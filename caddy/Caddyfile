@@ -15,27 +15,30 @@
 # SERVER DEFAULTS
 
 {
-	order authenticate before respond
-	order authorize before basicauth
+    order authenticate before respond
+    order authorize before basicauth
 
     acme_dns gandi {$GANDI_API_KEY}
 
     security {
 
-        authentication portal myportal {
+
+		oauth identity provider google {
+			realm google
+			driver google
+			client_id {env.GOOGLE_CLIENT_ID}.apps.googleusercontent.com
+			client_secret {env.GOOGLE_CLIENT_SECRET}
+			scopes openid email profile
+		}
+
+
+
+      authentication portal myportal {
 			crypto default token lifetime 3600
             crypto key sign-verify {env.JWT_SECRET}
-			# backend google {env.GOOGLE_CLIENT_ID} {env.GOOGLE_CLIENT_SECRET}
-			backends {
-				google_oauth2_backend {
-					method oauth2
-					realm google
-					provider google
-                    client_id {env.OAUTH_GOOGLE_CLIENT_ID}
-                    client_secret {env.OAUTH_GOOGLE_CLIENT_SECRET}
-					scopes openid email profile
-				}
-			}
+
+            enable identity provider google
+
 			cookie domain thenairn.com
             cookie path /
 			ui {
@@ -47,7 +50,6 @@
 			transform user {
 				match realm google
 				action add role authp/user
-				ui link "File Server" https://assetq.myfiosgateway.com:8443/ icon "las la-star"
 			}
 
             transform user {
@@ -98,9 +100,9 @@
 
  # DOMAINS
 
- auth.thenairn.com {
-	authenticate with myportal
- }
+auth.thenairn.com {
+    authenticate with myportal
+}
 
 transmission.thenairn.com {
     @internal {
@@ -142,6 +144,18 @@ gaps.thenairn.com {
     reverse_proxy vscode:8443
 }
 
+mqtt.thenairn.com {
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle @internal { 
+      reverse_proxy mqttexplorer:5800
+    }
+    handle {
+      import admin 
+      reverse_proxy mqttexplorer:5800
+    }
+}
 
 home.thenairn.com {
     reverse_proxy 192.168.96.15:8123
@@ -165,7 +179,7 @@ unifi.thenairn.com {
         remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
     }
     handle @internal {
-        reverse_proxy https://192.168.96.15:8443 {
+        reverse_proxy https://192.168.96.1 {
             transport http {
                 tls_insecure_skip_verify
             }
@@ -173,7 +187,7 @@ unifi.thenairn.com {
     }
     handle {
         import admin
-        reverse_proxy https://192.168.96.15:8443 {
+        reverse_proxy https://192.168.96.1 {
             transport http {
                 tls_insecure_skip_verify
             }
@@ -352,7 +366,11 @@ speed.thenairn.com {
 }
 
 invoice.thenairn.com { 
-    reverse_proxy crater_nginx_1:80
+    root * /var/www/app/public
+    try_files {path} {path} index.php?{query}
+    php_fastcgi invoiceninja:9000
+    encode zstd gzip
+    file_server browse
 }
 
 3dprint.thenairn.com { 
@@ -378,6 +396,37 @@ tdarr.thenairn.com {
     handle {
         import admin
         reverse_proxy tdarr:8265
+    }
+}
+
+
+rclone.thenairn.com {
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle @internal {
+        reverse_proxy rclone:5775 {
+           header_up Authorization "Basic aW5sdXN0cmE6dGhpcyBpcyBhbiByY2xvbmUgcGFzc3dvcmQ="
+        }
+    }
+    handle {
+        import admin
+        reverse_proxy rclone:5775 {
+           header_up Authorization "Basic aW5sdXN0cmE6dGhpcyBpcyBhbiByY2xvbmUgcGFzc3dvcmQ="
+        }
+    }
+}
+
+n8n.thenairn.com {
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle @internal {
+        reverse_proxy n8n:5678
+    }
+    handle {
+        import admin
+        reverse_proxy n8n:5678
     }
 }
 
