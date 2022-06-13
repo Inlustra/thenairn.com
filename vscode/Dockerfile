@@ -1,7 +1,4 @@
-FROM linuxserver/code-server:4.0.2
-
-# Install Expo Globally
-RUN npm i -g expo-cli
+FROM linuxserver/code-server:4.4.0
 
 # Install ZSH
 RUN apt-get update && \
