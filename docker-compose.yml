@@ -63,7 +63,7 @@ services:
       - PGID=0
       - PUID=0
       - PROXY_DOMAIN=code.thenairn.com
-      - DOCKER_MODS=linuxserver/mods:code-server-awscli|linuxserver/mods:universal-docker|linuxserver/mods:code-server-nodejs|linuxserver/mods:code-server-shellcheck|inlustra/docker-mods:pulumi|inlustra/docker-mods:dotfiles|linuxserver/mods:code-server-terraform
+      - DOCKER_MODS=linuxserver/mods:code-server-awscli|linuxserver/mods:universal-docker|linuxserver/mods:code-server-nodejs|linuxserver/mods:code-server-shellcheck|inlustra/docker-mods:pulumi|inlustra/docker-mods:dotfiles|inlustra/docker-mods:atlasgo-v0.3.7|linuxserver/mods:code-server-terraform
       - KEYBASE_USERNAME
       - KEYBASE_PAPERKEY
       - KEYBASE_DEVICE_NAME=vscode
@@ -93,7 +93,7 @@ services:
         - ${DOWNLOADS_DIR}:/data
     environment:
         - OPENVPN_PROVIDER=NORDVPN
-        - NORDVPN_COUNTRY=NL
+        - NORDVPN_COUNTRY=FR
         - OPENVPN_USERNAME=${NORD_USERNAME}
         - OPENVPN_PASSWORD=${NORD_PASSWORD}
         - LOCAL_NETWORK=192.168.0.0/16
@@ -224,7 +224,7 @@ services:
       - OAUTH_GOOGLE_CLIENT_SECRET=${OAUTH_GOOGLE_CLIENT_SECRET}
       - OAUTH_GITHUB_CLIENT_ID=${OAUTH_GITHUB_CLIENT_ID}
       - OAUTH_GITHUB_CLIENT_SECRET=${OAUTH_GITHUB_CLIENT_SECRET}
-      - JWT_SECRET=${JWT_SECRET}
+      - JWT_SHARED_KEY=${JWT_SHARED_KEY}
       - JWT_ISSUER=${JWT_ISSUER}
       - RCLONE_AUTH_TOKEN=${RCLONE_AUTH_TOKEN}
       - INVOICE_NINJA_ROOT=/invoiceninja
