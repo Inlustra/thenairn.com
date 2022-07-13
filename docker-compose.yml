@@ -48,7 +48,7 @@ services:
       plugsy.category: 'Code'
       plugsy.icon: '@styled-icons/simple-icons/Visualstudiocode'
       plugsy.link: https://code.thenairn.com
-    image: linuxserver/code-server:4.4.0
+    image: linuxserver/code-server:4.5.0
     volumes:
       - ${DOWNLOADS_DIR}:/srv/Downloads
       - ${CONFIG_DIR}/vscode:/config
