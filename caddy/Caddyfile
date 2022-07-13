@@ -26,7 +26,7 @@
 		oauth identity provider google {
 			realm google
 			driver google
-			client_id {env.GOOGLE_CLIENT_ID}.apps.googleusercontent.com
+			client_id {env.GOOGLE_CLIENT_ID}
 			client_secret {env.GOOGLE_CLIENT_SECRET}
 			scopes openid email profile
 		}
@@ -142,19 +142,6 @@ gaps.thenairn.com {
     }
 
     reverse_proxy vscode:8443
-}
-
-mqtt.thenairn.com {
-    @internal {
-        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
-    }
-    handle @internal { 
-      reverse_proxy mqttexplorer:5800
-    }
-    handle {
-      import admin 
-      reverse_proxy mqttexplorer:5800
-    }
 }
 
 home.thenairn.com {

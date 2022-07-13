@@ -1,8 +1,0 @@
-#!/usr/bin/with-contenv bash
-
-rm -rf $HOME/.dotfiles
-git clone https://github.com/inlustra/dotfiles.git $HOME/.dotfiles
-cd $HOME/.dotfiles
-cp /gitconfig git/gitconfig.local.symlink
-./script/bootstrap
-chsh -s /bin/zsh root

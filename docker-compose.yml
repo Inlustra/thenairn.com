@@ -48,8 +48,7 @@ services:
       plugsy.category: 'Code'
       plugsy.icon: '@styled-icons/simple-icons/Visualstudiocode'
       plugsy.link: https://code.thenairn.com
-    build:
-      context: ./vscode
+    image: linuxserver/code-server:4.4.0
     volumes:
       - ${DOWNLOADS_DIR}:/srv/Downloads
       - ${CONFIG_DIR}/vscode:/config
@@ -64,8 +63,10 @@ services:
       - PGID=0
       - PUID=0
       - PROXY_DOMAIN=code.thenairn.com
-      - DOCKER_MODS=linuxserver/mods:code-server-awscli|linuxserver/mods:universal-docker|linuxserver/mods:code-server-nodejs|linuxserver/mods:code-server-shellcheck|inlustra/docker-mods:pulumi
-    
+      - DOCKER_MODS=linuxserver/mods:code-server-awscli|linuxserver/mods:universal-docker|linuxserver/mods:code-server-nodejs|linuxserver/mods:code-server-shellcheck|inlustra/docker-mods:pulumi|inlustra/docker-mods:dotfiles|linuxserver/mods:code-server-terraform
+      - KEYBASE_USERNAME
+      - KEYBASE_PAPERKEY
+      - KEYBASE_DEVICE_NAME=vscode
     restart: unless-stopped
 
   proxy:
@@ -474,12 +475,6 @@ services:
       - ${CONFIG_DIR}/tdarr/logs:/app/logs
       - ${MEDIA_DIR}:/media
       - ${LARGE_TEMP_DIR}:/temp
-
-  mqttexplorer:
-    build: 
-      context: ./mqttexplorer
-    volumes:
-      - ${CONFIG_DIR}/mqttexplorer:/app/.config:rw
 
   rclone: 
     container_name: rclone
