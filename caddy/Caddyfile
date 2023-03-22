@@ -142,7 +142,6 @@ gaps.thenairn.com {
 }
  
 *.code.thenairn.com {
-
     tls { 
         on_demand
     }
@@ -304,40 +303,6 @@ prowlarr.thenairn.com {
     }
 }
 
-cloud.thenairn.com {
-    root * /var/www/html
-    file_server
-
-    php_fastcgi nextcloudapp:9000 {
-        env front_controller_active true
-    }   
-    
-    header {
-            # enable HSTS
-            # Strict-Transport-Security max-age=31536000;
-    }
-
-    redir /.well-known/carddav /remote.php/dav 301
-    redir /.well-known/caldav /remote.php/dav 301
-
-    @forbidden {
-            path    /.htaccess
-            path    /data/*
-            path    /config/*
-            path    /db_structure
-            path    /.xml
-            path    /README
-            path    /3rdparty/*
-            path    /lib/*
-            path    /templates/*
-            path    /occ
-            path    /console.php
-    }
-
-    respond @forbidden 404
-}
-
-
 dashboard.thenairn.com {
     @internal {
         remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
@@ -429,3 +394,28 @@ n8n.thenairn.com {
     }
 }
 
+nairn.wedding {
+    reverse_proxy weddingphotos:3000
+}
+
+nairn.link {
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle @internal {
+        reverse_proxy zipline:3000
+    }
+}
+
+meals.thenairn.com {
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle @internal {
+        reverse_proxy mealie:80
+    }
+}
+
+gallery.thenairn.com {
+    reverse_proxy gallery:3000
+}

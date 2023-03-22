@@ -48,42 +48,31 @@ services:
       plugsy.category: 'Code'
       plugsy.icon: '@styled-icons/simple-icons/Visualstudiocode'
       plugsy.link: https://code.thenairn.com
-    image: linuxserver/code-server:4.5.0
+    image: linuxserver/code-server:4.9.0
     volumes:
       - ${DOWNLOADS_DIR}:/srv/Downloads
       - ${CONFIG_DIR}/vscode:/config
       - ${BOOT_DIR}:/ServerBoot
       - ${CONFIG_DIR}:/ServerConfig
       - ${INTERNAL_DIR}:/Internal:cached
-      - /boot/.ssh:/config/.ssh:ro
-      - /boot/.aws:/config/.aws:ro
+      - /boot/.ssh:/config/host/.ssh:ro
+      - /boot/.aws:/config/host/.aws:ro
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - GPG_PASSPHRASE=${VSCODE_GPG_PASSPHRASE}
       - PGID=0
       - PUID=0
       - PROXY_DOMAIN=code.thenairn.com
-      - DOCKER_MODS=linuxserver/mods:code-server-awscli|linuxserver/mods:universal-docker|linuxserver/mods:code-server-nodejs|linuxserver/mods:code-server-shellcheck|inlustra/docker-mods:pulumi|inlustra/docker-mods:dotfiles|inlustra/docker-mods:atlasgo-v0.3.7|linuxserver/mods:code-server-terraform
+      - DOCKER_MODS=linuxserver/mods:code-server-flutter|linuxserver/mods:code-server-awscli|linuxserver/mods:universal-docker|linuxserver/mods:code-server-nodejs|linuxserver/mods:code-server-shellcheck|inlustra/docker-mods:pulumi|inlustra/docker-mods:gcloudcli|inlustra/docker-mods:kubectl-helm|inlustra/docker-mods:dotfiles|inlustra/docker-mods:atlasgo-v0.3.7|linuxserver/mods:code-server-terraform
       - KEYBASE_USERNAME
       - KEYBASE_PAPERKEY
       - KEYBASE_DEVICE_NAME=vscode
     restart: unless-stopped
 
-  proxy:
-    container_name: proxy
-    image: jeroenslot/nordvpn-proxy
-    cap_add:
-      - NET_ADMIN               # Required
-    environment:                # Review https://github.com/bubuntux/nordvpn#environment-variables
-      - USERNAME=${NORD_USERNAME}     # Required
-      - PASSWORD=${NORD_PASSWORD}        # Required
-      - COUNTRY=NL
-      - LOCAL_NETWORK=192.168.96.0/24   
-    volumes:
-      - ${CONFIG_DIR}/proxy:/app/ovpn/config 
-
   transmission:
     container_name: transmission
+    sysctls:
+    - "net.ipv6.conf.all.disable_ipv6=0"
     cap_add:
         - NET_ADMIN
     volumes:
@@ -92,10 +81,12 @@ services:
         - ${CONFIG_DIR}/transmission:/data/transmission-home
         - ${DOWNLOADS_DIR}:/data
     environment:
-        - OPENVPN_PROVIDER=NORDVPN
-        - NORDVPN_COUNTRY=FR
-        - OPENVPN_USERNAME=${NORD_USERNAME}
-        - OPENVPN_PASSWORD=${NORD_PASSWORD}
+        - WEBPROXY_ENABLED=true
+        - WEBPROXY_PORT=8118
+        - OPENVPN_PROVIDER=${OPENVPN_PROVIDER}
+        - OPENVPN_USERNAME=${OPENVPN_USERNAME}
+        - OPENVPN_PASSWORD=${OPENVPN_PASSWORD}
+        - OPENVPN_CONFIG=${OPENVPN_CONFIG}
         - LOCAL_NETWORK=192.168.0.0/16
         - TRANSMISSION_WEB_UI=flood-for-transmission
         - OPENVPN_OPTS=--inactive 3600 --ping 10 --ping-exit 60
@@ -258,14 +249,7 @@ services:
       - ${CONFIG_DIR}/invoiceninja:/var/www/app
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile
       - ./Playground:/Playground
-    volumes_from:
-      - nextcloudapp
     restart: unless-stopped
-    external_links:
-        - crater_nginx_2:crater_nginx_2
-    networks:
-      - default
-      - crater
 
   overseerr:
     image: lscr.io/linuxserver/overseerr
@@ -327,47 +311,6 @@ services:
     volumes:
       - ${CONFIG_DIR}/bw-data/:/data/
 
-  nextclouddb: 
-    image: mariadb
-    container_name: nextclouddb
-    restart: unless-stopped
-    labels:
-      plugsy.name: 'DB'
-      plugsy.icon: '@styled-icons/feather/Database'
-      plugsy.parents: 'Nextcloud'
-    volumes:
-      - ${NEXTCLOUD_DIR}/db:/var/lib/mysql
-      - /etc/localtime:/etc/localtime:ro
-    environment:
-      - MYSQL_ROOT_PASSWORD=${NEXTCLOUD_DB_ROOT_PASS}
-      - MYSQL_PASSWORD=${NEXTCLOUD_DB_PASS}
-      - MYSQL_DATABASE=nextcloud
-      - MYSQL_USER=nextcloud
-    restart: unless-stopped
-
-    
-  nextcloudapp:
-    image: nextcloud:fpm
-    container_name: nextcloudapp
-    restart: unless-stopped
-    labels:
-      plugsy.name: 'Nextcloud'
-      plugsy.category: 'Home'
-      plugsy.icon: '@styled-icons/simple-icons/Nextcloud'
-      plugsy.link: 'https://cloud.thenairn.com/'
-    links:
-      - nextclouddb
-    volumes:
-      - ${NEXTCLOUD_DIR}/app:/var/www/html
-      - ./nextcloudapp/settings.config.php:/var/www/html/config/settings.config.php
-      - /etc/localtime:/etc/localtime:ro
-    environment:
-      - MYSQL_PASSWORD=${NEXTCLOUD_DB_PASS}
-      - MYSQL_DATABASE=nextcloud
-      - MYSQL_USER=nextcloud
-      - MYSQL_HOST=nextclouddb
-    restart: unless-stopped
-
   paperless:
     image: lscr.io/linuxserver/paperless-ngx:latest
     container_name: paperless
@@ -409,7 +352,7 @@ services:
     links:
       - sonarr
       - radarr
-      - proxy
+      - transmission
     
   plugsy:
     container_name: plugsy
@@ -433,48 +376,6 @@ services:
         options:
             max-file: "10"
             max-size: "200k"
-  tdarr:
-    container_name: tdarr
-    image: haveagitgat/tdarr:latest
-    restart: unless-stopped
-    environment:
-      - TZ=Europe/London
-      - PUID=0
-      - PGID=0
-      - UMASK_SET=002
-      - serverIP=0.0.0.0
-      - serverPort=8266
-      - webUIPort=8265
-    volumes:
-      - ${CONFIG_DIR}/tdarr/server:/app/server
-      - ${CONFIG_DIR}/tdarr/configs:/app/configs
-      - ${CONFIG_DIR}/tdarr/logs:/app/logs
-      - ${MEDIA_DIR}:/media
-      - ${LARGE_TEMP_DIR}:/temp
-
-  tdarr-node:
-    runtime: nvidia
-    container_name: tdarr-node
-    image: haveagitgat/tdarr_node:latest
-    restart: unless-stopped
-    network_mode: service:tdarr
-    environment:
-      - TZ=Europe/Paris
-      - PUID=0
-      - PGID=0
-      - UMASK_SET=002
-      - nodeID=MainNode
-      - nodeIP=0.0.0.0
-      - nodePort=8267
-      - serverIP=0.0.0.0
-      - serverPort=8266
-      - NVIDIA_VISIBLE_DEVICES=GPU-c1d14a88-b2fa-5786-e47d-64af7a34ea34
-      - NVIDIA_DRIVER_CAPABILITIES=all
-    volumes:
-      - ${CONFIG_DIR}/tdarr/configs:/app/configs
-      - ${CONFIG_DIR}/tdarr/logs:/app/logs
-      - ${MEDIA_DIR}:/media
-      - ${LARGE_TEMP_DIR}:/temp
 
   rclone: 
     container_name: rclone
@@ -484,7 +385,6 @@ services:
     volumes:
       - ${CONFIG_DIR}/rclone:/config/rclone
       - ${CONFIG_DIR}:/bkps/config
-      - ${NEXTCLOUD_DIR}:/bkps/nextcloud
       - ${PAPERLESS_DOCS_DIR}:/bkps/paperless
 
   n8n:
@@ -558,7 +458,56 @@ services:
     extra_hosts:
       - "in5.localhost:192.168.0.124 "
 
-networks:
-  crater: 
-    external: 
-      name: crater_crater
+  weddingphotos:
+    container_name: weddingphotos
+    image: inlustra/the-photo-gallery:0.0.4
+    #To build from source, comment previous line and uncomment next line
+    volumes:
+      - /mnt/user/PersonalMedia/Wedding/original:/app/public/photos
+      - /mnt/user/PersonalMedia/Wedding/storage:/app/storage
+    environment:
+      PAGE_TITLE: 'Nairn Wedding 2022'
+      PAGE_HEADER_TEXT: '03/09/2022'
+      PAGE_SHOW_FULLSCREEN_BUTTON: 'true'
+      NODE_DISABLE_BLUR_GENERATION: 'true'
+      DISABLE_CACHE: 'true'
+    restart: unless-stopped
+
+  gallery:
+    container_name: gallery
+    image: inlustra/the-photo-gallery:0.0.3
+    #To build from source, comment previous line and uncomment next line
+    volumes:
+      - /mnt/user/Internal/thenairn.com/gallery/photos:/app/public/photos
+      - /mnt/user/Internal/thenairn.com/gallery/storage:/app/storage
+    environment:
+      PAGE_TITLE: 'Example Gallery'
+      PAGE_HEADER_TEXT: 'Example Gallery'
+      PAGE_SHOW_FULLSCREEN_BUTTON: 'true'
+      PHOTO_DEFAULT_REVERSE: 'false'
+    restart: unless-stopped
+
+  mealie:
+    container_name: mealie
+    image: hkotel/mealie:latest
+    restart: always
+    environment:
+      PUID: 1000
+      PGID: 1000
+      TZ: Europe/Paris
+
+      # Default Recipe Settings
+      RECIPE_PUBLIC: 'true'
+      RECIPE_SHOW_NUTRITION: 'true'
+      RECIPE_SHOW_ASSETS: 'true'
+      RECIPE_LANDSCAPE_VIEW: 'true'
+      RECIPE_DISABLE_COMMENTS: 'false'
+      RECIPE_DISABLE_AMOUNT: 'false'
+      BASE_URL: "https://meals.thenairn.com"
+
+      # Gunicorn
+      # WEB_CONCURRENCY: 2
+      # WORKERS_PER_CORE: 0.5
+      # MAX_WORKERS: 8
+    volumes:
+      - ${CONFIG_DIR}/mealie:/app/data

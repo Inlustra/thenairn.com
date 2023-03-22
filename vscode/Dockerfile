@@ -1,4 +1,4 @@
-FROM linuxserver/code-server:4.4.0
+FROM linuxserver/code-server:4.10.1
 
 # Install ZSH
 RUN apt-get update && \
