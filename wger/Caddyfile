@@ -1,0 +1,18 @@
+:80 {
+	log
+	handle_path /static/* {
+		root * /static
+		file_server
+	}
+
+	handle_path /media/* {
+		root * /media
+		file_server
+	}
+
+	handle {
+    	reverse_proxy wger:8000 {
+			trusted_proxies 172.17.0.0/16
+		}
+	}
+}

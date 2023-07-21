@@ -1,0 +1,209 @@
+version: "2.4"
+services:
+  plex:
+    runtime: nvidia
+    container_name: plex
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+      plugsy.name: "Plex"
+      plugsy.category: "Media"
+      plugsy.icon: "@styled-icons/simple-icons/Plex"
+      plugsy.link: https://plex.thenairn.com
+    image: plexinc/pms-docker:latest
+    hostname: Artemis
+    logging:
+        driver: "json-file"
+        options:
+            max-size: "3m"
+    environment:
+      - TZ=Europe/Paris
+      - PLEX_CLAIM=${PLEX_CLAIM}
+      - ADVERTISE_IP=${PLEX_ADVERTISE_IP}
+      - NVIDIA_VISIBLE_DEVICES=GPU-c1d14a88-b2fa-5786-e47d-64af7a34ea34
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - PLEX_UID=0
+      - PLEX_GID=0
+    ports:
+      - 32400:32400/tcp
+      - 3005:3005/tcp
+      - 8324:8324/tcp
+      - 32469:32469/tcp
+      - 1900:1900/udp
+      - 32410:32410/udp
+      - 32412:32412/udp
+      - 32413:32413/udp
+      - 32414:32414/udp
+    volumes:
+      - /tmp:/transcode
+      - ${CONFIG_DIR}/plex:/config
+      - ${AMEDIA_DIR}/A:/data/ashows
+      - ${MEDIA_DIR}/Shows:/data/shows
+      - ${MEDIA_DIR}/Movies:/data/movies
+      - ${MEDIA_DIR}/Anime:/data/anime
+      - ${MEDIA_DIR}/AnimeMovies:/data/animemovies
+      - ${MEDIA_DIR}/Audiobooks:/data/audiobooks
+      - ${PERSONAL_MEDIA_DIR}/:/data/personal
+    restart: unless-stopped
+  transmission:
+    container_name: transmission
+    sysctls:
+      - "net.ipv6.conf.all.disable_ipv6=0"
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - ${DOWNLOADS_DIR}/incomplete:/data/downloads
+      - ${DOWNLOADS_DIR}/completed:/data/completed
+      - ${CONFIG_DIR}/transmission:/data/transmission-home
+      - ${DOWNLOADS_DIR}:/data
+    environment:
+      - WEBPROXY_ENABLED=true
+      - WEBPROXY_PORT=8118
+      - OPENVPN_PROVIDER=${OPENVPN_PROVIDER}
+      - OPENVPN_USERNAME=${OPENVPN_USERNAME}
+      - OPENVPN_PASSWORD=${OPENVPN_PASSWORD}
+      - OPENVPN_CONFIG=${OPENVPN_CONFIG}
+      - LOCAL_NETWORK=192.168.0.0/16
+      - TRANSMISSION_WEB_UI=flood-for-transmission
+      - OPENVPN_OPTS=--inactive 3600 --ping 10 --ping-exit 60
+    image: haugene/transmission-openvpn
+    restart: always
+
+  sonarr:
+    container_name: sonarr
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+      plugsy.name: "Sonarr"
+      plugsy.category: "Media"
+      plugsy.icon: "@styled-icons/feather/Tv"
+      plugsy.link: https://sonarr.thenairn.com
+    image: linuxserver/sonarr:latest
+    depends_on:
+      - transmission
+    links:
+      - plex
+    volumes:
+      - ${CONFIG_DIR}/sonarr:/config
+      - ${MEDIA_DIR}/Shows:/tv
+      - ${AMEDIA_DIR}/A:/amedia
+      - ${DOWNLOADS_DIR}/completed:/completed
+    environment:
+      - PGID=0
+      - PUID=0
+      - TZ=Europe/Paris
+    restart: unless-stopped
+
+  animesonarr:
+    container_name: animesonarr
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+      plugsy.name: "Anime"
+      plugsy.parents: "Sonarr"
+      plugsy.icon: "@styled-icons/feather/Tv"
+      plugsy.link: https://animesonarr.thenairn.com
+    image: linuxserver/sonarr:develop
+    depends_on:
+      - transmission
+    links:
+      - plex
+    volumes:
+      - ${CONFIG_DIR}/sonarr_anime:/config
+      - ${MEDIA_DIR}/Anime:/anime
+      - ${AMEDIA_DIR}/A:/amedia
+      - ${DOWNLOADS_DIR}/completed:/completed
+    environment:
+      - PGID=0
+      - PUID=0
+      - TZ=Europe/Paris
+    restart: unless-stopped
+
+  radarr:
+    container_name: radarr
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+      plugsy.name: "Radarr"
+      plugsy.category: "Media"
+      plugsy.icon: "@styled-icons/feather/Film"
+      plugsy.link: https://radarr.thenairn.com
+    image: linuxserver/radarr
+    depends_on:
+      - transmission
+    links:
+      - plex
+    volumes:
+      - ${CONFIG_DIR}/radarr:/config
+      - ${MEDIA_DIR}/Movies:/movies
+      - ${MEDIA_DIR}/Anime:/anime
+      - ${DOWNLOADS_DIR}/completed:/completed
+    environment:
+      - PGID=0
+      - PUID=0
+      - TZ=Europe/Paris
+    restart: unless-stopped
+  
+  animeradarr:
+    container_name: animeradarr
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+      plugsy.name: "Anime"
+      plugsy.parents: "Radarr"
+      plugsy.category: "Media"
+      plugsy.icon: "@styled-icons/feather/Film"
+      plugsy.link: https://animeradarr.thenairn.com
+    image: linuxserver/radarr
+    depends_on:
+      - transmission
+    links:
+      - plex
+    volumes:
+      - ${CONFIG_DIR}/animeradarr:/config
+      - ${MEDIA_DIR}/AnimeMovies:/movies
+      - ${DOWNLOADS_DIR}/completed:/completed
+    environment:
+      - PGID=0
+      - PUID=0
+      - TZ=Europe/Paris
+    restart: unless-stopped
+
+  overseerr:
+    image: lscr.io/linuxserver/overseerr
+    container_name: overseerr
+    environment:
+      - PUID=0
+      - PGID=0
+      - TZ=Europe/Paris
+    links:
+      - sonarr
+      - radarr
+    volumes:
+      - ${CONFIG_DIR}/overseer:/config
+    restart: unless-stopped
+
+  prowlarr:
+    container_name: prowlarr
+    image: ghcr.io/linuxserver/prowlarr:develop
+    environment:
+      PUID: 0
+      PGID: 0
+      TZ: Europe/London
+      com.centurylinklabs.watchtower.enable: "false"
+    labels:
+      plugsy.name: "Prowlarr"
+      plugsy.category: "Media"
+      plugsy.icon: "@styled-icons/fluentui-system-filled/GlobeSearch"
+      plugsy.link: https://prowlarr.thenairn.com
+    volumes:
+      - ${CONFIG_DIR}/prowlarr:/config
+    restart: unless-stopped
+    links:
+      - sonarr
+      - radarr
+      - transmission
+
+  recyclarr:
+    image: ghcr.io/recyclarr/recyclarr
+    container_name: recyclarr
+    user: 0:0
+    volumes:
+      - ./recyclarr:/config
+    environment:
+      - TZ=Europe/Paris

@@ -1,0 +1,55 @@
+version: "2.4"
+services:
+  invoiceninja:
+    image: invoiceninja/invoiceninja:5
+    container_name: invoiceninja
+    environment:
+      - QUEUE_CONNECTION=database
+      - APP_URL="https://invoice.thenairn.com"
+      - APP_KEY=${INVOICENINJA_APP_KEY}
+      - APP_CIPHER=AES-256-CBC
+      - DB_HOST=invoiceninjadb
+      - DB_DATABASE=ninja
+      - DB_USERNAME=ninja
+      - DB_PASSWORD=ninja
+      - GOOGLE_CLIENT_ID=${OAUTH_GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${OAUTH_GOOGLE_CLIENT_SECRET}
+      - GOOGLE_OAUTH_REDIRECT=https://invoice.thenairn.com/auth/google
+      - GOOGLE_MAPS_ENABLED=true
+      - GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY}
+
+      - MAIL_MAILER=smtp
+      - MAIL_HOST=${MAIL_HOST}
+      - MAIL_PORT=${MAIL_PORT}
+      - MAIL_USERNAME=${MAIL_USERNAME}
+      - MAIL_PASSWORD=${MAIL_PASSWORD}
+      - MAIL_ENCRYPTION=tls
+      - MAIL_FROM_ADDRESS="invoicing@thenairn.com"
+      - MAIL_FROM_NAME='Invoicing'
+      
+      # - APP_DEBUG=true
+    restart: always
+    volumes:
+      - ./hosts:/etc/hosts:ro
+      - ${CONFIG_DIR}/invoiceninja/storage:/var/www/app/storage:rw,delegated
+    depends_on:
+      - invoiceninjadb
+    extra_hosts:
+      - "in5.localhost:192.168.0.124 "
+
+  invoiceninjadb:
+    restart: always
+    container_name: invoiceninjadb
+    image: bitnami/mysql:5
+    environment: 
+      - MYSQL_ROOT_PASSWORD=ninja
+      - MYSQL_USER=ninja
+      - MYSQL_PASSWORD=ninja
+      - MYSQL_DATABASE=ninja
+      - MYSQL_ROOT_HOST="%"
+
+    volumes:
+      - ./mysqld.cnf:/opt/bitnami/mysql/conf/my_custom.cnf:ro
+      - ${CONFIG_DIR}/invoiceninja/db:/bitnami/mysql/data:rw,delegated
+    extra_hosts:
+      - "in5.localhost:192.168.0.124 "

@@ -1,45 +1,5 @@
 version: "2.4"
 services:
-  plex:
-    runtime: nvidia
-    container_name: plex
-    labels:
-      com.centurylinklabs.watchtower.enable: "true"
-      plugsy.name: 'Plex'
-      plugsy.category: 'Media'
-      plugsy.icon: '@styled-icons/simple-icons/Plex'
-      plugsy.link: https://plex.thenairn.com
-    image: plexinc/pms-docker:latest
-    hostname: Artemis
-    environment:
-      - TZ=Europe/Paris
-      - PLEX_CLAIM=${PLEX_CLAIM}
-      - ADVERTISE_IP=${PLEX_ADVERTISE_IP}
-      - NVIDIA_VISIBLE_DEVICES=GPU-c1d14a88-b2fa-5786-e47d-64af7a34ea34
-      - NVIDIA_DRIVER_CAPABILITIES=all
-      - PLEX_UID=0
-      - PLEX_GID=0
-    ports:
-      - 32400:32400/tcp
-      - 3005:3005/tcp
-      - 8324:8324/tcp
-      - 32469:32469/tcp
-      - 1900:1900/udp
-      - 32410:32410/udp
-      - 32412:32412/udp
-      - 32413:32413/udp
-      - 32414:32414/udp
-    volumes:
-      - /tmp:/transcode
-      - ${CONFIG_DIR}/plex:/config
-      - ${AMEDIA_DIR}/A:/data/ashows
-      - ${MEDIA_DIR}/Shows:/data/shows
-      - ${MEDIA_DIR}/Movies:/data/movies
-      - ${MEDIA_DIR}/Anime:/data/anime
-      - ${MEDIA_DIR}/Audiobooks:/data/audiobooks
-      - ${PERSONAL_MEDIA_DIR}/:/data/personal
-    restart: unless-stopped
-
   vscode:
     container_name: vscode
     labels:
@@ -48,7 +8,7 @@ services:
       plugsy.category: 'Code'
       plugsy.icon: '@styled-icons/simple-icons/Visualstudiocode'
       plugsy.link: https://code.thenairn.com
-    image: linuxserver/code-server:4.9.0
+    image: linuxserver/code-server:4.13.0
     volumes:
       - ${DOWNLOADS_DIR}:/srv/Downloads
       - ${CONFIG_DIR}/vscode:/config
@@ -63,105 +23,11 @@ services:
       - PGID=0
       - PUID=0
       - PROXY_DOMAIN=code.thenairn.com
-      - DOCKER_MODS=linuxserver/mods:code-server-flutter|linuxserver/mods:code-server-awscli|linuxserver/mods:universal-docker|linuxserver/mods:code-server-nodejs|linuxserver/mods:code-server-shellcheck|inlustra/docker-mods:pulumi|inlustra/docker-mods:gcloudcli|inlustra/docker-mods:kubectl-helm|inlustra/docker-mods:dotfiles|inlustra/docker-mods:atlasgo-v0.3.7|linuxserver/mods:code-server-terraform
+      - DOCKER_MODS=linuxserver/mods:code-server-zsh|linuxserver/mods:universal-docker|linuxserver/mods:code-server-nodejs|linuxserver/mods:code-server-shellcheck|inlustra/docker-mods:gcloudcli|inlustra/docker-mods:kubectl-helm|inlustra/docker-mods:dotfiles|bambam018/docker-mod-java17|linuxserver/mods:code-server-terraform
       - KEYBASE_USERNAME
       - KEYBASE_PAPERKEY
       - KEYBASE_DEVICE_NAME=vscode
-    restart: unless-stopped
-
-  transmission:
-    container_name: transmission
-    sysctls:
-    - "net.ipv6.conf.all.disable_ipv6=0"
-    cap_add:
-        - NET_ADMIN
-    volumes:
-        - ${DOWNLOADS_DIR}/incomplete:/data/downloads
-        - ${DOWNLOADS_DIR}/completed:/data/completed
-        - ${CONFIG_DIR}/transmission:/data/transmission-home
-        - ${DOWNLOADS_DIR}:/data
-    environment:
-        - WEBPROXY_ENABLED=true
-        - WEBPROXY_PORT=8118
-        - OPENVPN_PROVIDER=${OPENVPN_PROVIDER}
-        - OPENVPN_USERNAME=${OPENVPN_USERNAME}
-        - OPENVPN_PASSWORD=${OPENVPN_PASSWORD}
-        - OPENVPN_CONFIG=${OPENVPN_CONFIG}
-        - LOCAL_NETWORK=192.168.0.0/16
-        - TRANSMISSION_WEB_UI=flood-for-transmission
-        - OPENVPN_OPTS=--inactive 3600 --ping 10 --ping-exit 60
-    image: haugene/transmission-openvpn
-    restart: always
-
-  sonarr:
-    container_name: sonarr
-    labels:
-      com.centurylinklabs.watchtower.enable: "true"
-      plugsy.name: 'Sonarr'
-      plugsy.category: 'Media'
-      plugsy.icon: '@styled-icons/feather/Tv'
-      plugsy.link: https://sonarr.thenairn.com
-    image: linuxserver/sonarr:latest
-    depends_on:
-      - transmission
-    links:
-      - plex
-      - gaps
-    volumes:
-      - ${CONFIG_DIR}/sonarr:/config
-      - ${MEDIA_DIR}/Shows:/tv
-      - ${MEDIA_DIR}/Anime:/anime
-      - ${AMEDIA_DIR}/A:/amedia
-      - ${DOWNLOADS_DIR}/completed:/completed
-    environment:
-      - PGID=0
-      - PUID=0
-      - TZ=Europe/Paris
-    restart: unless-stopped
-
-  radarr:
-    container_name: radarr
-    labels:
-      com.centurylinklabs.watchtower.enable: "true"
-      plugsy.name: 'Radarr'
-      plugsy.category: 'Media'
-      plugsy.icon: '@styled-icons/feather/Film'
-      plugsy.link: https://radarr.thenairn.com
-    image: linuxserver/radarr
-    depends_on:
-      - transmission
-    links:
-      - gaps
-      - plex
-    volumes:
-      - ${CONFIG_DIR}/radarr:/config
-      - ${MEDIA_DIR}/Movies:/movies
-      - ${MEDIA_DIR}/Anime:/anime
-      - ${DOWNLOADS_DIR}/completed:/completed
-    environment:
-      - PGID=0
-      - PUID=0
-      - TZ=Europe/Paris
-    restart: unless-stopped
-
-  admin:
-    container_name: admin
-    labels:
-      com.centurylinklabs.watchtower.enable: "false"
-      plugsy.name: 'File Manager'
-      plugsy.category: 'Media'
-      plugsy.icon: '@styled-icons/icomoon/FilesEmpty'
-      plugsy.link: https://download.thenairn.com
-    image: filebrowser/filebrowser:v1.11.0
-    command: "--auth.method='none'"
-    volumes:
-      - ${DOWNLOADS_DIR}:/srv/Downloads
-      - ${MEDIA_DIR}:/srv/Media
-      - ${AMEDIA_DIR}:/srv/AMedia
-      - ${INTERNAL_DIR}:/srv/Internal
-      - ${BACKUP_DIR}:/srv/Backup
-      - ${CONFIG_DIR}/admin/config.json:/etc/config.json
-      - ${CONFIG_DIR}/admin/database.db:/etc/database.db
+      - DEFAULT_WORKSPACE=/Internal/thenairn.com
     restart: unless-stopped
 
   host:
@@ -179,7 +45,7 @@ services:
       plugsy.category: 'Home'
       plugsy.icon: '@styled-icons/boxicons-regular/Cctv'
       plugsy.link: 'https://frigate.thenairn.com'
-    image: blakeblackshear/frigate:stable-amd64
+    image: ghcr.io/blakeblackshear/frigate:stable
     ports: 
       - '1935:1935'
     environment:
@@ -224,7 +90,6 @@ services:
     links:
       - bitwarden
       - host
-      - admin
       - sonarr
       - radarr
       - plex
@@ -232,10 +97,8 @@ services:
       - plugsy
       - prowlarr
       - overseerr
-      - gaps
       - paperless
       - rclone
-      - n8n
       - invoiceninja
     ports:
       - "80:80/tcp"
@@ -250,28 +113,6 @@ services:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile
       - ./Playground:/Playground
     restart: unless-stopped
-
-  overseerr:
-    image: lscr.io/linuxserver/overseerr
-    container_name: overseerr
-    environment:
-      - PUID=0
-      - PGID=0
-      - TZ=Europe/Paris
-    links:
-      - sonarr
-      - radarr
-    volumes:
-      - ${CONFIG_DIR}/overseer:/config
-    restart: unless-stopped
-
-  gaps:
-    image: housewrecker/gaps
-    container_name: gaps
-    links:
-      - plex
-    volumes: 
-      - ${CONFIG_DIR}/gaps:/usr/data
 
   watchtower:
     container_name: watchtower
@@ -333,27 +174,6 @@ services:
       - ${SCANS_DIR}:/data/consume
       - ${PAPERLESS_DOCS_DIR}:/data/media
 
-  prowlarr:
-    container_name: prowlarr
-    image: ghcr.io/linuxserver/prowlarr:develop
-    environment:
-      PUID: 0
-      PGID: 0
-      TZ: Europe/London
-      com.centurylinklabs.watchtower.enable: "false"
-    labels: 
-      plugsy.name: 'Prowlarr'
-      plugsy.category: 'Media'
-      plugsy.icon: '@styled-icons/fluentui-system-filled/GlobeSearch'
-      plugsy.link: https://prowlarr.thenairn.com
-    volumes:
-      - ${CONFIG_DIR}/prowlarr:/config
-    restart: unless-stopped
-    links:
-      - sonarr
-      - radarr
-      - transmission
-    
   plugsy:
     container_name: plugsy
     image: plugsy/core:latest
@@ -364,19 +184,6 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./autodash.json:/config.json
 
-  speedtest:
-    container_name: speedtest
-    image: henrywhitaker3/speedtest-tracker
-    volumes:
-        - ${CONFIG_DIR}/speedtest:/config
-    environment:
-        - OOKLA_EULA_GDPR=true
-    logging:
-        driver: "json-file"
-        options:
-            max-file: "10"
-            max-size: "200k"
-
   rclone: 
     container_name: rclone
     image: rclone/rclone:latest
@@ -386,77 +193,6 @@ services:
       - ${CONFIG_DIR}/rclone:/config/rclone
       - ${CONFIG_DIR}:/bkps/config
       - ${PAPERLESS_DOCS_DIR}:/bkps/paperless
-
-  n8n:
-    image: n8nio/n8n
-    container_name: n8n
-    restart: unless-stopped
-    environment:
-      - N8N_BASIC_AUTH_ACTIVE=false
-      - N8N_HOST=n8n.thenairn.com
-      - N8N_PORT=5678
-      - N8N_PROTOCOL=https
-      - NODE_ENV=production
-      - WEBHOOK_URL=https://n8n.thenairn.com/
-      - GENERIC_TIMEZONE=Europe/Paris
-      - RCLONE_ENDPOINT="https://rclone.thenairn.com"
-    volumes:
-      - ${CONFIG_DIR}/n8n:/home/node/.n8n
-
-  invoiceninja:
-    image: invoiceninja/invoiceninja:5
-    container_name: invoiceninja
-    environment:
-      - QUEUE_CONNECTION=database
-      - APP_URL="https://invoice.thenairn.com"
-      - APP_KEY=${INVOICENINJA_APP_KEY}
-      - APP_CIPHER=AES-256-CBC
-      - DB_HOST=invoiceninjadb
-      - DB_DATABASE=ninja
-      - DB_USERNAME=ninja
-      - DB_PASSWORD=ninja
-      - GOOGLE_CLIENT_ID=${OAUTH_GOOGLE_CLIENT_ID}
-      - GOOGLE_CLIENT_SECRET=${OAUTH_GOOGLE_CLIENT_SECRET}
-      - GOOGLE_OAUTH_REDIRECT=https://invoice.thenairn.com/auth/google
-      - GOOGLE_MAPS_ENABLED=true
-      - GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY}
-
-      - MAIL_MAILER=smtp
-      - MAIL_HOST=${MAIL_HOST}
-      - MAIL_PORT=${MAIL_PORT}
-      - MAIL_USERNAME=${MAIL_USERNAME}
-      - MAIL_PASSWORD=${MAIL_PASSWORD}
-      - MAIL_ENCRYPTION=tls
-      - MAIL_FROM_ADDRESS="invoicing@thenairn.com"
-      - MAIL_FROM_NAME='Invoicing'
-      
-      # - APP_DEBUG=true
-    restart: always
-    volumes:
-      - ./hosts:/etc/hosts:ro
-      - ${CONFIG_DIR}/invoiceninja/public:/var/www/app/public:rw,delegated
-      - ${CONFIG_DIR}/invoiceninja/storage:/var/www/app/storage:rw,delegated
-    depends_on:
-      - invoiceninjadb
-    extra_hosts:
-      - "in5.localhost:192.168.0.124 "
-
-  invoiceninjadb:
-    restart: always
-    container_name: invoiceninjadb
-    image: bitnami/mysql:5
-    environment: 
-      - MYSQL_ROOT_PASSWORD=ninja
-      - MYSQL_USER=ninja
-      - MYSQL_PASSWORD=ninja
-      - MYSQL_DATABASE=ninja
-      - MYSQL_ROOT_HOST="%"
-
-    volumes:
-      - ./mysqld.cnf:/opt/bitnami/mysql/conf/my_custom.cnf:ro
-      - ${CONFIG_DIR}/invoiceninja/db:/bitnami/mysql/data:rw,delegated
-    extra_hosts:
-      - "in5.localhost:192.168.0.124 "
 
   weddingphotos:
     container_name: weddingphotos
@@ -486,28 +222,3 @@ services:
       PAGE_SHOW_FULLSCREEN_BUTTON: 'true'
       PHOTO_DEFAULT_REVERSE: 'false'
     restart: unless-stopped
-
-  mealie:
-    container_name: mealie
-    image: hkotel/mealie:latest
-    restart: always
-    environment:
-      PUID: 1000
-      PGID: 1000
-      TZ: Europe/Paris
-
-      # Default Recipe Settings
-      RECIPE_PUBLIC: 'true'
-      RECIPE_SHOW_NUTRITION: 'true'
-      RECIPE_SHOW_ASSETS: 'true'
-      RECIPE_LANDSCAPE_VIEW: 'true'
-      RECIPE_DISABLE_COMMENTS: 'false'
-      RECIPE_DISABLE_AMOUNT: 'false'
-      BASE_URL: "https://meals.thenairn.com"
-
-      # Gunicorn
-      # WEB_CONCURRENCY: 2
-      # WORKERS_PER_CORE: 0.5
-      # MAX_WORKERS: 8
-    volumes:
-      - ${CONFIG_DIR}/mealie:/app/data

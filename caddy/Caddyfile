@@ -132,14 +132,7 @@ http://transmission.thenairn.com {
 
 media.thenairn.com {
     reverse_proxy overseerr:5055
-}
-
-gaps.thenairn.com {
-    @internal {
-        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
-    }
-    reverse_proxy @internal gaps:8484
-}
+} 
  
 *.code.thenairn.com {
     tls { 
@@ -250,6 +243,19 @@ radarr.thenairn.com {
     }
 }
 
+animeradarr.thenairn.com {
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle @internal {
+        reverse_proxy animeradarr:7878
+    }
+    handle {
+        import user
+        reverse_proxy animeradarr:7878
+    }
+}
+
 http://sonarr.thenairn.com {
     @internal {
         remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
@@ -272,6 +278,31 @@ sonarr.thenairn.com {
     handle {
         import user
         reverse_proxy sonarr:8989
+    }
+}    
+
+http://animesonarr.thenairn.com {
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle @internal {
+        reverse_proxy animesonarr:8989
+    }
+    handle {
+        redir https://{host}{uri}
+    }
+}   
+
+animesonarr.thenairn.com {
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle @internal {
+        reverse_proxy animesonarr:8989
+    }
+    handle {
+        import user
+        reverse_proxy animesonarr:8989
     }
 }    
 
@@ -316,19 +347,6 @@ dashboard.thenairn.com {
     }
 }
 
-speed.thenairn.com {
-    @internal {
-        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
-    }
-    handle @internal {
-        reverse_proxy speedtest:80
-    }
-    handle {
-        import admin
-        reverse_proxy speedtest:80
-    }
-}
-
 invoice.thenairn.com { 
     root * /var/www/app/public
     try_files {path} {path} index.php?{query}
@@ -350,20 +368,6 @@ invoice.thenairn.com {
     }
 }
 
-tdarr.thenairn.com {
-    @internal {
-        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
-    }
-    handle @internal {
-        reverse_proxy tdarr:8265
-    }
-    handle {
-        import admin
-        reverse_proxy tdarr:8265
-    }
-}
-
-
 rclone.thenairn.com {
     @internal {
         remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
@@ -381,39 +385,8 @@ rclone.thenairn.com {
     }
 }
 
-n8n.thenairn.com {
-    @internal {
-        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
-    }
-    handle @internal {
-        reverse_proxy n8n:5678
-    }
-    handle {
-        import admin
-        reverse_proxy n8n:5678
-    }
-}
-
 nairn.wedding {
     reverse_proxy weddingphotos:3000
-}
-
-nairn.link {
-    @internal {
-        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
-    }
-    handle @internal {
-        reverse_proxy zipline:3000
-    }
-}
-
-meals.thenairn.com {
-    @internal {
-        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
-    }
-    handle @internal {
-        reverse_proxy mealie:80
-    }
 }
 
 gallery.thenairn.com {

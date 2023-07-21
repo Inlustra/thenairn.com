@@ -2,3 +2,6 @@
 .env.*
 nohup.out
 **/node_modules
+./gallery/*
+./vpn_config/*
+./vpn_config
