@@ -1,0 +1,12 @@
+version: "2.4"
+services:
+  go2rtc:
+    container_name: go2rtc
+    image: alexxit/go2rtc:latest
+    ports:
+      - 1984:1984
+      - "8554:8554"
+      - "8555:8555/tcp" # WebRTC over tcp
+      - "8555:8555/udp" # WebRTC over udp
+    volumes:
+    - "${CONFIG_DIR}/go2rtc:/config"

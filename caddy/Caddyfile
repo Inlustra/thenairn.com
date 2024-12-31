@@ -4,8 +4,16 @@
 	authorize with adminpolicy
 }
 
+(rowm) {
+	authorize with rowmpolicy
+}
+
 (superuser) {
 	authorize with superuserpolicy
+}
+
+(family) {
+	authorize with familypolicy
 }
 
 (user) {
@@ -15,15 +23,19 @@
 # SERVER DEFAULTS
 
 {
-    debug
     order authenticate before respond
     order authorize before basicauth
 
-    acme_dns gandi {$GANDI_API_KEY}
+    on_demand_tls {
+        ask {env.TLS_PERMISSION_ENDPOINT}
+    }	
+
+    acme_dns porkbun {
+        api_key {env.PORKBUN_API_KEY}
+        api_secret_key {env.PORKBUN_SECRET_KEY}	
+    }
 
     security {
-
-
 		oauth identity provider google {
 			realm google
 			driver google
@@ -31,8 +43,6 @@
 			client_secret {env.OAUTH_GOOGLE_CLIENT_SECRET}
 			scopes openid email profile
 		}
-
-
 
       authentication portal myportal {
 			crypto default token lifetime 3600
@@ -64,6 +74,12 @@
                 match email grace.nairn@gmail.com
                 action add role authp/superuser
             }
+
+            transform user {
+                match realm google
+                match email francesca.nairn@gmail.com
+                action add role authp/family
+            }
 		}
 
 		authorization policy adminpolicy {
@@ -89,15 +105,24 @@
 			validate bearer header
 			inject headers with claims
 		}
+
+		authorization policy familypolicy {
+            set auth url "https://auth.thenairn.com/oauth2/google/authorization-code-callback"
+			crypto key verify {env.JWT_SHARED_KEY}
+			allow roles authp/admin authp/family authp/user
+			validate bearer header
+			inject headers with claims
+		}
+
+		authorization policy rowmpolicy {
+            set auth url "https://auth.thenairn.com/oauth2/google/authorization-code-callback"
+			crypto key verify {env.JWT_SHARED_KEY}
+			allow roles authp/admin authp/rowm
+			validate bearer header
+			inject headers with claims
+		}
     }
 }
-
-*.thenairn.com {
-    tls { 
-        on_demand
-    }
- }
-
 
  # DOMAINS
 
@@ -146,19 +171,6 @@ home.thenairn.com {
     reverse_proxy 192.168.96.15:8123
 }
 
-frigate.thenairn.com {
-    @internal {
-        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
-    }
-    handle @internal { 
-      reverse_proxy frigate:5000
-    }
-    handle {
-      import admin 
-      reverse_proxy frigate:5000
-    }
-}
-
 unifi.thenairn.com {
     @internal {
         remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
@@ -185,11 +197,11 @@ unraid.thenairn.com {
         remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
     }
     handle @internal {
-        reverse_proxy host:6059
+        reverse_proxy 192.168.96.14:6059
     }
     handle {
         import admin
-        reverse_proxy host:6059
+        reverse_proxy 192.168.96.14:6059
     }
 }
 
@@ -315,12 +327,6 @@ docs.thenairn.com {
     reverse_proxy paperless:8000
 }
 
-vault.thenairn.com {
-    reverse_proxy bitwarden:80 {
-        header_up X-Real-IP {remote_host}
-    }
-}
-
 prowlarr.thenairn.com {
     @internal {
         remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
@@ -349,7 +355,6 @@ dashboard.thenairn.com {
 
 invoice.thenairn.com { 
     root * /var/www/app/public
-    try_files {path} {path} index.php?{query}
     php_fastcgi invoiceninja:9000
     encode zstd gzip
     file_server browse
@@ -391,4 +396,82 @@ nairn.wedding {
 
 gallery.thenairn.com {
     reverse_proxy gallery:3000
+}
+
+sync.thenairn.com {
+    
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle @internal {
+        reverse_proxy syncthing:8384
+    }
+    handle {
+        import admin
+        reverse_proxy syncthing:8384
+    }
+}
+
+immich.thenairn.com {
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle @internal {
+        reverse_proxy immich_server:2283
+    }
+    handle {
+        import family
+        reverse_proxy immich_server:2283
+    }
+}
+
+cameras.thenairn.com {
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle @internal {
+        reverse_proxy go2rtc:1984
+    }
+    handle {
+        import family
+        reverse_proxy go2rtc:1984
+    }
+}
+
+maintainerr.thenairn.com {
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle @internal {
+        reverse_proxy maintainerr:80
+    }
+    handle {
+        import admin
+        reverse_proxy maintainerr:80
+    }
+}
+
+pikvm.thenairn.com {
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle {
+        import admin
+        reverse_proxy 192.168.96.95:443 {
+            transport http {
+                tls_insecure_skip_verify
+            }
+        }
+    }
+    handle @internal {
+        reverse_proxy 192.168.96.95:443 {
+            transport http {
+                tls_insecure_skip_verify
+            }
+        }
+    }
+}
+
+pdf.thenairn.com {
+    reverse_proxy stirlingpdf:8080
 }

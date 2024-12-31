@@ -1,0 +1,46 @@
+version: "2.4"
+services:
+  faster-whisper:
+    runtime: nvidia
+    image: lscr.io/linuxserver/faster-whisper:gpu
+    container_name: faster-whisper
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Etc/UTC
+      - NVIDIA_VISIBLE_DEVICES=GPU-c1d14a88-b2fa-5786-e47d-64af7a34ea34
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - WHISPER_MODEL=small-int8
+      - WHISPER_BEAM=1 #optional
+      - WHISPER_LANG=en #optional
+    volumes:
+      - ${CONFIG_DIR}/faster-whisper/data:/config
+    ports:
+      - 10300:10300
+    restart: unless-stopped
+  piper:
+    image: lscr.io/linuxserver/piper:latest
+    container_name: piper
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Etc/UTC
+      - PIPER_VOICE=en_GB-northern_english_male-medium
+      - PIPER_LENGTH=1.0 #optional
+      - PIPER_NOISE=0.667 #optional
+      - PIPER_NOISEW=0.333 #optional
+      - PIPER_SPEAKER=0 #optional
+      - PIPER_PROCS=1 #optional
+    volumes:
+      - ${CONFIG_DIR}/piper/data:/config
+    ports:
+      - 10200:10200
+    restart: unless-stopped
+  wyoming-openwakeword:
+    container_name: openwakeword
+    ports:
+      - '10400:10400'
+    volumes:
+      - '${CONFIG_DIR}/openwakeword/models:/custom'
+    image: 'rhasspy/wyoming-openwakeword:latest'
+    command: '--preload-model hey_jarvis'

@@ -198,6 +198,19 @@ services:
       - sonarr
       - radarr
       - transmission
+    
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: flaresolverr
+    network_mode: "service:transmission"
+    depends_on:
+      - transmission
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL:-debug}
+      - LOG_HTML=${LOG_HTML:-false}
+      - CAPTCHA_SOLVER=${CAPTCHA_SOLVER:-none}
+      - TZ=Europe/London
+    restart: unless-stopped
 
   recyclarr:
     image: ghcr.io/recyclarr/recyclarr
@@ -207,3 +220,28 @@ services:
       - ./recyclarr:/config
     environment:
       - TZ=Europe/Paris
+
+  maintainerr:
+    image: jorenn92/maintainerr:latest # or ghcr.io/jorenn92/maintainerr:latest
+    container_name: maintainerr
+    volumes:
+      - ${CONFIG_DIR}/maintainerr:/opt/data
+    environment:
+      - TZ=Europe/Paris
+    restart: unless-stopped
+
+  plex-meta-manager:
+    image: lscr.io/linuxserver/kometa:latest
+    container_name: kometa
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=EuropeParis
+      - PMM_CONFIG=/config/config.yml #optional
+      - PMM_TIME=03:00 #optional
+      - PMM_RUN=TRUE #optional
+      - PMM_TEST=False #optional
+      - PMM_NO_MISSING=False #optional
+    volumes:
+      - ${CONFIG_DIR}/plex-meta-manager:/config
+    restart: unless-stopped

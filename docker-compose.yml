@@ -8,7 +8,7 @@ services:
       plugsy.category: 'Code'
       plugsy.icon: '@styled-icons/simple-icons/Visualstudiocode'
       plugsy.link: https://code.thenairn.com
-    image: linuxserver/code-server:4.13.0
+    image: linuxserver/code-server:4.95.1
     volumes:
       - ${DOWNLOADS_DIR}:/srv/Downloads
       - ${CONFIG_DIR}/vscode:/config
@@ -23,60 +23,29 @@ services:
       - PGID=0
       - PUID=0
       - PROXY_DOMAIN=code.thenairn.com
-      - DOCKER_MODS=linuxserver/mods:code-server-zsh|linuxserver/mods:universal-docker|linuxserver/mods:code-server-nodejs|linuxserver/mods:code-server-shellcheck|inlustra/docker-mods:gcloudcli|inlustra/docker-mods:kubectl-helm|inlustra/docker-mods:dotfiles|bambam018/docker-mod-java17|linuxserver/mods:code-server-terraform
-      - KEYBASE_USERNAME
-      - KEYBASE_PAPERKEY
-      - KEYBASE_DEVICE_NAME=vscode
+      - DOCKER_MODS=linuxserver/mods:code-server-zsh|linuxserver/mods:universal-docker|linuxserver/mods:code-server-shellcheck|inlustra/docker-mods:1password|inlustra/docker-mods:dotfiles|bambam018/docker-mod-java17|linuxserver/mods:code-server-terraform
       - DEFAULT_WORKSPACE=/Internal/thenairn.com
     restart: unless-stopped
 
-  host:
-    container_name: host
-    image: qoomon/docker-host
-    cap_add: [ 'NET_ADMIN', 'NET_RAW' ]
-    restart: on-failure
-    
-  frigate:
-    container_name: frigate
-    restart: unless-stopped
-    privileged: true
-    labels: 
-      plugsy.name: 'Frigate'
-      plugsy.category: 'Home'
-      plugsy.icon: '@styled-icons/boxicons-regular/Cctv'
-      plugsy.link: 'https://frigate.thenairn.com'
-    image: ghcr.io/blakeblackshear/frigate:stable
-    ports: 
-      - '1935:1935'
+  port-permission-module:
+    container_name: port-permission-module
+    image: port-permission-module
+    build:
+      context: ./caddy/port-permission-module
+      dockerfile: Dockerfile
     environment:
-      FRIGATE_RTSP_PASSWORD: ${FRIGATE_RTSP_PASSWORD}
-    volumes:
-      - /dev/bus/usb:/dev/bus/usb
-      - /etc/localtime:/etc/localtime:ro
-      - ${CONFIG_DIR}/frigate:/config
-      - ${CAMERA_DIR}/frigate:/clips      
-      - ${CAMERA_DIR}/frigate:/media/frigate      
-      - type: tmpfs # 1GB of memory, reduces SSD/SD Card wear
-        target: /cache
-        tmpfs:
-          size: 100000000
-    logging:
-      options:
-        max-size: "10m"
-        max-file: "3"
-    healthcheck:
-      test: ["CMD", "wget" , "-q", "-O-", "http://localhost:5000"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 3m
+      - PORT=8000
+      - MIN_VALUE=1000 # Change this to your desired minimum value
+      - MAX_VALUE=4000 # Change this to your desired maximum value
+    restart: unless-stopped
 
   caddy:
     container_name: caddy
     labels:
       com.centurylinklabs.watchtower.enable: "false"
     environment:
-      - GANDI_API_KEY=${GANDI_API_KEY}
+      - PORKBUN_API_KEY=${PORKBUN_API_KEY}
+      - PORKBUN_SECRET_KEY=${PORKBUN_SECRET_KEY}
       - OAUTH_GOOGLE_CLIENT_ID=${OAUTH_GOOGLE_CLIENT_ID}
       - OAUTH_GOOGLE_CLIENT_SECRET=${OAUTH_GOOGLE_CLIENT_SECRET}
       - OAUTH_GITHUB_CLIENT_ID=${OAUTH_GITHUB_CLIENT_ID}
@@ -85,21 +54,21 @@ services:
       - JWT_ISSUER=${JWT_ISSUER}
       - RCLONE_AUTH_TOKEN=${RCLONE_AUTH_TOKEN}
       - INVOICE_NINJA_ROOT=/invoiceninja
+      - TLS_PERMISSION_ENDPOINT=http://port-permission-module:8000/check
     build:
       context: ./caddy
     links:
       - bitwarden
-      - host
       - sonarr
       - radarr
       - plex
-      - frigate
       - plugsy
       - prowlarr
       - overseerr
       - paperless
       - rclone
       - invoiceninja
+      - port-permission-module
     ports:
       - "80:80/tcp"
       - "443:443/tcp"
@@ -152,23 +121,37 @@ services:
     volumes:
       - ${CONFIG_DIR}/bw-data/:/data/
 
+  paperless-broker:
+    image: docker.io/library/redis:7
+    restart: unless-stopped
+    volumes:
+      - ${CONFIG_DIR}/paperless-redis:/data
+
   paperless:
-    image: lscr.io/linuxserver/paperless-ngx:latest
+    image: ghcr.io/paperless-ngx/paperless-ngx:latest
     container_name: paperless
     labels: 
       plugsy.name: 'Paperless'
       plugsy.category: 'Home'
       plugsy.icon: '@styled-icons/bootstrap/Paperclip'
       plugsy.link: https://docs.thenairn.com
+    depends_on: 
+      - paperless-broker
     environment:
-      PGID: 0
-      PUID: 0
+      USERMAP_UID: 0
+      USERMAP_GID: 0
+      PAPERLESS_REDIS: redis://paperless-broker:6379
       TZ: Europe/Paris
+      PAPERLESS_TIMEZONE: Europe/Paris
       DOCKER_MODS: linuxserver/mods:papermerge-multilangocr
       OCRLANG: fra,eng
+      PAPERLESS_CONSUMPTION_DIR: /data/consume
+      PAPERLESS_CONSUMER_POLLING: 20
       PAPERLESS_CONSUMER_RECURSIVE: 1
       PAPERLESS_CONSUMER_SUBDIRS_AS_TAGS: 1
       PAPERLESS_URL: "https://docs.thenairn.com"
+      PAPERLESS_DATA_DIR: "/config"
+      PAPERLESS_MEDIA_ROOT: "/data/media"
     volumes:
       - ${CONFIG_DIR}/paperless:/config
       - ${SCANS_DIR}:/data/consume

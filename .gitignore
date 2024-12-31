@@ -5,3 +5,5 @@ nohup.out
 ./gallery/*
 ./vpn_config/*
 ./vpn_config
+gallery
+plex-meta-manager

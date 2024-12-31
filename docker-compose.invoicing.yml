@@ -5,6 +5,7 @@ services:
     container_name: invoiceninja
     environment:
       - QUEUE_CONNECTION=database
+      - TRUSTED_PROXIES=10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
       - APP_URL="https://invoice.thenairn.com"
       - APP_KEY=${INVOICENINJA_APP_KEY}
       - APP_CIPHER=AES-256-CBC
@@ -31,6 +32,7 @@ services:
     restart: always
     volumes:
       - ./hosts:/etc/hosts:ro
+      - ${CONFIG_DIR}/invoiceninja/public:/var/www/app/public:rw,delegated
       - ${CONFIG_DIR}/invoiceninja/storage:/var/www/app/storage:rw,delegated
     depends_on:
       - invoiceninjadb
