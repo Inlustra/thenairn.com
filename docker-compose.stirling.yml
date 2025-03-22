@@ -2,7 +2,7 @@ version: "2.4"
 services:
   stirlingpdf:
     container_name: stirlingpdf
-    image: frooodle/s-pdf:latest
+    image: docker.stirlingpdf.com/stirlingtools/stirling-pdf:latest
     volumes:
       - ${CONFIG_DIR}/stirlingpdf/data:/usr/share/tessdata:rw
       - ${CONFIG_DIR}/stirlingpdf/config:/configs:rw

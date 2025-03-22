@@ -19,13 +19,16 @@ services:
       - 10300:10300
     restart: unless-stopped
   piper:
-    image: lscr.io/linuxserver/piper:latest
+    runtime: nvidia
+    image: lscr.io/linuxserver/piper:gpu
     container_name: piper
     environment:
       - PUID=1000
       - PGID=1000
       - TZ=Etc/UTC
-      - PIPER_VOICE=en_GB-northern_english_male-medium
+      - NVIDIA_VISIBLE_DEVICES=GPU-c1d14a88-b2fa-5786-e47d-64af7a34ea34
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - PIPER_VOICE=en_GB-jenny_dioco-medium
       - PIPER_LENGTH=1.0 #optional
       - PIPER_NOISE=0.667 #optional
       - PIPER_NOISEW=0.333 #optional

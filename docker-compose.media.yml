@@ -96,8 +96,7 @@ services:
     container_name: animesonarr
     labels:
       com.centurylinklabs.watchtower.enable: "true"
-      plugsy.name: "Anime"
-      plugsy.parents: "Sonarr"
+      plugsy.name: "Anime Sonarr"
       plugsy.icon: "@styled-icons/feather/Tv"
       plugsy.link: https://animesonarr.thenairn.com
     image: linuxserver/sonarr:develop
@@ -144,8 +143,7 @@ services:
     container_name: animeradarr
     labels:
       com.centurylinklabs.watchtower.enable: "true"
-      plugsy.name: "Anime"
-      plugsy.parents: "Radarr"
+      plugsy.name: "Anime Radarr"
       plugsy.category: "Media"
       plugsy.icon: "@styled-icons/feather/Film"
       plugsy.link: https://animeradarr.thenairn.com
@@ -213,7 +211,7 @@ services:
     restart: unless-stopped
 
   recyclarr:
-    image: ghcr.io/recyclarr/recyclarr
+    image: ghcr.io/recyclarr/recyclarr:latest
     container_name: recyclarr
     user: 0:0
     volumes:

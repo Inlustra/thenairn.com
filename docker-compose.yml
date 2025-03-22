@@ -58,7 +58,6 @@ services:
     build:
       context: ./caddy
     links:
-      - bitwarden
       - sonarr
       - radarr
       - plex
@@ -93,33 +92,6 @@ services:
     environment:
       WATCHTOWER_NOTIFICATIONS: slack
       WATCHTOWER_NOTIFICATION_SLACK_HOOK_URL: ${WATCHTOWER_NOTIFICATION_SLACK_HOOK_URL}
-
-  bitwarden:
-    image: vaultwarden/server:latest
-    container_name: bitwarden
-    labels: 
-      plugsy.name: 'BitWarden'
-      plugsy.category: 'Home'
-      plugsy.icon: '@styled-icons/simple-icons/Bitwarden'
-      plugsy.link: https://vault.thenairn.com
-    environment:
-      - WEBSOCKET_ENABLED=true  # Enable WebSocket notifications.
-      - ADMIN_TOKEN=${BITWARDEN_ADMIN_TOKEN}
-      - DOMAIN=${BITWARDEN_DOMAIN}
-      
-      - SMTP_HOST=${MAIL_HOST}
-      - SMTP_FROM=vault@thenairn.com
-      - SMTP_PORT=${MAIL_PORT}
-      - SMTP_SSL=false
-      - SMTP_USERNAME=${MAIL_USERNAME}
-      - SMTP_EXPLICIT_TLS=true
-      - SMTP_PASSWORD=${MAIL_PASSWORD}
-      - SMTP_AUTH_MECHANISM="Login"
-
-      - SIGNUPS_ALLOWED=false
-      - SIGNUPS_VERIFY=false
-    volumes:
-      - ${CONFIG_DIR}/bw-data/:/data/
 
   paperless-broker:
     image: docker.io/library/redis:7

@@ -3,6 +3,12 @@ services:
   go2rtc:
     container_name: go2rtc
     image: alexxit/go2rtc:latest
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+      plugsy.name: "Cameras"
+      plugsy.category: "Home"
+      plugsy.icon: "@styled-icons/feather/Camera"
+      plugsy.link: https://cameras.thenairn.com
     ports:
       - 1984:1984
       - "8554:8554"

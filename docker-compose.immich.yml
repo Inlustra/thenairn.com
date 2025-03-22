@@ -28,32 +28,24 @@ services:
 
   immich-redis:
     container_name: immich_redis
-    image: docker.io/redis:6.2-alpine@sha256:2ba50e1ac3a0ea17b736ce9db2b0a9f6f8b85d4c27d5f5accc6a416d8f42c6d5    
+    image: docker.io/redis:6.2-alpine@sha256:148bb5411c184abd288d9aaed139c98123eeb8824c5d3fce03cf721db58066d8
     healthcheck:
       test: redis-cli ping || exit 1
     restart: always
 
   immich-database:
     container_name: immich_postgres
-    image: docker.io/tensorchord/pgvecto-rs:pg14-v0.2.0@sha256:90724186f0a3517cf6914295b5ab410db9ce23190a2d9d0b9dd6463e3fa298f0
+    image: docker.io/tensorchord/pgvecto-rs:pg14-v0.2.0@sha256:739cdd626151ff1f796dc95a6591b55a714f341c737e27f045019ceabf8e8c52
     env_file:
       - immich/.env
     volumes:
       - ${PERSONAL_MEDIA_DIR}/immich/pgdata:/var/lib/postgresql/data
-    command:
-      [
-        'postgres',
-        '-c',
-        'shared_preload_libraries=vectors.so',
-        '-c',
-        'search_path="$$user", public, vectors',
-        '-c',
-        'logging_collector=on',
-        '-c',
-        'max_wal_size=2GB',
-        '-c',
-        'shared_buffers=512MB',
-        '-c',
-        'wal_compression=on',
-      ]
+    command: >-
+      postgres
+      -c shared_preload_libraries=vectors.so
+      -c 'search_path="$$user", public, vectors'
+      -c logging_collector=on
+      -c max_wal_size=2GB
+      -c shared_buffers=512MB
+      -c wal_compression=on
     restart: always
