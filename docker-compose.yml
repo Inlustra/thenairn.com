@@ -87,18 +87,9 @@ services:
     environment:
       - WUD_TRIGGER_SLACK_SLACK_TOKEN=${WUD_SLACK_TOKEN}
       - WUD_TRIGGER_SLACK_SLACK_CHANNEL=${WUD_SLACK_CHANNEL}
+      - WUD_REGISTRY_LSCR_PUBLIC_USERNAME=Inlustra
+      - WUD_REGISTRY_LSCR_PUBLIC_TOKEN=${WUD_GITHUB_TOKEN}
       - TZ=Europe/Paris
-
-  watchtower:
-    container_name: watchtower
-    image: v2tec/watchtower
-    restart: unless-stopped
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    command: --interval 10800 --label-enable --cleanup
-    environment:
-      WATCHTOWER_NOTIFICATIONS: slack
-      WATCHTOWER_NOTIFICATION_SLACK_HOOK_URL: ${WATCHTOWER_NOTIFICATION_SLACK_HOOK_URL}
 
   paperless-broker:
     image: docker.io/library/redis:7
@@ -140,8 +131,6 @@ services:
     container_name: plugsy
     image: plugsy/core:latest
     restart: unless-stopped
-    labels:
-      com.centurylinklabs.watchtower.enable: "true"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./autodash.json:/config.json
