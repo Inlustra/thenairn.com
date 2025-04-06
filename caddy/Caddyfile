@@ -438,6 +438,19 @@ cameras.thenairn.com {
     }
 }
 
+docker.thenairn.com {
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle @internal {
+        reverse_proxy whatsupdocker:3000
+    }
+    handle {
+        import admin
+        reverse_proxy whatsupdocker:3000
+    }   
+}
+
 maintainerr.thenairn.com {
     @internal {
         remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8

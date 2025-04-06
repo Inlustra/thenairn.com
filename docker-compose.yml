@@ -3,7 +3,6 @@ services:
   vscode:
     container_name: vscode
     labels:
-      com.centurylinklabs.watchtower.enable: "false"
       plugsy.name: 'VSCode'
       plugsy.category: 'Code'
       plugsy.icon: '@styled-icons/simple-icons/Visualstudiocode'
@@ -41,8 +40,6 @@ services:
 
   caddy:
     container_name: caddy
-    labels:
-      com.centurylinklabs.watchtower.enable: "false"
     environment:
       - PORKBUN_API_KEY=${PORKBUN_API_KEY}
       - PORKBUN_SECRET_KEY=${PORKBUN_SECRET_KEY}
@@ -81,6 +78,16 @@ services:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile
       - ./Playground:/Playground
     restart: unless-stopped
+
+  whatsupdocker:
+    image: getwud/wud
+    container_name: wud
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - WUD_TRIGGER_SLACK_SLACK_TOKEN=${WUD_SLACK_TOKEN}
+      - WUD_TRIGGER_SLACK_SLACK_CHANNEL=${WUD_SLACK_CHANNEL}
+      - TZ=Europe/Paris
 
   watchtower:
     container_name: watchtower

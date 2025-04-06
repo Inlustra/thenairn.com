@@ -4,7 +4,6 @@ services:
     runtime: nvidia
     container_name: plex
     labels:
-      com.centurylinklabs.watchtower.enable: "true"
       plugsy.name: "Plex"
       plugsy.category: "Media"
       plugsy.icon: "@styled-icons/simple-icons/Plex"
@@ -71,7 +70,6 @@ services:
   sonarr:
     container_name: sonarr
     labels:
-      com.centurylinklabs.watchtower.enable: "true"
       plugsy.name: "Sonarr"
       plugsy.category: "Media"
       plugsy.icon: "@styled-icons/feather/Tv"
@@ -95,7 +93,6 @@ services:
   animesonarr:
     container_name: animesonarr
     labels:
-      com.centurylinklabs.watchtower.enable: "true"
       plugsy.name: "Anime Sonarr"
       plugsy.icon: "@styled-icons/feather/Tv"
       plugsy.link: https://animesonarr.thenairn.com
@@ -118,7 +115,6 @@ services:
   radarr:
     container_name: radarr
     labels:
-      com.centurylinklabs.watchtower.enable: "true"
       plugsy.name: "Radarr"
       plugsy.category: "Media"
       plugsy.icon: "@styled-icons/feather/Film"
@@ -142,7 +138,6 @@ services:
   animeradarr:
     container_name: animeradarr
     labels:
-      com.centurylinklabs.watchtower.enable: "true"
       plugsy.name: "Anime Radarr"
       plugsy.category: "Media"
       plugsy.icon: "@styled-icons/feather/Film"
@@ -183,7 +178,6 @@ services:
       PUID: 0
       PGID: 0
       TZ: Europe/London
-      com.centurylinklabs.watchtower.enable: "false"
     labels:
       plugsy.name: "Prowlarr"
       plugsy.category: "Media"
