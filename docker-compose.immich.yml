@@ -1,4 +1,3 @@
-version: "2.4"
 services:
   immich-server:
     container_name: immich_server
@@ -7,7 +6,7 @@ services:
       - ${PERSONAL_MEDIA_DIR}/immich/upload:/usr/src/app/upload
       - /etc/localtime:/etc/localtime:ro
     env_file:
-      - immich/.env
+      - .env.immich
     depends_on:
       - immich-redis
       - immich-database
@@ -21,7 +20,7 @@ services:
     volumes:
       - ${PERSONAL_MEDIA_DIR}/immich/ml:/cache
     env_file:
-      - immich/.env
+      - .env.immich
     restart: always
     healthcheck:
       disable: false
@@ -37,7 +36,7 @@ services:
     container_name: immich_postgres
     image: docker.io/tensorchord/pgvecto-rs:pg14-v0.2.0@sha256:739cdd626151ff1f796dc95a6591b55a714f341c737e27f045019ceabf8e8c52
     env_file:
-      - immich/.env
+      - .env.immich
     volumes:
       - ${PERSONAL_MEDIA_DIR}/immich/pgdata:/var/lib/postgresql/data
     command: >-

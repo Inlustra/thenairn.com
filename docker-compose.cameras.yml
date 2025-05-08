@@ -1,4 +1,3 @@
-version: "2.4"
 services:
   go2rtc:
     container_name: go2rtc
