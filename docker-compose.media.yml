@@ -264,6 +264,26 @@ services:
       - PUID=0
       - PGID=0
       - TZ=Europe/Paris
+      - YTDL_OPTIONS={"cookiefile":"/cookies/cookies.txt"}
     volumes:
       - ${DOWNLOADS_DIR}/metube:/downloads
+      - ${CONFIG_DIR}/metube/cookies:/cookies
+    restart: unless-stopped
+
+  filebrowser:
+    image: filebrowser/filebrowser:s6
+    container_name: filebrowser
+    labels:
+      plugsy.name: "File Browser"
+      plugsy.category: "Media"
+      plugsy.icon: "@styled-icons/feather/Folder"
+      plugsy.link: https://files.thenairn.com
+    environment:
+      - PUID=0
+      - PGID=0
+      - TZ=Europe/Paris
+    volumes:
+      - ${CONFIG_DIR}/metube/cookies:/srv/cookies:rw
+      - ${CONFIG_DIR}/filebrowser:/config
+      - ${CONFIG_DIR}/filebrowser/database:/database
     restart: unless-stopped

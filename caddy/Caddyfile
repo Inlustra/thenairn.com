@@ -527,3 +527,16 @@ metube.thenairn.com {
         reverse_proxy metube:8081
     }
 }
+
+files.thenairn.com {
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle @internal {
+        reverse_proxy filebrowser:80
+    }
+    handle {
+        import admin
+        reverse_proxy filebrowser:80
+    }
+}
