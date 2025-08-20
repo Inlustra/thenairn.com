@@ -1,6 +1,6 @@
 services:
   invoiceninja:
-    image: invoiceninja/invoiceninja:5.11.73
+    image: invoiceninja/invoiceninja:5.12.0
     container_name: invoiceninja
     environment:
       - QUEUE_CONNECTION=database
@@ -41,7 +41,7 @@ services:
   invoiceninjadb:
     restart: always
     container_name: invoiceninjadb
-    image: bitnami/mysql:sha256-ffe290f7e031112bd20690b04234db753cbe71adf25705764bdb51de5cef6fd7
+    image: bitnami/mysql:8.0.20
     environment: 
       - MYSQL_ROOT_PASSWORD=ninja
       - MYSQL_USER=ninja

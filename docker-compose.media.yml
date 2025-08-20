@@ -227,7 +227,7 @@ services:
     environment:
       - PUID=1000
       - PGID=1000
-      - TZ=EuropeParis
+      - TZ=Europe/Paris
       - PMM_CONFIG=/config/config.yml #optional
       - PMM_TIME=03:00 #optional
       - PMM_RUN=TRUE #optional
@@ -236,3 +236,17 @@ services:
     volumes:
       - ${CONFIG_DIR}/plex-meta-manager:/config
     restart: unless-stopped
+
+  suwayomi:
+    image: ghcr.io/suwayomi/suwayomi-server:preview
+    container_name: suwayomi
+    user: "1000:1000"
+    volumes: # The order matters! Make sure the downloads is first in the volume list or it will not work!
+      - ${MEDIA_DIR}/Manga:/home/suwayomi/.local/share/Tachidesk
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - UID=1000
+      - GID=1000
+      - TZ=Europe/Paris

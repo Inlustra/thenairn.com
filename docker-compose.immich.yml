@@ -27,24 +27,90 @@ services:
 
   immich-redis:
     container_name: immich_redis
-    image: docker.io/redis:6.2-alpine@sha256:148bb5411c184abd288d9aaed139c98123eeb8824c5d3fce03cf721db58066d8
+    image: docker.io/valkey/valkey:8-bookworm@sha256:ff21bc0f8194dc9c105b769aeabf9585fea6a8ed649c0781caeac5cb3c247884
     healthcheck:
       test: redis-cli ping || exit 1
     restart: always
 
   immich-database:
     container_name: immich_postgres
-    image: docker.io/tensorchord/pgvecto-rs:pg14-v0.2.0@sha256:739cdd626151ff1f796dc95a6591b55a714f341c737e27f045019ceabf8e8c52
+    image: ghcr.io/immich-app/postgres:14-vectorchord0.3.0-pgvectors0.2.0@sha256:fa4f6e0971f454cd95fec5a9aaed2ed93d8f46725cc6bc61e0698e97dba96da1
     env_file:
       - .env.immich
+    environment:
+      DB_STORAGE_TYPE: "HDD"
+      POSTGRES_INITDB_ARGS: '--data-checksums'
     volumes:
       - ${PERSONAL_MEDIA_DIR}/immich/pgdata:/var/lib/postgresql/data
     command: >-
       postgres
-      -c shared_preload_libraries=vectors.so
+      -c shared_preload_libraries='vectors.so,vchord.so'
       -c 'search_path="$$user", public, vectors'
       -c logging_collector=on
       -c max_wal_size=2GB
       -c shared_buffers=512MB
       -c wal_compression=on
     restart: always
+
+  immich-kiosk:
+    image: ghcr.io/damongolding/immich-kiosk:latest
+    container_name: immich-kiosk
+    tty: true
+    environment:
+      LANG: "en_GB"
+      TZ: "Europe/Paris"
+    volumes:
+      - ./immich-kiosk/config.yaml:/config/config.yaml
+      - ${CONFIG_DIR}/immich-kiosk/config:/config
+      # - ./custom.css:/custom.css
+      # - ./offline-assets:/offline-assets
+    restart: always
+
+  immichframe:
+    container_name: immichframe
+    image: ghcr.io/immichframe/immichframe:latest
+    restart: on-failure
+    environment:
+      TZ: "Europe/Paris"
+      ImmichServerUrl: "http://immich_server:2283"
+      ApiKey: "UnXSKdtBhf8MvaFMjNHVqE5zdOqhANmnZiOrvX1hlI"
+      # AuthenticationSecret: ""
+      # Interval: "10"
+      # TransitionDuration: "2"   
+      # ImageZoom: "true"
+      # ImagePan: "false"
+      # ImageFill: "false"
+      # Layout: "splitview"         
+      # DownloadImages: "false"
+      ShowMemories: "true"
+      ShowFavorites: "true"
+      # ShowArchived: "false"
+      # ImagesFromDays: ""
+      # ImagesFromDate: ""
+      # ImagesUntilDate: ""
+      # RenewImagesDuration: "30"
+      # Rating: "5"
+      # Albums: "ALBUM1,ALBUM2"
+      # ExcludedAlbums: "ALBUM3,ALBUM4"
+      # People: "PERSON1,PERSON2"
+      # Webcalendars: "https://calendar.mycalendar.com/basic.ics,webcal://calendar.mycalendar.com/basic.ics"
+      # RefreshAlbumPeopleInterval: "12"
+      # ShowClock: "true"
+      # ClockFormat: "hh:mm"
+      # ShowPhotoDate: "true"
+      # PhotoDateFormat: "yyyy-MM-dd"
+      # ShowImageDesc: "true"
+      # ShowPeopleDesc: "true"
+      # ShowAlbumName: "true"
+      # ShowImageLocation: "true"
+      # ImageLocationFormat: "City,State,Country"
+      # PrimaryColor: "#F5DEB3"
+      # SecondaryColor: "#000000"
+      # Style: "none"
+      # BaseFontSize: "17px"
+      # WeatherApiKey: ""
+      # ShowWeatherDescription: "true"
+      # UnitSystem: "imperial"
+      # WeatherLatLong: ""
+      # Language: "en"      
+      # Webhook: ""

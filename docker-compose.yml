@@ -77,56 +77,6 @@ services:
       - ./Playground:/Playground
     restart: unless-stopped
 
-  whatsupdocker:
-    image: getwud/wud
-    container_name: wud
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - ./:/context
-
-    environment:
-      - WUD_TRIGGER_SLACK_SLACK_TOKEN=${WUD_SLACK_TOKEN}
-      - WUD_TRIGGER_SLACK_SLACK_CHANNEL=${WUD_SLACK_CHANNEL}
-
-      - WUD_REGISTRY_LSCR_PUBLIC_USERNAME=Inlustra
-      - WUD_REGISTRY_LSCR_PUBLIC_TOKEN=${WUD_GITHUB_TOKEN}
-
-      # Docker Compose update triggers
-      - WUD_TRIGGER_DOCKERCOMPOSE_MEDIA_FILE=/context/docker-compose.media.yml
-      - WUD_TRIGGER_DOCKERCOMPOSE_MEDIA_BACKUP=true
-      - WUD_TRIGGER_DOCKERCOMPOSE_MEDIA_PRUNE=true
-      
-      - WUD_TRIGGER_DOCKERCOMPOSE_CAMERAS_FILE=/context/docker-compose.cameras.yml
-      - WUD_TRIGGER_DOCKERCOMPOSE_CAMERAS_BACKUP=true
-      - WUD_TRIGGER_DOCKERCOMPOSE_CAMERAS_PRUNE=true
-      
-      - WUD_TRIGGER_DOCKERCOMPOSE_IMMICH_FILE=/context/docker-compose.immich.yml
-      - WUD_TRIGGER_DOCKERCOMPOSE_IMMICH_BACKUP=true
-      - WUD_TRIGGER_DOCKERCOMPOSE_IMMICH_PRUNE=true
-      
-      - WUD_TRIGGER_DOCKERCOMPOSE_STIRLING_FILE=/context/docker-compose.stirling.yml
-      - WUD_TRIGGER_DOCKERCOMPOSE_STIRLING_BACKUP=true
-      - WUD_TRIGGER_DOCKERCOMPOSE_STIRLING_PRUNE=true
-      
-      - WUD_TRIGGER_DOCKERCOMPOSE_ASSISTANT_FILE=/context/docker-compose.assistant.yml
-      - WUD_TRIGGER_DOCKERCOMPOSE_ASSISTANT_BACKUP=true
-      - WUD_TRIGGER_DOCKERCOMPOSE_ASSISTANT_PRUNE=true
-      
-      - WUD_TRIGGER_DOCKERCOMPOSE_INVOICING_FILE=/context/docker-compose.invoicing.yml
-      - WUD_TRIGGER_DOCKERCOMPOSE_INVOICING_BACKUP=true
-      - WUD_TRIGGER_DOCKERCOMPOSE_INVOICING_PRUNE=true
-      
-      - WUD_TRIGGER_DOCKERCOMPOSE_SYNCTHING_FILE=/context/docker-compose.syncthing.yml
-      - WUD_TRIGGER_DOCKERCOMPOSE_SYNCTHING_BACKUP=true
-      - WUD_TRIGGER_DOCKERCOMPOSE_SYNCTHING_PRUNE=true
-
-      - WUD_TRIGGER_MQTT_MOSQUITTO_URL="mqtt://192.168.96.15:1883"
-      - WUD_TRIGGER_MQTT_MOSQUITTO_HASS_ENABLED=true
-      - WUD_TRIGGER_MQTT_MOSQUITTO_HASS_DISCOVERY=true
-      - WUD_TRIGGER_MQTT_MOSQUITTO_USER=${WUD_HASS_MQTT_USER}
-      - WUD_TRIGGER_MQTT_MOSQUITTO_PASSWORD=${WUD_HASS_MQTT_PASSWORD}
-      - TZ=Europe/Paris
-
   paperless-broker:
     image: docker.io/library/redis:7
     restart: unless-stopped
@@ -183,7 +133,7 @@ services:
 
   weddingphotos:
     container_name: weddingphotos
-    image: inlustra/the-photo-gallery:0.0.4
+    image: inlustra/the-photo-gallery:0.0.3
     #To build from source, comment previous line and uncomment next line
     volumes:
       - /mnt/user/PersonalMedia/Wedding/original:/app/public/photos

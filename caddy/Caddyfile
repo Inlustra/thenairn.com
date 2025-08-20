@@ -425,6 +425,19 @@ immich.thenairn.com {
     }
 }
 
+frame.thenairn.com {
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle @internal {
+        reverse_proxy immich-kiosk:3000
+    }
+    handle {
+        import family
+        reverse_proxy immich-kiosk:3000
+    }
+}
+
 cameras.thenairn.com {
     @internal {
         remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
@@ -487,4 +500,17 @@ pikvm.thenairn.com {
 
 pdf.thenairn.com {
     reverse_proxy stirlingpdf:8080
+}
+
+manga.thenairn.com {
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle {
+        import admin
+        reverse_proxy suwayomi:4567 
+    }
+    handle @internal {
+        reverse_proxy suwayomi:4567
+    }
 }
