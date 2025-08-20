@@ -93,6 +93,7 @@ services:
     container_name: animesonarr
     labels:
       plugsy.name: "Anime Sonarr"
+      plugsy.category: "Media"
       plugsy.icon: "@styled-icons/feather/Tv"
       plugsy.link: https://animesonarr.thenairn.com
     image: linuxserver/sonarr:develop
