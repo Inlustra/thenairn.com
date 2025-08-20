@@ -451,6 +451,19 @@ cameras.thenairn.com {
     }
 }
 
+multicams.thenairn.com {
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle @internal {
+        reverse_proxy frame-cams:3000
+    }
+    handle {
+        import family
+        reverse_proxy frame-cams:3000
+    }
+}
+
 docker.thenairn.com {
     @internal {
         remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8

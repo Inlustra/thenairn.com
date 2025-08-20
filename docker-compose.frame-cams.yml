@@ -1,0 +1,44 @@
+version: "2.4"
+
+services:
+  frame-cams:
+    container_name: frame-cams
+    # Use specific tag for stability
+    image: frame-cams:1.0.0
+    build:
+      context: ./frame-cams
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    volumes:
+      - ${CONFIG_DIR}/frame-cams:/config
+    environment:
+      - TZ=Europe/Paris
+      - PORT=3000
+      - LINKS_BASE=${CAMERAS_BASE_URL:-https://cameras.thenairn.com}
+      - PUID=1000 # standard user
+      - PGID=1000 # standard user
+    depends_on:
+      - go2rtc
+    links:
+      - go2rtc
+    labels:
+      plugsy.name: "Frame Cams"
+      plugsy.category: "Home"
+      plugsy.icon: "@styled-icons/feather/Grid"
+      plugsy.link: ${FRAME_CAMS_URL:-https://frame-cams.thenairn.com}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Reference to the go2rtc service from docker-compose.cameras.yml
+  go2rtc:
+    extends:
+      file: docker-compose.cameras.yml
+      service: go2rtc
