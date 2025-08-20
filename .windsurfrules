@@ -1,0 +1,85 @@
+# Docker-Compose Guidelines for thenairn.com 
+
+## Basic Structure Rules
+1. **Version Consistency**: Always use `version: "2.4"` at the top of each docker-compose file.
+2. **Service Organization**: Organize services into purpose-specific compose files (e.g., media.yml, assistant.yml).
+3. **File Naming**: Name files as `docker-compose.<purpose>.yml` to clearly indicate service category.
+
+## Service Configuration Standards
+1. **Container Naming**: Always define explicit container names using `container_name: <service-name>`.
+2. **Image Definition**:
+   - Use specific tags for stability (e.g., `image:1.2.3` rather than `image:latest`) in production services.
+   - Use official images when possible, fall back to trusted maintainers (linuxserver, ghcr.io).
+   - Include image source comments when using specialized or custom images.
+
+3. **Restart Policies**: 
+   - Use `restart: unless-stopped` for most services.
+   - Use `restart: always` only when the service must never be down (critical infrastructure).
+   - Use `restart: on-failure:<n>` for services that may fail but should retry a limited number of times.
+
+## Volume Management
+1. **Configuration Pattern**: Store service configurations at `${CONFIG_DIR}/<service-name>:/config`.
+2. **Media Organization**: Separate media by type with clearly named volume mounts.
+3. **Security**: Use read-only flags (`:ro`) for sensitive host volumes that don't need write access.
+4. **Persistence**: Ensure all important data has persistent storage outside of container.
+
+## Environment Variable Standards
+1. **Variable Interpolation**: Use `${VARIABLE_NAME}` syntax for all environment variables.
+2. **Sensitive Data**: Never hardcode sensitive information; always use environment variables.
+3. **Permission Management**: Set appropriate PUID/PGID values (0 for root, 1000 for standard user).
+4. **Timezonse**: Always specify timezone using `TZ=Europe/Paris` format.
+5. **Commenting**: Add comments (`#optional`) for optional environment variables.
+
+## Networking Guidelines
+1. **Port Exposure**: Only expose necessary ports using `host:container` format.
+2. **Protocol Specification**: Always specify protocol for non-HTTP ports (`port:port/tcp`, `port:port/udp`).
+3. **Service Dependencies**: Use both `depends_on` and `links` when services need to communicate.
+4. **Network Modes**: Use dedicated network modes only when required (e.g., VPN containers).
+
+## UI Integration Guidelines
+1. **Plugsy Labels**: For services with web UIs, include standard plugsy labels:
+   ```yaml
+   labels:
+     plugsy.name: "Service Name"
+     plugsy.category: "Category" # Use consistent categories: Media, Home, Code, etc.
+     plugsy.icon: "@styled-icons/[collection]/[Icon]"
+     plugsy.link: https://service.thenairn.com
+   ```
+
+## Hardware Acceleration (where applicable)
+1. **GPU Configuration**: For GPU-accelerated services:
+   ```yaml
+   runtime: nvidia
+   environment:
+     - NVIDIA_VISIBLE_DEVICES=GPU-xxxx
+     - NVIDIA_DRIVER_CAPABILITIES=all
+   ```
+
+## Documentation Standards
+1. **Comments**: Include descriptive comments for complex configuration options.
+2. **URL Patterns**: Document the expected URLs for web services.
+3. **Dependencies**: Document inter-service dependencies through both code and comments.
+
+## Maintenance and Management
+1. **Resource Management**: Include resource limits for memory-intensive containers.
+2. **Health Checks**: Implement health checks for critical services:
+   ```yaml
+   healthcheck:
+     test: command || exit 1
+     interval: 30s
+     timeout: 10s
+     retries: 3
+   ```
+3. **Logging**: Configure appropriate logging limits:
+   ```yaml
+   logging:
+     driver: "json-file"
+     options:
+       max-size: "10m"
+       max-file: "3"
+   ```
+
+## Security Guidelines
+1. **Network Isolation**: Avoid unnecessary links between services.
+2. **Principle of Least Privilege**: Grant only necessary capabilities and access.
+3. **Environment Separation**: Use different environment variables for development vs. production.

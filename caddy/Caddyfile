@@ -514,3 +514,16 @@ manga.thenairn.com {
         reverse_proxy suwayomi:4567
     }
 }
+
+metube.thenairn.com {
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle @internal {
+        reverse_proxy metube:8081
+    }
+    handle {
+        import family
+        reverse_proxy metube:8081
+    }
+}

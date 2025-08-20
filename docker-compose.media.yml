@@ -250,3 +250,19 @@ services:
       - UID=1000
       - GID=1000
       - TZ=Europe/Paris
+
+  metube:
+    image: ghcr.io/alexta69/metube
+    container_name: metube
+    labels:
+      plugsy.name: "MeTube"
+      plugsy.category: "Media"
+      plugsy.icon: "@styled-icons/feather/Download"
+      plugsy.link: https://metube.thenairn.com
+    environment:
+      - PUID=0
+      - PGID=0
+      - TZ=Europe/Paris
+    volumes:
+      - ${DOWNLOADS_DIR}/metube:/downloads
+    restart: unless-stopped
