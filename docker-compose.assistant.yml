@@ -3,6 +3,10 @@ services:
     runtime: nvidia
     image: lscr.io/linuxserver/faster-whisper:gpu
     container_name: faster-whisper
+    labels:
+      plugsy.name: "Speech-to-Text"
+      plugsy.parents: "Assistant"
+      plugsy.icon: "@styled-icons/feather/Mic"
     environment:
       - PUID=1000
       - PGID=1000
@@ -21,6 +25,10 @@ services:
     runtime: nvidia
     image: lscr.io/linuxserver/piper:gpu
     container_name: piper
+    labels:
+      plugsy.name: "Text-to-Speech"
+      plugsy.parents: "Assistant"
+      plugsy.icon: "@styled-icons/feather/Volume2"
     environment:
       - PUID=1000
       - PGID=1000
@@ -40,6 +48,10 @@ services:
     restart: unless-stopped
   wyoming-openwakeword:
     container_name: openwakeword
+    labels:
+      plugsy.name: "Assistant"
+      plugsy.category: "Home"
+      plugsy.icon: "@styled-icons/feather/MessageCircle"
     ports:
       - '10400:10400'
     volumes:

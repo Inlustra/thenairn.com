@@ -27,6 +27,10 @@ services:
   port-permission-module:
     container_name: port-permission-module
     image: port-permission-module
+    labels:
+      plugsy.name: "Port Permission"
+      plugsy.parents: "Caddy"
+      plugsy.icon: "@styled-icons/feather/Shield"
     build:
       context: ./caddy/port-permission-module
       dockerfile: Dockerfile
@@ -38,6 +42,10 @@ services:
 
   caddy:
     container_name: caddy
+    labels:
+      plugsy.name: "Caddy"
+      plugsy.category: "Infrastructure"
+      plugsy.icon: "@styled-icons/feather/Globe"
     environment:
       - PORKBUN_API_KEY=${PORKBUN_API_KEY}
       - PORKBUN_SECRET_KEY=${PORKBUN_SECRET_KEY}
@@ -79,6 +87,10 @@ services:
 
   paperless-broker:
     image: docker.io/library/redis:7
+    labels:
+      plugsy.name: "Redis Cache"
+      plugsy.parents: "Paperless"
+      plugsy.icon: "@styled-icons/feather/Database"
     restart: unless-stopped
     volumes:
       - ${CONFIG_DIR}/paperless-redis:/data
@@ -116,6 +128,11 @@ services:
   plugsy:
     container_name: plugsy
     image: plugsy/core:latest
+    labels:
+      plugsy.name: "Dashboard"
+      plugsy.category: "Infrastructure"
+      plugsy.icon: "@styled-icons/feather/Grid"
+      plugsy.link: https://dashboard.thenairn.com
     restart: unless-stopped
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
@@ -124,6 +141,11 @@ services:
   rclone: 
     container_name: rclone
     image: rclone/rclone:latest
+    labels:
+      plugsy.name: "Rclone"
+      plugsy.category: "Infrastructure"
+      plugsy.icon: "@styled-icons/feather/Cloud"
+      plugsy.link: https://rclone.thenairn.com
     restart: unless-stopped
     command: rcd -vvv --rc-web-gui --rc-serve --rc-user=${RCLONE_USERNAME} --rc-pass="${RCLONE_PASSWORD}" --rc-allow-origin="https://rclone.thenairn.com" --rc-web-gui-no-open-browser --rc-addr 0.0.0.0:5775
     volumes:
@@ -134,6 +156,11 @@ services:
   weddingphotos:
     container_name: weddingphotos
     image: inlustra/the-photo-gallery:0.0.3
+    labels:
+      plugsy.name: "Wedding Photos"
+      plugsy.category: "Home"
+      plugsy.icon: "@styled-icons/feather/Heart"
+      plugsy.link: https://nairn.wedding
     #To build from source, comment previous line and uncomment next line
     volumes:
       - /mnt/user/PersonalMedia/Wedding/original:/app/public/photos
@@ -149,6 +176,11 @@ services:
   gallery:
     container_name: gallery
     image: inlustra/the-photo-gallery:0.0.3
+    labels:
+      plugsy.name: "Gallery"
+      plugsy.category: "Home"
+      plugsy.icon: "@styled-icons/feather/Image"
+      plugsy.link: https://gallery.thenairn.com
     #To build from source, comment previous line and uncomment next line
     volumes:
       - /mnt/user/Internal/thenairn.com/gallery/photos:/app/public/photos

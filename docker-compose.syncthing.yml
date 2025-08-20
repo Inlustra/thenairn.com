@@ -2,6 +2,11 @@ services:
   syncthing:
     image: lscr.io/linuxserver/syncthing:latest
     container_name: syncthing
+    labels:
+      plugsy.name: "Syncthing"
+      plugsy.category: "Home"
+      plugsy.icon: "@styled-icons/feather/RefreshCw"
+      plugsy.link: https://sync.thenairn.com
     environment:
       - PUID=0
       - PGID=0

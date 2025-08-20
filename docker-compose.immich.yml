@@ -2,6 +2,11 @@ services:
   immich-server:
     container_name: immich_server
     image: ghcr.io/immich-app/immich-server:${IMMICH_VERSION:-release}
+    labels:
+      plugsy.name: "Immich"
+      plugsy.category: "Home"
+      plugsy.icon: "@styled-icons/feather/Image"
+      plugsy.link: https://immich.thenairn.com
     volumes:
       - ${PERSONAL_MEDIA_DIR}/immich/upload:/usr/src/app/upload
       - /etc/localtime:/etc/localtime:ro
@@ -17,6 +22,10 @@ services:
   immich-machine-learning:
     container_name: immich_machine_learning
     image: ghcr.io/immich-app/immich-machine-learning:${IMMICH_VERSION:-release}
+    labels:
+      plugsy.name: "ML Engine"
+      plugsy.parents: "Immich"
+      plugsy.icon: "@styled-icons/feather/Cpu"
     volumes:
       - ${PERSONAL_MEDIA_DIR}/immich/ml:/cache
     env_file:
@@ -28,6 +37,10 @@ services:
   immich-redis:
     container_name: immich_redis
     image: docker.io/valkey/valkey:8-bookworm@sha256:ff21bc0f8194dc9c105b769aeabf9585fea6a8ed649c0781caeac5cb3c247884
+    labels:
+      plugsy.name: "Redis Cache"
+      plugsy.parents: "Immich"
+      plugsy.icon: "@styled-icons/feather/Database"
     healthcheck:
       test: redis-cli ping || exit 1
     restart: always
@@ -35,6 +48,10 @@ services:
   immich-database:
     container_name: immich_postgres
     image: ghcr.io/immich-app/postgres:14-vectorchord0.3.0-pgvectors0.2.0@sha256:fa4f6e0971f454cd95fec5a9aaed2ed93d8f46725cc6bc61e0698e97dba96da1
+    labels:
+      plugsy.name: "Database"
+      plugsy.parents: "Immich"
+      plugsy.icon: "@styled-icons/feather/Database"
     env_file:
       - .env.immich
     environment:
@@ -55,6 +72,11 @@ services:
   immich-kiosk:
     image: ghcr.io/damongolding/immich-kiosk:latest
     container_name: immich-kiosk
+    labels:
+      plugsy.name: "Photo Frame"
+      plugsy.category: "Home"
+      plugsy.icon: "@styled-icons/feather/Monitor"
+      plugsy.link: https://frame.thenairn.com
     tty: true
     environment:
       LANG: "en_GB"
@@ -69,6 +91,10 @@ services:
   immichframe:
     container_name: immichframe
     image: ghcr.io/immichframe/immichframe:latest
+    labels:
+      plugsy.name: "Frame Display"
+      plugsy.parents: "Photo Frame"
+      plugsy.icon: "@styled-icons/feather/Tv"
     restart: on-failure
     environment:
       TZ: "Europe/Paris"

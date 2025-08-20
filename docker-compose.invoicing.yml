@@ -2,6 +2,11 @@ services:
   invoiceninja:
     image: invoiceninja/invoiceninja:5.12.0
     container_name: invoiceninja
+    labels:
+      plugsy.name: "Invoicing"
+      plugsy.category: "Business"
+      plugsy.icon: "@styled-icons/feather/FileText"
+      plugsy.link: https://invoice.thenairn.com
     environment:
       - QUEUE_CONNECTION=database
       - TRUSTED_PROXIES=10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
@@ -42,6 +47,10 @@ services:
     restart: always
     container_name: invoiceninjadb
     image: bitnami/mysql:8.0.20
+    labels:
+      plugsy.name: "Database"
+      plugsy.parents: "Invoicing"
+      plugsy.icon: "@styled-icons/feather/Database"
     environment: 
       - MYSQL_ROOT_PASSWORD=ninja
       - MYSQL_USER=ninja
