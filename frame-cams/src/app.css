@@ -1,3 +1,18 @@
+:root {
+  --glass-bg: rgba(28, 28, 30, 0.65);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-highlight: rgba(255, 255, 255, 0.05);
+  --glass-shadow: rgba(0, 0, 0, 0.3);
+  --text-primary: rgba(255, 255, 255, 0.9);
+  --text-secondary: rgba(255, 255, 255, 0.6);
+  --accent-color: rgb(10, 132, 255);
+  --accent-hover: rgb(64, 156, 255);
+  --surface-1: rgba(44, 44, 46, 0.8);
+  --surface-2: rgba(58, 58, 60, 0.5);
+  --error-color: rgb(255, 69, 58);
+  --backdrop-blur: 20px;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -8,8 +23,12 @@ html, body {
   height: 100%;
   width: 100%;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   overflow: hidden;
   background-color: #000;
+  background-image: linear-gradient(125deg, #1a1a1a 0%, #0a0a0a 100%);
+  color: var(--text-primary);
 }
 
 #root {
@@ -28,14 +47,19 @@ html, body {
   position: absolute;
   bottom: 8px;
   left: 8px;
-  background-color: rgba(0, 0, 0, 0.6);
-  color: white;
-  padding: 4px 8px;
-  border-radius: 4px;
+  background-color: var(--glass-bg);
+  backdrop-filter: blur(var(--backdrop-blur));
+  -webkit-backdrop-filter: blur(var(--backdrop-blur));
+  border: 1px solid var(--glass-border);
+  color: var(--text-primary);
+  padding: 6px 12px;
+  border-radius: 8px;
   font-size: 14px;
+  font-weight: 500;
   z-index: 10;
   opacity: 0.8;
-  transition: opacity 0.3s;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .stream-tile {
@@ -46,30 +70,62 @@ html, body {
   opacity: 1;
 }
 
-.controls-panel {
-  position: fixed;
+.controls-panel-container {
+  position: absolute;
   top: 10px;
-  right: 10px;
-  background-color: rgba(0, 0, 0, 0.6);
-  border-radius: 4px;
-  padding: 8px;
-  z-index: 100;
+  right: 0;
+  z-index: 1000;
   display: flex;
-  gap: 8px;
+  transition: transform 0.3s ease-in-out;
+}
+
+.controls-panel-container.hidden {
+  transform: translateX(calc(100% - 20px)); /* 20px is the width of the toggle button */
+}
+
+.controls-panel {
+  display: flex;
+  gap: 10px;
+  background-color: rgba(0, 0, 0, 0.5);
+  padding: 10px;
+  border-radius: 5px 0 0 5px;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.controls-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 60px;
+  background-color: rgba(0, 0, 0, 0.5);
+  border-radius: 5px 0 0 5px;
+  cursor: pointer;
+  color: white;
+  font-weight: bold;
+  user-select: none;
 }
 
 .control-button {
-  background-color: rgba(255, 255, 255, 0.2);
-  border: none;
-  color: white;
-  padding: 4px 8px;
-  border-radius: 4px;
+  background-color: var(--surface-2);
+  border: 1px solid var(--glass-border);
+  color: var(--text-primary);
+  padding: 6px 12px;
+  border-radius: 8px;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s ease;
 }
 
 .control-button:hover {
-  background-color: rgba(255, 255, 255, 0.3);
+  background-color: var(--surface-1);
+  transform: translateY(-1px);
+}
+
+.control-button:active {
+  transform: translateY(1px);
 }
 
 .loading {
@@ -93,10 +149,14 @@ html, body {
 }
 
 .video-state-error {
-  background-color: rgba(220, 53, 69, 0.7) !important;
+  background-color: rgba(255, 69, 58, 0.7) !important;
+  backdrop-filter: blur(var(--backdrop-blur));
+  -webkit-backdrop-filter: blur(var(--backdrop-blur));
 }
 
 .video-state-buffering,
 .video-state-stalled {
-  background-color: rgba(0, 0, 0, 0.5) !important;
+  background-color: var(--glass-bg) !important;
+  backdrop-filter: blur(var(--backdrop-blur));
+  -webkit-backdrop-filter: blur(var(--backdrop-blur));
 }

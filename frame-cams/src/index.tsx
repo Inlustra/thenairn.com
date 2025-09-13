@@ -17,12 +17,34 @@ const server = serve({
         });
       },
     },
+    "/api/streams": {
+      async GET(req) {
+        try {
+          // Fetch stream data from the LINKS_BASE
+          const response = await fetch(`${LINKS_BASE}/api/streams`);
+          
+          if (!response.ok) {
+            throw new Error(`Failed to fetch streams: ${response.status}`);
+          }
+          
+          const data = await response.json();
+          
+          // Extract just the keys from the response
+          const streamKeys = Object.keys(data);
+          
+          return Response.json(streamKeys);
+        } catch (error) {
+          console.error("Error fetching streams:", error);
+          return Response.json({ error: "Failed to fetch streams" }, { status: 500 });
+        }
+      },
+    },
     "/api/stream": {
       async GET(req) {
         const params = new URLSearchParams(req.url.split("?")[1]);
         const srcParam = params.get("src");
         return Response.redirect(
-          `https://cameras.thenairn.com/api/stream.mp4?src=${srcParam}&mp4=all`,
+          `${LINKS_BASE}/api/stream.mp4?src=${srcParam}&mp4=all`,
           302
         );
       },

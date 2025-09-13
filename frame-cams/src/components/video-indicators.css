@@ -1,0 +1,120 @@
+/* Video indicator animations and styles */
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.video-indicator {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  color: white;
+  z-index: 2;
+  border-radius: 8px;
+  max-width: 200px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-sizing: border-box;
+  transition: all 0.3s ease-in-out;
+}
+
+.position-center {
+  top: 50%;
+  right: 50%;
+  transform: translate(50%, -50%);
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.position-top-right {
+  top: 8px;
+  right: 8px;
+  transform: none;
+  align-items: flex-end;
+}
+
+.loading-spinner {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  animation: spin 1s linear infinite;
+  margin: 0 auto;
+}
+
+.reload-button {
+  padding: 0.25rem 0.5rem;
+  background: #3498db;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: background-color 0.2s ease;
+}
+
+.reload-button:hover {
+  background: #2980b9;
+}
+
+.error-message, .stalled-message {
+  margin-bottom: 0.5rem;
+  font-size: 0.8rem;
+  text-align: right;
+}
+
+.indicator-text {
+  font-size: 0.8rem;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.indicator-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  text-align: center;
+  gap: 8px;
+}
+
+.spinner-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.error-icon {
+  font-size: 1.2rem;
+  margin-right: 0.5rem;
+}
+
+.error-title {
+  font-size: 0.9rem;
+}
+
+.error-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.stalled-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
