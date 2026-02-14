@@ -6,7 +6,7 @@ services:
       plugsy.category: 'Code'
       plugsy.icon: '@styled-icons/simple-icons/Visualstudiocode'
       plugsy.link: https://code.thenairn.com
-    image: linuxserver/code-server:4.95.1
+    image: linuxserver/code-server:4.103.2
     volumes:
       - ${DOWNLOADS_DIR}:/srv/Downloads
       - ${CONFIG_DIR}/vscode:/config
@@ -71,6 +71,7 @@ services:
       - rclone
       - invoiceninja
       - port-permission-module
+      - jarvis-console
     ports:
       - "80:80/tcp"
       - "443:443/tcp"
@@ -172,6 +173,28 @@ services:
       NODE_DISABLE_BLUR_GENERATION: 'true'
       DISABLE_CACHE: 'true'
     restart: unless-stopped
+
+  jarvis-console:
+    container_name: jarvis-console
+    labels:
+      plugsy.name: "Jarvis Console"
+      plugsy.category: "Infrastructure"
+      plugsy.icon: "@styled-icons/feather/Terminal"
+      plugsy.link: https://console.thenairn.com
+    build:
+      context: ./jarvis-console
+      dockerfile: Dockerfile.dev
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./:/docker:ro
+      - /mnt/user/Internal/thenairn.com/.openclaw:/home/node/.openclaw:ro
+      - ./jarvis-console/src:/app/src
+      - ./jarvis-console/commands.json:/app/commands.json
+      - ./jarvis-console/tsconfig.json:/app/tsconfig.json
+    environment:
+      - PORT=3099
+      - NODE_ENV=development
+    restart: always
 
   gallery:
     container_name: gallery

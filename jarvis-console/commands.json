@@ -1,0 +1,191 @@
+{
+  "openclaw-restart": {
+    "name": "Restart OpenClaw Gateway",
+    "cmd": "docker restart openclaw-gateway",
+    "category": "openclaw",
+    "danger": false,
+    "icon": "🔄"
+  },
+  "openclaw-logs": {
+    "name": "OpenClaw Logs (last 100)",
+    "cmd": "docker logs --tail=100 openclaw-gateway",
+    "category": "openclaw",
+    "danger": false,
+    "icon": "📋"
+  },
+  "openclaw-status": {
+    "name": "OpenClaw Status",
+    "cmd": "docker inspect --format '{{.Name}} {{.State.Status}} Up {{.State.StartedAt}}' openclaw-gateway",
+    "category": "openclaw",
+    "danger": false,
+    "icon": "📊"
+  },
+  "caddy-restart": {
+    "name": "Restart Caddy",
+    "cmd": "docker restart caddy",
+    "category": "infrastructure",
+    "danger": false,
+    "icon": "🔄"
+  },
+  "caddy-reload": {
+    "name": "Reload Caddy Config",
+    "cmd": "docker exec caddy caddy reload --config /etc/caddy/Caddyfile",
+    "category": "infrastructure",
+    "danger": false,
+    "icon": "⚡"
+  },
+  "caddy-logs": {
+    "name": "Caddy Logs (last 50)",
+    "cmd": "docker logs --tail=50 caddy",
+    "category": "infrastructure",
+    "danger": false,
+    "icon": "📋"
+  },
+  "paperless-restart": {
+    "name": "Restart Paperless",
+    "cmd": "docker restart paperless",
+    "category": "infrastructure",
+    "danger": false,
+    "icon": "🔄"
+  },
+  "plex-restart": {
+    "name": "Restart Plex",
+    "cmd": "docker restart plex",
+    "category": "media",
+    "danger": false,
+    "icon": "🔄"
+  },
+  "plex-logs": {
+    "name": "Plex Logs (last 50)",
+    "cmd": "docker logs --tail=50 plex",
+    "category": "media",
+    "danger": false,
+    "icon": "📋"
+  },
+  "sonarr-restart": {
+    "name": "Restart Sonarr",
+    "cmd": "docker restart sonarr",
+    "category": "media",
+    "danger": false,
+    "icon": "🔄"
+  },
+  "radarr-restart": {
+    "name": "Restart Radarr",
+    "cmd": "docker restart radarr",
+    "category": "media",
+    "danger": false,
+    "icon": "🔄"
+  },
+  "transmission-restart": {
+    "name": "Restart Transmission",
+    "cmd": "docker restart transmission",
+    "category": "media",
+    "danger": false,
+    "icon": "🔄"
+  },
+  "go2rtc-restart": {
+    "name": "Restart go2rtc",
+    "cmd": "docker restart go2rtc",
+    "category": "cameras",
+    "danger": false,
+    "icon": "🔄"
+  },
+  "go2rtc-logs": {
+    "name": "go2rtc Logs (last 50)",
+    "cmd": "docker logs --tail=50 go2rtc",
+    "category": "cameras",
+    "danger": false,
+    "icon": "📋"
+  },
+  "immich-restart": {
+    "name": "Restart Immich",
+    "cmd": "docker restart immich_server",
+    "category": "photos",
+    "danger": false,
+    "icon": "🔄"
+  },
+  "immich-logs": {
+    "name": "Immich Logs (last 50)",
+    "cmd": "docker logs --tail=50 immich_server",
+    "category": "photos",
+    "danger": false,
+    "icon": "📋"
+  },
+  "docker-ps": {
+    "name": "All Running Containers",
+    "cmd": "docker ps --format \"table {{.Names}}\t{{.Status}}\" | sort",
+    "category": "system",
+    "danger": false,
+    "icon": "🐳"
+  },
+  "disk-usage": {
+    "name": "Disk Usage",
+    "cmd": "df -h | grep -E \"^/dev|Filesystem\"",
+    "category": "system",
+    "danger": false,
+    "icon": "💾"
+  },
+  "docker-stats": {
+    "name": "Container Resources",
+    "cmd": "docker stats --no-stream --format \"table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\" | sort",
+    "category": "system",
+    "danger": false,
+    "icon": "📈"
+  },
+  "docker-prune": {
+    "name": "Docker Prune (unused images)",
+    "cmd": "docker image prune -f",
+    "category": "system",
+    "danger": true,
+    "icon": "🧹"
+  },
+  "fix-infra-perms": {
+    "name": "Fix FRIDAY Workspace Permissions",
+    "cmd": "docker run --rm -v /mnt/user/appdata/openclaw/workspaces/nairn-infra:/fix alpine chown 1000:1000 /fix",
+    "category": "system",
+    "danger": true,
+    "icon": "🔧"
+  },
+  "openclaw-plugins-update": {
+    "name": "Update OpenClaw Plugins",
+    "cmd": "cd /docker && docker compose run --rm openclaw-cli plugins update --all",
+    "category": "openclaw",
+    "danger": false,
+    "icon": "🔌"
+  },
+  "openclaw-recreate": {
+    "name": "Recreate OpenClaw Gateway",
+    "cmd": "docker compose up -d --force-recreate openclaw-gateway",
+    "category": "openclaw",
+    "danger": true,
+    "icon": "♻️"
+  },
+  "openclaw-teardown": {
+    "name": "Tear Down OpenClaw",
+    "cmd": "cd /docker && docker compose down openclaw-gateway",
+    "category": "openclaw",
+    "danger": true,
+    "icon": "🔻"
+  },
+  "jarvis-console-rebuild": {
+    "name": "Rebuild Jarvis Console",
+    "cmd": "cd /docker && docker compose build jarvis-console && docker compose up -d jarvis-console",
+    "category": "system",
+    "danger": true,
+    "icon": "🔨"
+  },
+  "jarvis-console-recreate": {
+    "name": "Recreate Jarvis Console",
+    "cmd": "cd /home/node/.openclaw/workspaces/nairn-infra/docker && docker compose stop jarvis-console && docker compose rm -f jarvis-console && docker compose up -d jarvis-console",
+    "category": "system",
+    "danger": true,
+    "icon": "🤖"
+  },
+  "stack-up-all": {
+    "name": "Whole Stack Up",
+    "cmd": "ls -lash && docker compose up -d",
+    "category": "system",
+    "danger": true,
+    "icon": "🚀"
+  }
+}

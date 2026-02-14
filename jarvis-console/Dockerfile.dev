@@ -1,0 +1,26 @@
+# Dev mode: hot reload with Bun
+FROM oven/bun:1
+
+# Install docker CLI for command execution
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends docker.io ca-certificates curl && \
+    mkdir -p /usr/local/lib/docker/cli-plugins && \
+    curl -SL "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64" -o /usr/local/lib/docker/cli-plugins/docker-compose && \
+    chmod +x /usr/local/lib/docker/cli-plugins/docker-compose && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Install dependencies (will be cached unless package.json changes)
+COPY package.json bun.lock* bunfig.toml ./
+RUN bun install
+
+# Source code will be mounted from host for hot reload
+ENV NODE_ENV=development
+ENV PORT=3099
+ENV COMMANDS_PATH=/app/commands.json
+
+EXPOSE 3099
+
+# Run with hot reload
+CMD ["bun", "--hot", "src/index.ts"]

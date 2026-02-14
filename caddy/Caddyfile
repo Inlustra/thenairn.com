@@ -135,20 +135,20 @@ transmission.thenairn.com {
         remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
     }
     handle @internal {
-        reverse_proxy transmission:9091
+        reverse_proxy gluetun:9091
     }
     handle {
         import admin
-        reverse_proxy transmission:9091
+        reverse_proxy gluetun:9091
     }
 }
 
-http://transmission.thenairn.com {
+http://gluetun.thenairn.com {
     @internal {
         remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
     }
     handle @internal {
-        reverse_proxy transmission:9091
+        reverse_proxy gluetun:9091
     }
     handle {
         redir https://{host}{uri}
@@ -360,18 +360,6 @@ invoice.thenairn.com {
     file_server browse
 }
 
-3dprint.thenairn.com { 
-    @internal {
-        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
-    }
-    handle @internal {
-        reverse_proxy 192.168.120.40
-    }
-    handle {
-        import admin
-        reverse_proxy 192.168.120.40
-    }
-}
 
 rclone.thenairn.com {
     @internal {
@@ -528,6 +516,19 @@ manga.thenairn.com {
     }
 }
 
+syncmanga.thenairn.com {
+    @internal {
+        remote_ip 192.168.0.0/16
+    }
+    handle {
+        import admin
+        reverse_proxy syncyomi:8282
+    }
+    handle @internal {
+        reverse_proxy syncyomi:8282
+    }
+}
+
 metube.thenairn.com {
     @internal {
         remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
@@ -552,4 +553,34 @@ files.thenairn.com {
         import admin
         reverse_proxy filebrowser:80
     }
+}
+
+console.thenairn.com {
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle @internal {
+        reverse_proxy jarvis-console:3099
+    }
+    handle {
+        import admin
+        reverse_proxy jarvis-console:3099
+    }
+}
+
+openclaw.thenairn.com {
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle @internal {
+        reverse_proxy openclaw-gateway:18789
+    }
+    handle {
+        import admin
+        reverse_proxy openclaw-gateway:18789
+    }
+}
+
+hooks.openclaw.thenairn.com {
+    reverse_proxy openclaw-gateway:8788
 }

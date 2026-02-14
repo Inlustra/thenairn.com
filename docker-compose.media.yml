@@ -1,4 +1,33 @@
 services:
+  # VPN PROXY - All torrent traffic routes through here
+  gluetun:
+    image: qmcgaw/gluetun:latest
+    container_name: gluetun
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    environment:
+      - VPN_SERVICE_PROVIDER=mullvad
+      - VPN_TYPE=wireguard
+      - WIREGUARD_PRIVATE_KEY=${MULLVAD_WIREGUARD_PRIVATE_KEY}
+      - WIREGUARD_ADDRESSES=${MULLVAD_WIREGUARD_ADDRESSES}
+      - FIREWALL_VPN_INPUT_PORTS=51413
+      - FIREWALL_INPUT_PORTS=9091
+      - HTTPPROXY=on
+      - SERVER_CITIES=Zurich  # Change to your preferred Mullvad location
+      - TZ=Europe/Paris
+      - LOG_LEVEL=info
+    ports:
+      # Transmission ports (now exposed via gluetun)
+      - 51413:51413/tcp      # Transmission peer port
+      - 51413:51413/udp      # Transmission peer port
+      # Gluetun control/proxy ports (optional)
+      - 8888:8888/tcp        # HTTP proxy
+      - 8388:8388/tcp        # Shadowsocks
+      - 8388:8388/udp        # Shadowsocks
+    restart: unless-stopped
+
   plex:
     runtime: nvidia
     container_name: plex
@@ -15,7 +44,7 @@ services:
             max-size: "3m"
     environment:
       - TZ=Europe/Paris
-      - PLEX_CLAIM=${PLEX_CLAIM}
+      # - PLEX_CLAIM=${PLEX_CLAIM}
       - ADVERTISE_IP=${PLEX_ADVERTISE_IP}
       - NVIDIA_VISIBLE_DEVICES=GPU-c1d14a88-b2fa-5786-e47d-64af7a34ea34
       - NVIDIA_DRIVER_CAPABILITIES=all
@@ -42,28 +71,28 @@ services:
       - ${MEDIA_DIR}/Audiobooks:/data/audiobooks
       - ${PERSONAL_MEDIA_DIR}/:/data/personal
     restart: unless-stopped
+
+  # TORRENT CLIENT - Now routes through gluetun VPN
   transmission:
     container_name: transmission
+    image: linuxserver/transmission:latest
+    network_mode: "service:gluetun"  # All traffic goes through gluetun VPN
     sysctls:
       - "net.ipv6.conf.all.disable_ipv6=0"
-    cap_add:
-      - NET_ADMIN
     volumes:
       - ${DOWNLOADS_DIR}/incomplete:/data/downloads
       - ${DOWNLOADS_DIR}/completed:/data/completed
-      - ${CONFIG_DIR}/transmission:/data/transmission-home
+      - ${CONFIG_DIR}/transmission:/config
       - ${DOWNLOADS_DIR}:/data
     environment:
-      - WEBPROXY_ENABLED=true
-      - WEBPROXY_PORT=8118
-      - OPENVPN_PROVIDER=${OPENVPN_PROVIDER}
-      - OPENVPN_USERNAME=${OPENVPN_USERNAME}
-      - OPENVPN_PASSWORD=${OPENVPN_PASSWORD}
-      - OPENVPN_CONFIG=${OPENVPN_CONFIG}
-      - LOCAL_NETWORK=192.168.0.0/16
-      - TRANSMISSION_WEB_UI=flood-for-transmission
-      - OPENVPN_OPTS=--inactive 3600 --ping 10 --ping-exit 60
-    image: haugene/transmission-openvpn
+      - PUID=0
+      - PGID=0
+      - TZ=Europe/Paris
+      - TRANSMISSION_WEB_UI=/flood-for-transmission  # Preserves flood UI
+      # Removed: All OPENVPN_* vars (VPN now handled by gluetun)
+      # Removed: WEBPROXY_* vars (not needed)
+    depends_on:
+      - gluetun
     restart: always
 
   sonarr:
@@ -82,7 +111,7 @@ services:
       - ${CONFIG_DIR}/sonarr:/config
       - ${MEDIA_DIR}/Shows:/tv
       - ${AMEDIA_DIR}/A:/amedia
-      - ${DOWNLOADS_DIR}/completed:/completed
+      - ${DOWNLOADS_DIR}:/data
     environment:
       - PGID=0
       - PUID=0
@@ -105,7 +134,7 @@ services:
       - ${CONFIG_DIR}/sonarr_anime:/config
       - ${MEDIA_DIR}/Anime:/anime
       - ${AMEDIA_DIR}/A:/amedia
-      - ${DOWNLOADS_DIR}/completed:/completed
+      - ${DOWNLOADS_DIR}:/data
     environment:
       - PGID=0
       - PUID=0
@@ -128,7 +157,7 @@ services:
       - ${CONFIG_DIR}/radarr:/config
       - ${MEDIA_DIR}/Movies:/movies
       - ${MEDIA_DIR}/Anime:/anime
-      - ${DOWNLOADS_DIR}/completed:/completed
+      - ${DOWNLOADS_DIR}:/data
     environment:
       - PGID=0
       - PUID=0
@@ -150,7 +179,7 @@ services:
     volumes:
       - ${CONFIG_DIR}/animeradarr:/config
       - ${MEDIA_DIR}/AnimeMovies:/movies
-      - ${DOWNLOADS_DIR}/completed:/completed
+      - ${DOWNLOADS_DIR}:/data
     environment:
       - PGID=0
       - PUID=0
@@ -191,12 +220,13 @@ services:
       - radarr
       - transmission
     
+  # CAPTCHA SOLVER - Now routes through gluetun VPN
   flaresolverr:
     image: ghcr.io/flaresolverr/flaresolverr:latest
     container_name: flaresolverr
-    network_mode: "service:transmission"
+    network_mode: "service:gluetun"  # Changed from service:transmission
     depends_on:
-      - transmission
+      - gluetun
     environment:
       - LOG_LEVEL=${LOG_LEVEL:-debug}
       - LOG_HTML=${LOG_HTML:-false}
@@ -252,23 +282,15 @@ services:
       - GID=1000
       - TZ=Europe/Paris
 
-  metube:
-    image: ghcr.io/alexta69/metube
-    container_name: metube
-    labels:
-      plugsy.name: "MeTube"
-      plugsy.category: "Media"
-      plugsy.icon: "@styled-icons/feather/Download"
-      plugsy.link: https://metube.thenairn.com
-    environment:
-      - PUID=0
-      - PGID=0
-      - TZ=Europe/Paris
-      - YTDL_OPTIONS={"cookiefile":"/cookies/cookies.txt"}
-    volumes:
-      - ${DOWNLOADS_DIR}/metube:/downloads
-      - ${CONFIG_DIR}/metube/cookies:/cookies
+
+  syncyomi:
+    container_name: syncyomi
+    image: ghcr.io/syncyomi/syncyomi:latest
     restart: unless-stopped
+    environment:
+      - TZ=Europe/Paris
+    volumes:
+      - ${CONFIG_DIR}/syncyomi/config:/config
 
   filebrowser:
     image: filebrowser/filebrowser:s6
