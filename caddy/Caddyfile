@@ -465,19 +465,6 @@ docker.thenairn.com {
     }   
 }
 
-maintainerr.thenairn.com {
-    @internal {
-        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
-    }
-    handle @internal {
-        reverse_proxy maintainerr:6246
-    }
-    handle {
-        import admin
-        reverse_proxy maintainerr:6246
-    }
-}
-
 pikvm.thenairn.com {
     @internal {
         remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
@@ -513,6 +500,19 @@ manga.thenairn.com {
     }
     handle @internal {
         reverse_proxy suwayomi:4567
+    }
+}
+
+paperbox.thenairn.com {
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle @internal {
+        reverse_proxy paperbox:3000
+    }
+    handle {
+        import admin
+        reverse_proxy paperbox:3000
     }
 }
 

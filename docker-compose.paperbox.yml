@@ -1,0 +1,17 @@
+services:
+  paperbox:
+    build: ./paperbox
+    container_name: paperbox
+    restart: unless-stopped
+    environment:
+      - TZ=Europe/Paris
+      - MANGA_DIR=/manga
+      - SCRIPTS_DIR=/scripts
+    volumes:
+      - ${MEDIA_DIR}/Manga-new:/manga
+      - ${CONFIG_DIR}/paperbox/scripts:/scripts
+    labels:
+      plugsy.name: "Paperbox"
+      plugsy.category: "Media"
+      plugsy.icon: "@styled-icons/boxicons-regular/BookOpen"
+      plugsy.link: "https://paperbox.thenairn.com"

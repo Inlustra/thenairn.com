@@ -18,6 +18,8 @@ services:
       - SERVER_CITIES=Zurich  # Change to your preferred Mullvad location
       - TZ=Europe/Paris
       - LOG_LEVEL=info
+      - DOT=off
+      - DNS_ADDRESS=1.1.1.1
     ports:
       # Transmission ports (now exposed via gluetun)
       - 51413:51413/tcp      # Transmission peer port
@@ -242,15 +244,6 @@ services:
       - ./recyclarr:/config
     environment:
       - TZ=Europe/Paris
-
-  maintainerr:
-    image: jorenn92/maintainerr:latest # or ghcr.io/jorenn92/maintainerr:latest
-    container_name: maintainerr
-    volumes:
-      - ${CONFIG_DIR}/maintainerr:/opt/data
-    environment:
-      - TZ=Europe/Paris
-    restart: unless-stopped
 
   plex-meta-manager:
     image: lscr.io/linuxserver/kometa:latest

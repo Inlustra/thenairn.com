@@ -10,7 +10,7 @@ date_format: YYYY/MM/DD
 clock_source: server
 
 ## Kiosk behaviour
-refresh: 60 # in seconds
+duration: 60 # in seconds
 disable_screensaver: true # Ask browser to request a lock that prevents device screens from dimming or locking.
 optimize_images: true # Whether Kiosk should resize images to match your browser screen dimensions for better performance.
 use_gpu: true # Enable GPU acceleration for improved performance.
@@ -26,7 +26,7 @@ require_all_people: false # When true, only show images containing all specified
 #   - "PERSON_ID"
 
 ## ID(s) of album or albums to display
-album:
+albums:
   - "79f91742-d492-4d36-94cc-c225924f3e1c"
 ## Album IDs to exclude from being shown. Albums in this list will be filtered from
 ## appearing in the frame even if they are included in the 'album' list.
@@ -48,17 +48,17 @@ memories: false # show memories
 # date_filter: last-30-days # only applies to people and random assets
 
 ## Experimental
-experimental_album_video: true
+show_videos: true
 
 ## UI
 disable_ui: false # this is just a shortcut for all ui elements (show_time, show_date, show_image_time, show_image_date)
 frameless: true # remove border around image and rounded corners.
 hide_cursor: false # Hide cursor/mouse via CSS.
 font_size: 100 # the base font size as a percentage. OMIT the % character
-background_blur: true # display a blurred version of image as background
+background_blur: false # display a blurred version of image as background
 background_blur_amount: 10 # amount of blur to apply to background image (sigma)
 theme: fade # which theme to use. fade or solid
-layout: splitview # which layout to use. single | splitview | splitview-landscape | portrait | landscape
+layout: single # which layout to use. single | splitview | splitview-landscape | portrait | landscape
 
 ## Sleep mode
 # sleep_start: 22 # sleep mode start time
@@ -72,7 +72,7 @@ fade_transition_duration: 1 # in seconds
 cross_fade_transition_duration: 1 # in seconds
 
 ## Image display settings
-show_progress: false # display a progress bar
+show_progress_bar: false # display a progress bar
 image_fit: contain # none | contain | cover
 image_effect: none # none | zoom | smart-zoom
 image_effect_amount: 240

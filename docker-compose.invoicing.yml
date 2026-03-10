@@ -46,20 +46,19 @@ services:
   invoiceninjadb:
     restart: always
     container_name: invoiceninjadb
-    image: bitnami/mysql:8.0.20
+    image: mysql:8.0
     labels:
       plugsy.name: "Database"
       plugsy.parents: "Invoicing"
       plugsy.icon: "@styled-icons/feather/Database"
-    environment: 
+    environment:
       - MYSQL_ROOT_PASSWORD=ninja
       - MYSQL_USER=ninja
       - MYSQL_PASSWORD=ninja
       - MYSQL_DATABASE=ninja
-      - MYSQL_ROOT_HOST="%"
 
     volumes:
-      - ./mysqld.cnf:/opt/bitnami/mysql/conf/my_custom.cnf:ro
-      - ${CONFIG_DIR}/invoiceninja/db:/bitnami/mysql/data:rw,delegated
+      - ./mysqld.cnf:/etc/mysql/conf.d/custom.cnf:ro
+      - ${CONFIG_DIR}/invoiceninja/db:/var/lib/mysql:rw,delegated
     extra_hosts:
       - "in5.localhost:192.168.0.124 "

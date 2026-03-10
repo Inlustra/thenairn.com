@@ -8,7 +8,7 @@ services:
       plugsy.icon: "@styled-icons/feather/Image"
       plugsy.link: https://immich.thenairn.com
     volumes:
-      - ${PERSONAL_MEDIA_DIR}/immich/upload:/usr/src/app/upload
+      - ${PERSONAL_MEDIA_DIR}/immich/upload:/data
       - /etc/localtime:/etc/localtime:ro
     env_file:
       - .env.immich
@@ -36,7 +36,7 @@ services:
 
   immich-redis:
     container_name: immich_redis
-    image: docker.io/valkey/valkey:8-bookworm@sha256:a137a2b60aca1a75130022d6bb96af423fefae4eb55faf395732db3544803280
+    image: docker.io/valkey/valkey:9@sha256:930b41430fb727f533c5982fe509b6f04233e26d0f7354e04de4b0d5c706e44e
     labels:
       plugsy.name: "Redis Cache"
       plugsy.parents: "Immich"
@@ -47,7 +47,7 @@ services:
 
   immich-database:
     container_name: immich_postgres
-    image: ghcr.io/immich-app/postgres:14-vectorchord0.4.3-pgvectors0.2.0@sha256:32324a2f41df5de9efe1af166b7008c3f55646f8d0e00d9550c16c9822366b4a
+    image: ghcr.io/immich-app/postgres:14-vectorchord0.4.3-pgvectors0.2.0@sha256:bcf63357191b76a916ae5eb93464d65c07511da41e3bf7a8416db519b40b1c23
     labels:
       plugsy.name: "Database"
       plugsy.parents: "Immich"
@@ -59,15 +59,10 @@ services:
       POSTGRES_INITDB_ARGS: '--data-checksums'
     volumes:
       - ${PERSONAL_MEDIA_DIR}/immich/pgdata:/var/lib/postgresql/data
-    command: >-
-      postgres
-      -c shared_preload_libraries='vectors.so,vchord.so'
-      -c 'search_path="$$user", public, vectors'
-      -c logging_collector=on
-      -c max_wal_size=2GB
-      -c shared_buffers=512MB
-      -c wal_compression=on
+    shm_size: 128mb
     restart: always
+    healthcheck:
+      disable: false
 
   immich-kiosk:
     image: ghcr.io/damongolding/immich-kiosk:latest
@@ -87,56 +82,3 @@ services:
       # - ./custom.css:/custom.css
       # - ./offline-assets:/offline-assets
     restart: always
-
-  immichframe:
-    container_name: immichframe
-    image: ghcr.io/immichframe/immichframe:latest
-    labels:
-      plugsy.name: "Frame Display"
-      plugsy.parents: "Photo Frame"
-      plugsy.icon: "@styled-icons/feather/Tv"
-    restart: on-failure
-    environment:
-      TZ: "Europe/Paris"
-      ImmichServerUrl: "http://immich_server:2283"
-      ApiKey: "UnXSKdtBhf8MvaFMjNHVqE5zdOqhANmnZiOrvX1hlI"
-      # AuthenticationSecret: ""
-      # Interval: "10"
-      # TransitionDuration: "2"   
-      # ImageZoom: "true"
-      # ImagePan: "false"
-      # ImageFill: "false"
-      # Layout: "splitview"         
-      # DownloadImages: "false"
-      ShowMemories: "true"
-      ShowFavorites: "true"
-      # ShowArchived: "false"
-      # ImagesFromDays: ""
-      # ImagesFromDate: ""
-      # ImagesUntilDate: ""
-      # RenewImagesDuration: "30"
-      # Rating: "5"
-      # Albums: "ALBUM1,ALBUM2"
-      # ExcludedAlbums: "ALBUM3,ALBUM4"
-      # People: "PERSON1,PERSON2"
-      # Webcalendars: "https://calendar.mycalendar.com/basic.ics,webcal://calendar.mycalendar.com/basic.ics"
-      # RefreshAlbumPeopleInterval: "12"
-      # ShowClock: "true"
-      # ClockFormat: "hh:mm"
-      # ShowPhotoDate: "true"
-      # PhotoDateFormat: "yyyy-MM-dd"
-      # ShowImageDesc: "true"
-      # ShowPeopleDesc: "true"
-      # ShowAlbumName: "true"
-      # ShowImageLocation: "true"
-      # ImageLocationFormat: "City,State,Country"
-      # PrimaryColor: "#F5DEB3"
-      # SecondaryColor: "#000000"
-      # Style: "none"
-      # BaseFontSize: "17px"
-      # WeatherApiKey: ""
-      # ShowWeatherDescription: "true"
-      # UnitSystem: "imperial"
-      # WeatherLatLong: ""
-      # Language: "en"      
-      # Webhook: ""
