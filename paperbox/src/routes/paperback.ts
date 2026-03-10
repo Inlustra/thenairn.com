@@ -149,8 +149,19 @@ export const paperbackRoutes = new Elysia({ prefix: "/api/v1" })
     version: "1.0.0",
     revision: "1",
   }))
-  // Source list - extension may request this
-  .get("/source/list", () => [])
+  // Source list - the Tachidesk Paperback extension queries this to discover available sources
+  .get("/source/list", () => [
+    {
+      id: "paperbox",
+      name: "Paperbox",
+      lang: "en",
+      iconUrl: "",
+      supportsLatest: false,
+      isConfigurable: false,
+      isNsfw: false,
+      displayName: "Paperbox",
+    },
+  ])
   // Popular/latest per source
   .get("/source/:id/popular/:page", ({ params }) => {
     const list = getMangaList();
