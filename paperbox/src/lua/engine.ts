@@ -205,6 +205,16 @@ export async function runModule(
       new Promise((resolve) => setTimeout(resolve, ms))
     );
 
+    // MaybeFillHost - FMD2 built-in that prepends host to relative URLs
+    lua.global.set("MaybeFillHost", (host: string, url: string) => {
+      if (!url) return host || "";
+      if (!host) return url;
+      if (url.includes("://")) return url;
+      if (url.startsWith("//")) return url;
+      if (url.startsWith("/")) return host.replace(/\/+$/, "") + url;
+      return host.replace(/\/+$/, "") + "/" + url;
+    });
+
     // Load and run the script
     const scriptContent = await Bun.file(scriptPath).text();
     await lua.doString(scriptContent);
