@@ -1,4 +1,4 @@
-import { readdir, stat, mkdir } from "fs/promises";
+import { readdir, stat, mkdir, readFile } from "fs/promises";
 import { join } from "path";
 
 const SCRIPTS_DIR = process.env.SCRIPTS_DIR || "/app/lua-scripts";
@@ -9,6 +9,7 @@ interface ScriptInfo {
   name: string;
   path: string;
   category: "module" | "template";
+  rootUrl: string;
 }
 
 let scriptCache: ScriptInfo[] = [];
@@ -88,14 +89,34 @@ export async function scanScripts(): Promise<void> {
       for (const file of files) {
         if (!file.endsWith(".lua")) continue;
         const name = file.replace(".lua", "");
+        const filePath = join(dir, file);
+        const rootUrl = await extractRootUrl(filePath);
         scriptCache.push({
           id: `${category === "modules" ? "mod" : "tpl"}-${name.toLowerCase()}`,
           name,
-          path: join(dir, file),
+          path: filePath,
           category: category === "modules" ? "module" : "template",
+          rootUrl,
         });
       }
     } catch {}
+  }
+}
+
+/**
+ * Extract the RootURL from an FMD2 Lua script by parsing the source text.
+ * Scripts typically set it as: m.RootURL = 'https://example.com'
+ * or: MODULE.RootURL = 'https://example.com'
+ * or: local RootURL = 'https://example.com'
+ */
+async function extractRootUrl(scriptPath: string): Promise<string> {
+  try {
+    const content = await readFile(scriptPath, "utf-8");
+    // Match patterns like: m.RootURL = 'https://...' or MODULE.RootURL = '...' or local RootURL = '...'
+    const match = content.match(/RootURL\s*=\s*['"]([^'"]+)['"]/);
+    return match?.[1] || "";
+  } catch {
+    return "";
   }
 }
 
@@ -112,6 +133,23 @@ export function getScriptByName(name: string): ScriptInfo | undefined {
   return scriptCache.find(
     (s) => s.name.toLowerCase() === name.toLowerCase()
   );
+}
+
+export function findScriptForUrl(url: string): ScriptInfo | undefined {
+  try {
+    const hostname = new URL(url).hostname.replace(/^www\./, "");
+    return scriptCache.find((s) => {
+      if (!s.rootUrl) return false;
+      try {
+        const scriptHost = new URL(s.rootUrl).hostname.replace(/^www\./, "");
+        return hostname === scriptHost;
+      } catch {
+        return false;
+      }
+    });
+  } catch {
+    return undefined;
+  }
 }
 
 export function getScriptsDir(): string {

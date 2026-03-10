@@ -42,6 +42,7 @@ interface ScriptInfo {
   id: string;
   name: string;
   category: string;
+  rootUrl: string;
 }
 
 interface MangaInfoResult {
@@ -72,6 +73,7 @@ function DownloadsView() {
   const [tasks, setTasks] = useState<DownloadTask[]>([]);
   const [sources, setSources] = useState<ScriptInfo[]>([]);
   const [selectedSource, setSelectedSource] = useState("");
+  const [autoDetected, setAutoDetected] = useState(false);
   const [mangaUrl, setMangaUrl] = useState("");
   const [fetchingInfo, setFetchingInfo] = useState(false);
   const [mangaInfo, setMangaInfo] = useState<MangaInfoResult | null>(null);
@@ -206,7 +208,7 @@ function DownloadsView() {
           <select
             className="dl-select"
             value={selectedSource}
-            onChange={(e) => setSelectedSource(e.target.value)}
+            onChange={(e) => { setSelectedSource(e.target.value); setAutoDetected(false); }}
           >
             {sources.map((s) => (
               <option key={s.id} value={s.id}>{s.name}</option>
@@ -216,13 +218,29 @@ function DownloadsView() {
             className="search-input dl-url-input"
             placeholder="Paste manga URL..."
             value={mangaUrl}
-            onChange={(e) => setMangaUrl(e.target.value)}
+            onChange={(e) => {
+              const url = e.target.value;
+              setMangaUrl(url);
+              // Auto-detect source from URL hostname
+              try {
+                const hostname = new URL(url).hostname.replace(/^www\./, "");
+                const match = sources.find((s) => {
+                  if (!s.rootUrl) return false;
+                  try { return new URL(s.rootUrl).hostname.replace(/^www\./, "") === hostname; }
+                  catch { return false; }
+                });
+                if (match) { setSelectedSource(match.id); setAutoDetected(true); }
+              } catch {}
+            }}
             onKeyDown={(e) => e.key === "Enter" && fetchInfo()}
           />
           <button className="btn btn-primary" onClick={fetchInfo} disabled={fetchingInfo || !mangaUrl}>
             {fetchingInfo ? "Fetching..." : "Fetch"}
           </button>
         </div>
+        {autoDetected && selectedSource && (
+          <div className="dl-detected">Detected source: <strong>{sources.find((s) => s.id === selectedSource)?.name}</strong></div>
+        )}
         {infoError && <div className="dl-error">{infoError}</div>}
         <div className="dl-config">
           <label>

@@ -312,6 +312,11 @@ a { color: inherit; text-decoration: none; }
   outline: none;
 }
 
+.dl-detected {
+  color: #22c55e;
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
+}
 .dl-error {
   color: #ef4444;
   font-size: 0.85rem;
