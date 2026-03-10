@@ -1,0 +1,315 @@
+[
+  {
+    "timestamp": 1773131584010,
+    "action": "target_url",
+    "detail": "https://asuracomic.net/series/sword-devouring-swordmaster-2fd445c0"
+  },
+  {
+    "timestamp": 1773131584010,
+    "action": "script_path",
+    "detail": "/home/user/thenairn.com/paperbox/test-scripts/AsuraScans.lua"
+  },
+  {
+    "timestamp": 1773131584010,
+    "action": "script_loaded",
+    "detail": "4668 chars"
+  },
+  {
+    "timestamp": 1773131584010,
+    "action": "fetching_url",
+    "detail": "https://asuracomic.net/series/sword-devouring-swordmaster-2fd445c0"
+  },
+  {
+    "timestamp": 1773131584024,
+    "action": "http_status",
+    "detail": 403
+  },
+  {
+    "timestamp": 1773131584024,
+    "action": "http_headers",
+    "detail": {
+      "connection": "close",
+      "content-length": "16",
+      "content-type": "text/plain",
+      "date": "Tue, 10 Mar 2026 08:33:03 GMT",
+      "server": "envoy",
+      "x-deny-reason": "host_not_allowed"
+    }
+  },
+  {
+    "timestamp": 1773131584024,
+    "action": "html_length",
+    "detail": 16
+  },
+  {
+    "timestamp": 1773131584024,
+    "action": "html_preview",
+    "detail": "Host not allowed"
+  },
+  {
+    "timestamp": 1773131584024,
+    "action": "fixture_saved",
+    "detail": "/home/user/thenairn.com/paperbox/test-scripts/fixtures/asura-page.html"
+  },
+  {
+    "timestamp": 1773131584024,
+    "action": "testing_xpath_directly",
+    "detail": null
+  },
+  {
+    "timestamp": 1773131584070,
+    "action": "xpath_title",
+    "detail": {
+      "xpath": "//span[@class=\"text-xl font-bold\"]",
+      "count": 0,
+      "values": []
+    }
+  },
+  {
+    "timestamp": 1773131584071,
+    "action": "xpath_cover",
+    "detail": {
+      "xpath": "(//img[@alt=\"poster\"])[1]/@src",
+      "count": 0,
+      "values": []
+    }
+  },
+  {
+    "timestamp": 1773131584071,
+    "action": "xpath_authors",
+    "detail": {
+      "xpath": "//h3[contains(., \"Author\")]/following-sibling::h3",
+      "count": 0,
+      "values": []
+    }
+  },
+  {
+    "timestamp": 1773131584072,
+    "action": "xpath_status",
+    "detail": {
+      "xpath": "//h3[contains(., \"Status\")]/following-sibling::h3",
+      "count": 0,
+      "values": []
+    }
+  },
+  {
+    "timestamp": 1773131584072,
+    "action": "xpath_chapters",
+    "detail": {
+      "xpath": "//div[contains(@class, \"group\")]/a",
+      "count": 0,
+      "values": []
+    }
+  },
+  {
+    "timestamp": 1773131584073,
+    "action": "xpath_genres",
+    "detail": {
+      "xpath": "//h3[contains(., \"Genres\")]/following-sibling::div/button",
+      "count": 0,
+      "values": []
+    }
+  },
+  {
+    "timestamp": 1773131584073,
+    "action": "xpath_summary",
+    "detail": {
+      "xpath": "//span[@class=\"font-medium text-sm text-[#A2A2A2]\"]",
+      "count": 0,
+      "values": []
+    }
+  },
+  {
+    "timestamp": 1773131584073,
+    "action": "testing_css_selectors",
+    "detail": null
+  },
+  {
+    "timestamp": 1773131584077,
+    "action": "css_title_span",
+    "detail": {
+      "count": 0,
+      "samples": []
+    }
+  },
+  {
+    "timestamp": 1773131584078,
+    "action": "css_any_h1",
+    "detail": {
+      "count": 0,
+      "samples": []
+    }
+  },
+  {
+    "timestamp": 1773131584078,
+    "action": "css_any_h2",
+    "detail": {
+      "count": 0,
+      "samples": []
+    }
+  },
+  {
+    "timestamp": 1773131584079,
+    "action": "css_any_title_attr",
+    "detail": {
+      "count": 0,
+      "samples": []
+    }
+  },
+  {
+    "timestamp": 1773131584079,
+    "action": "css_any_bold",
+    "detail": {
+      "count": 0,
+      "samples": []
+    }
+  },
+  {
+    "timestamp": 1773131584080,
+    "action": "css_links_with_chapter",
+    "detail": {
+      "count": 0,
+      "samples": []
+    }
+  },
+  {
+    "timestamp": 1773131584080,
+    "action": "css_group_divs",
+    "detail": {
+      "count": 0,
+      "samples": []
+    }
+  },
+  {
+    "timestamp": 1773131584080,
+    "action": "css_all_a_tags",
+    "detail": {
+      "count": 0,
+      "samples": []
+    }
+  },
+  {
+    "timestamp": 1773131584080,
+    "action": "running_lua_module",
+    "detail": null
+  },
+  {
+    "timestamp": 1773131584116,
+    "action": "calling_GetInfo",
+    "detail": null
+  },
+  {
+    "timestamp": 1773131584117,
+    "action": "lua_HTTP_GET",
+    "detail": "https://asuracomic.net/series/sword-devouring-swordmaster-2fd445c0"
+  },
+  {
+    "timestamp": 1773131584125,
+    "action": "lua_XPathString",
+    "detail": {
+      "xpath": "//span[@class=\"text-xl font-bold\"]",
+      "result": ""
+    }
+  },
+  {
+    "timestamp": 1773131584125,
+    "action": "lua_set_Title",
+    "detail": ""
+  },
+  {
+    "timestamp": 1773131584126,
+    "action": "lua_XPathString",
+    "detail": {
+      "xpath": "(//img[@alt=\"poster\"])[1]/@src",
+      "result": ""
+    }
+  },
+  {
+    "timestamp": 1773131584126,
+    "action": "lua_set_CoverLink",
+    "detail": ""
+  },
+  {
+    "timestamp": 1773131584126,
+    "action": "lua_XPathString",
+    "detail": {
+      "xpath": "//h3[contains(., \"Author\")]/following-sibling::h3",
+      "result": ""
+    }
+  },
+  {
+    "timestamp": 1773131584127,
+    "action": "lua_set_Authors",
+    "detail": ""
+  },
+  {
+    "timestamp": 1773131584128,
+    "action": "lua_XPathString",
+    "detail": {
+      "xpath": "//h3[contains(., \"Artist\")]/following-sibling::h3",
+      "result": ""
+    }
+  },
+  {
+    "timestamp": 1773131584128,
+    "action": "lua_set_Artists",
+    "detail": ""
+  },
+  {
+    "timestamp": 1773131584129,
+    "action": "lua_XPathStringAll",
+    "detail": {
+      "xpath": "//h3[contains(., \"Genres\")]/following-sibling::div/button",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773131584129,
+    "action": "lua_set_Genres",
+    "detail": ""
+  },
+  {
+    "timestamp": 1773131584130,
+    "action": "lua_XPathString",
+    "detail": {
+      "xpath": "//h3[contains(., \"Status\")]/following-sibling::h3",
+      "result": ""
+    }
+  },
+  {
+    "timestamp": 1773131584130,
+    "action": "lua_set_Status",
+    "detail": ""
+  },
+  {
+    "timestamp": 1773131584130,
+    "action": "lua_XPathString",
+    "detail": {
+      "xpath": "//span[@class=\"font-medium text-sm text-[#A2A2A2]\"]",
+      "result": ""
+    }
+  },
+  {
+    "timestamp": 1773131584130,
+    "action": "lua_set_Summary",
+    "detail": ""
+  },
+  {
+    "timestamp": 1773131584131,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//div[contains(@class, \"group\")]/a",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773131584132,
+    "action": "final_result",
+    "detail": {
+      "title": "",
+      "authors": "",
+      "status": "",
+      "chapterCount": 0
+    }
+  }
+]
