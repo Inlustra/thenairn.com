@@ -148,6 +148,28 @@ async function processTask(task: DownloadTask): Promise<void> {
   const seriesDir = join(mangaDir, sanitizePath(task.mangaTitle));
   await mkdir(seriesDir, { recursive: true });
 
+  // Fetch and save manga metadata via Lua GetInfo
+  try {
+    const infoResult = await runModule(script.path, "GetInfo", {
+      url: task.mangaUrl,
+    });
+    const info = infoResult.mangaInfo;
+    const meta: Record<string, any> = {
+      title: info.title || task.mangaTitle,
+      author: info.authors || "",
+      artist: info.artists || "",
+      description: info.summary || "",
+      tags: info.genres ? info.genres.split(",").map((g: string) => g.trim()).filter(Boolean) : [],
+      status: info.status || "",
+      cover: info.coverLink || "",
+    };
+    await writeFile(join(seriesDir, "manga.json"), JSON.stringify(meta, null, 2));
+    console.log(`[download]   Saved metadata for: ${meta.title}`);
+  } catch (e: any) {
+    console.error(`[download]   Failed to fetch metadata: ${e?.message}`);
+    // Continue without metadata - download can still proceed
+  }
+
   for (const chapter of task.chapters) {
     if (task.status === "cancelled") break;
     if (chapter.status !== "queued") continue;
