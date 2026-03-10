@@ -29,7 +29,7 @@ const app = new Elysia()
   })
   .onError(({ request, code, error }) => {
     const url = new URL(request.url);
-    console.error(`✗ ${code} ${url.pathname}: ${error?.message || error}`);
+    console.error(`✗ ${code} ${url.pathname}: ${"message" in error ? error.message : error}`);
   })
   .use(mangaRoutes)
   .use(chapterRoutes)
