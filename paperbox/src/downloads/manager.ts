@@ -211,7 +211,7 @@ async function processTask(task: DownloadTask): Promise<void> {
   const { parallelChapters } = config;
 
   for (let i = 0; i < queuedChapters.length; i += parallelChapters) {
-    if (task.status === "cancelled") break;
+    if ((task.status as DownloadStatus) === "cancelled") break;
 
     const batch = queuedChapters.slice(i, i + parallelChapters);
     await Promise.all(
@@ -226,7 +226,7 @@ async function downloadChapter(
   seriesDir: string,
   chapter: ChapterDownload
 ): Promise<void> {
-  if (task.status === "cancelled") return;
+  if ((task.status as DownloadStatus) === "cancelled") return;
 
   chapter.status = "downloading";
   task.updatedAt = Date.now();
@@ -255,7 +255,7 @@ async function downloadChapter(
     let downloaded = 0;
 
     for (let i = 0; i < pageUrls.length; i += parallelPages) {
-      if (task.status === "cancelled") break;
+      if ((task.status as DownloadStatus) === "cancelled") break;
 
       const pageBatch = pageUrls.slice(i, i + parallelPages);
       const results = await Promise.all(
@@ -327,5 +327,5 @@ function sanitizePath(name: string): string {
 
 function getExtFromUrl(url: string): string {
   const match = url.match(/\.(jpe?g|png|webp|gif|avif|bmp)(\?|$)/i);
-  return match ? `.${match[1].toLowerCase()}` : ".jpg";
+  return match?.[1] ? `.${match[1].toLowerCase()}` : ".jpg";
 }

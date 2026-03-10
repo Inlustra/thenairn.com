@@ -14,14 +14,14 @@ function slugify(name: string): string {
 
 function parseChapterNumber(name: string): number {
   const match = name.match(/(\d+(?:\.\d+)?)/);
-  return match ? parseFloat(match[1]) : 0;
+  return match?.[1] ? parseFloat(match[1]) : 0;
 }
 
 function naturalSort(a: string, b: string): number {
   return a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
 }
 
-async function isDirectory(path: string): boolean {
+async function isDirectory(path: string): Promise<boolean> {
   try {
     return (await stat(path)).isDirectory();
   } catch {
@@ -48,7 +48,7 @@ async function findCover(mangaPath: string, chapters: string[]): Promise<string 
   }
   // Fall back to first page of first chapter
   if (chapters.length > 0) {
-    const firstChapter = chapters[0];
+    const firstChapter = chapters[0]!;
     const pages = await getPageFiles(join(mangaPath, firstChapter));
     if (pages.length > 0) return `${firstChapter}/${pages[0]}`;
   }

@@ -184,7 +184,9 @@ function findMangaByNumericId(numId: string): MangaDetail | undefined {
   const list = getMangaList();
   const idx = parseInt(numId);
   if (idx < 0 || idx >= list.length) return undefined;
-  return getManga(list[idx].id);
+  const entry = list[idx];
+  if (!entry) return undefined;
+  return getManga(entry.id);
 }
 
 function toSuwayomiManga(manga: MangaDetail, numId: number) {
