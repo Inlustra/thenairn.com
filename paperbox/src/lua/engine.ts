@@ -456,14 +456,14 @@ function createTXQuery(content: string) {
           Get: () => {
             let idx = 0;
             return () => {
-              if (idx >= nodes.length) return null;
+              if (idx >= nodes.length) return undefined;
               return wrapNode(nodes[idx++]!, domDoc);
             };
           },
         };
       } catch (e) {
         console.error(`  [txquery] XPath error for "${xpath}": ${e}`);
-        return { Count: 0, Get: () => () => null };
+        return { Count: 0, Get: () => () => undefined };
       }
     },
 
