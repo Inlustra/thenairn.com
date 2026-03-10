@@ -1,5 +1,5 @@
 import { Elysia, t } from "elysia";
-import { listScripts, getScript, pullScripts } from "../lua/scripts";
+import { listScripts, getScript, pullScripts, findScriptForUrl } from "../lua/scripts";
 import { runModule } from "../lua/engine";
 
 export const scriptRoutes = new Elysia({ prefix: "/api/scripts" })
@@ -11,12 +11,30 @@ export const scriptRoutes = new Elysia({ prefix: "/api/scripts" })
         id: s.id,
         name: s.name,
         category: s.category,
+        rootUrl: s.rootUrl,
       })),
       total: scripts.length,
     };
   }, {
     query: t.Object({
       category: t.Optional(t.String()),
+    }),
+  })
+  // Detect which script handles a given URL
+  .get("/detect", ({ query, set }) => {
+    if (!query.url) {
+      set.status = 400;
+      return { error: "url parameter required" };
+    }
+    const script = findScriptForUrl(query.url);
+    if (!script) {
+      set.status = 404;
+      return { error: "No matching source found for this URL" };
+    }
+    return { id: script.id, name: script.name, category: script.category, rootUrl: script.rootUrl };
+  }, {
+    query: t.Object({
+      url: t.Optional(t.String()),
     }),
   })
   // Pull/update scripts from GitHub
