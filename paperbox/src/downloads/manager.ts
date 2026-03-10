@@ -2,7 +2,7 @@ import { mkdir, writeFile } from "fs/promises";
 import { join } from "path";
 import { runModule } from "../lua/engine";
 import { getScript, getScriptByName } from "../lua/scripts";
-import { getMangaDir } from "../scanner";
+import { getMangaDir, scan } from "../scanner";
 
 export type DownloadStatus = "queued" | "downloading" | "completed" | "failed" | "cancelled";
 
@@ -126,6 +126,8 @@ async function processQueue(): Promise<void> {
         );
         const anyFailed = task.chapters.some((ch) => ch.status === "failed");
         task.status = anyFailed ? "failed" : allDone ? "completed" : "failed";
+        // Rescan manga directory so new downloads appear in the library
+        await scan();
       } catch (e: any) {
         task.status = "failed";
         task.error = e?.message || String(e);
