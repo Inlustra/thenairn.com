@@ -18,9 +18,11 @@
     "@elysiajs/cors": "^1.4.1",
     "@elysiajs/html": "^1.4.0",
     "@elysiajs/static": "^1.4.7",
+    "@types/jsdom": "^28.0.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "elysia": "^1.4.27",
+    "jsdom": "^28.1.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "wasmoon": "^1.16.0"
