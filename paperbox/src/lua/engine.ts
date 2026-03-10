@@ -1,4 +1,5 @@
 import { LuaFactory } from "wasmoon";
+import { JSDOM } from "jsdom";
 
 let factory: LuaFactory | null = null;
 
@@ -108,8 +109,14 @@ export async function runModule(
           return false;
         }
       },
-      get Document() { return httpState.document; },
-      set Document(v: string) { httpState.document = v; },
+      get Document() {
+        const s = httpState.document;
+        return Object.assign(String(s), {
+          ToString: () => s,
+          toString: () => s,
+        });
+      },
+      set Document(v: string) { httpState.document = String(v); },
       get UserAgent() { return httpState.userAgent; },
       set UserAgent(v: string) { httpState.userAgent = v; },
       get MimeType() { return httpState.mimeType; },
@@ -144,8 +151,14 @@ export async function runModule(
       get Status() { return mangaInfo.status; },
       set Status(v: string) { mangaInfo.status = v; },
       URL: opts.url || "",
-      ChapterNames: { Add: (name: string) => chapterNames.push(name) },
-      ChapterLinks: { Add: (link: string) => chapterLinks.push(link) },
+      ChapterNames: {
+        Add: (name: string) => chapterNames.push(name),
+        Reverse: () => chapterNames.reverse(),
+      },
+      ChapterLinks: {
+        Add: (link: string) => chapterLinks.push(link),
+        Reverse: () => chapterLinks.reverse(),
+      },
     });
 
     // NAMES and LINKS (for GetNameAndLink / search)
@@ -179,8 +192,7 @@ export async function runModule(
     // URL (set for GetInfo/GetPageNumber)
     lua.global.set("URL", opts.url || "");
 
-    // CreateTXQuery - simplified HTML/JSON parser
-    // FMD2 uses XPath-like queries. We implement a basic version.
+    // CreateTXQuery - HTML/JSON parser using jsdom for real XPath
     lua.global.set("CreateTXQuery", (html?: string) => {
       const doc = html || httpState.document;
       return createTXQuery(doc);
@@ -215,6 +227,34 @@ export async function runModule(
       return host.replace(/\/+$/, "") + "/" + url;
     });
 
+    // FMD2 constants
+    lua.global.set("no_error", 0);
+    lua.global.set("net_problem", 1);
+
+    // MangaInfoStatusIfPos - maps status text to FMD2 status constants
+    lua.global.set("MangaInfoStatusIfPos", (s: string) => {
+      if (!s) return "";
+      const lower = s.toLowerCase();
+      if (lower.includes("ongoing") || lower.includes("publishing")) return "Ongoing";
+      if (lower.includes("complet") || lower.includes("finish")) return "Completed";
+      if (lower.includes("hiatus")) return "Hiatus";
+      if (lower.includes("cancel") || lower.includes("discontinu")) return "Cancelled";
+      return s;
+    });
+
+    // NewWebsiteModule - returns a stub module object (Init() calls this)
+    lua.global.set("NewWebsiteModule", () => ({
+      ID: "", Name: "", RootURL: "", Category: "",
+      OnGetNameAndLink: "", OnGetInfo: "", OnGetPageNumber: "",
+      AddOptionCheckBox: () => {},
+    }));
+
+    // require stub for 'fmd.env'
+    lua.global.set("require", (mod: string) => {
+      if (mod === "fmd.env") return { SelectedLanguage: "en" };
+      return {};
+    });
+
     // Load and run the script
     const scriptContent = await Bun.file(scriptPath).text();
     await lua.doString(scriptContent);
@@ -239,21 +279,111 @@ export async function runModule(
 }
 
 /**
- * Simplified TXQuery - handles basic XPath-like operations on HTML/JSON.
- * This is a minimal implementation covering common FMD2 patterns.
+ * Evaluate an XPath expression against a jsdom document or element.
+ * Returns all matching nodes as an array.
+ */
+function evaluateXPath(domDoc: Document, xpath: string, context?: Node): Node[] {
+  const ctx = context || domDoc;
+  const result = domDoc.evaluate(xpath, ctx, null, 5 /* ORDERED_NODE_ITERATOR_TYPE */, null);
+  const nodes: Node[] = [];
+  let node = result.iterateNext();
+  while (node) {
+    nodes.push(node);
+    node = result.iterateNext();
+  }
+  return nodes;
+}
+
+/**
+ * Handle FMD2 JSON query syntax: json(*).field1().field2
+ * Returns array of values extracted from JSON.
+ */
+function jsonQuery(doc: string, xpath: string): string[] {
+  const jsonMatch = xpath.match(/^json\(\*\)\.(.+)$/);
+  if (!jsonMatch) return [];
+  try {
+    const parsed = JSON.parse(doc);
+    const parts = jsonMatch[1]!.split(".");
+    let current: any = parsed;
+    for (const part of parts) {
+      const fieldMatch = part.match(/^(\w+)\(\)$/);
+      if (fieldMatch) {
+        const field = fieldMatch[1]!;
+        if (Array.isArray(current)) {
+          current = current.flatMap((item: any) => {
+            const val = item[field];
+            return Array.isArray(val) ? val : val != null ? [val] : [];
+          });
+        } else if (current && typeof current === "object") {
+          const val = (current as Record<string, any>)[field];
+          current = Array.isArray(val) ? val : val != null ? [val] : [];
+        } else {
+          return [];
+        }
+      } else {
+        if (Array.isArray(current)) {
+          current = current.map((item: any) => item?.[part]).filter((v: any) => v != null);
+        } else if (current && typeof current === "object") {
+          current = current[part];
+        } else {
+          return [];
+        }
+      }
+    }
+    if (Array.isArray(current)) return current.map(String);
+    return current != null ? [String(current)] : [];
+  } catch {
+    return [];
+  }
+}
+
+interface TXQueryNode {
+  GetAttribute: (name: string) => string;
+  textContent: string;
+  _node: Node;
+}
+
+function wrapNode(node: Node, domDoc: Document): TXQueryNode {
+  return {
+    GetAttribute: (name: string) =>
+      node instanceof domDoc.defaultView!.HTMLElement
+        ? (node as Element).getAttribute(name) || ""
+        : "",
+    get textContent() { return node.textContent || ""; },
+    _node: node,
+  };
+}
+
+/**
+ * TXQuery - FMD2-compatible HTML/JSON query object using jsdom for real XPath.
  */
 function createTXQuery(content: string) {
   let doc = content;
+  let _dom: JSDOM | null = null;
 
-  return {
-    ParseHTML: (html: string) => { doc = html; },
-    ParseJSON: (json: string) => { doc = json; },
+  const getDom = (): JSDOM => {
+    if (!_dom) {
+      _dom = new JSDOM(doc, { contentType: "text/html" });
+    }
+    return _dom;
+  };
 
-    // XPath - very simplified, returns text content
-    XPathString: (xpath: string): string => {
+  const getDocument = (): Document => getDom().window.document;
+
+  const self = {
+    ParseHTML: (html: string) => { doc = html; _dom = null; },
+    ParseJSON: (json: string) => { doc = json; _dom = null; },
+
+    /**
+     * XPathString - extract a single string value.
+     * Optional second arg is a context node from XPath iteration.
+     */
+    XPathString: (xpath: string, contextNode?: TXQueryNode): string => {
       try {
-        // Handle JSON paths like //data/id
-        if (doc.trim().startsWith("{") || doc.trim().startsWith("[")) {
+        // JSON path
+        if (!contextNode && (doc.trim().startsWith("{") || doc.trim().startsWith("["))) {
+          const results = jsonQuery(doc, xpath.replace(/^\/\//, ""));
+          if (results.length > 0) return results[0]!;
           const parsed = JSON.parse(doc);
           const parts = xpath.replace(/^\/\//, "").split("/");
           let current: any = parsed;
@@ -267,9 +397,73 @@ function createTXQuery(content: string) {
           }
           return String(current ?? "");
         }
+
+        const domDoc = getDocument();
+        const ctx = contextNode?._node || domDoc;
+
+        // Use jsdom's native XPath evaluation for string results
+        const result = domDoc.evaluate(
+          xpath, ctx, null,
+          2 /* STRING_TYPE */,
+          null
+        );
+        return result.stringValue?.trim() || "";
+      } catch (e) {
+        console.error(`  [txquery] XPathString error for "${xpath}": ${e}`);
         return "";
-      } catch {
+      }
+    },
+
+    /**
+     * XPathStringAll - extract all matching string values.
+     * Can optionally add results directly to a target list (e.g., TASK.PageLinks).
+     */
+    XPathStringAll: (xpath: string, target?: { Add: (s: string) => void }): string => {
+      try {
+        // JSON query syntax
+        if (xpath.startsWith("json(")) {
+          const results = jsonQuery(doc, xpath);
+          if (target) {
+            for (const r of results) target.Add(r);
+          }
+          return results.join(", ");
+        }
+
+        const domDoc = getDocument();
+        const nodes = evaluateXPath(domDoc, xpath);
+        const results = nodes
+          .map((n) => n.textContent?.trim() || "")
+          .filter(Boolean);
+        if (target) {
+          for (const r of results) target.Add(r);
+        }
+        return results.join(", ");
+      } catch (e) {
+        console.error(`  [txquery] XPathStringAll error for "${xpath}": ${e}`);
         return "";
+      }
+    },
+
+    /**
+     * XPath - returns a collection object with Count and Get() iterator.
+     */
+    XPath: (xpath: string) => {
+      try {
+        const domDoc = getDocument();
+        const nodes = evaluateXPath(domDoc, xpath);
+        return {
+          Count: nodes.length,
+          Get: () => {
+            let idx = 0;
+            return () => {
+              if (idx >= nodes.length) return null;
+              return wrapNode(nodes[idx++]!, domDoc);
+            };
+          },
+        };
+      } catch (e) {
+        console.error(`  [txquery] XPath error for "${xpath}": ${e}`);
+        return { Count: 0, Get: () => () => null };
       }
     },
 
@@ -285,13 +479,15 @@ function createTXQuery(content: string) {
           }
           return Array.isArray(current) ? current.length : current ? 1 : 0;
         }
-        return 0;
+        const domDoc = getDocument();
+        return evaluateXPath(domDoc, xpath).length;
       } catch {
         return 0;
       }
     },
 
-    // Get the raw document
     get Value() { return doc; },
   };
+
+  return self;
 }
