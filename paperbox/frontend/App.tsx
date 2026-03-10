@@ -61,6 +61,13 @@ interface MangaInfoResult {
 
 // --- Downloads Page ---
 
+interface DlConfig {
+  parallelPages: number;
+  parallelChapters: number;
+  retries: number;
+  retryDelayMs: number;
+}
+
 function DownloadsView() {
   const [tasks, setTasks] = useState<DownloadTask[]>([]);
   const [sources, setSources] = useState<ScriptInfo[]>([]);
@@ -71,9 +78,10 @@ function DownloadsView() {
   const [infoError, setInfoError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [pullingScripts, setPullingScripts] = useState(false);
+  const [dlConfig, setDlConfig] = useState<DlConfig>({ parallelPages: 3, parallelChapters: 1, retries: 3, retryDelayMs: 1000 });
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Load sources on mount
+  // Load sources and config on mount
   const refreshSources = useCallback(() => {
     fetch(`${API}/scripts`)
       .then((r) => r.json())
@@ -83,7 +91,22 @@ function DownloadsView() {
       });
   }, [selectedSource]);
 
-  useEffect(() => { refreshSources(); }, []);
+  useEffect(() => {
+    refreshSources();
+    fetch(`${API}/downloads/config`).then((r) => r.json()).then(setDlConfig).catch(() => {});
+  }, []);
+
+  const updateConfig = async (partial: Partial<DlConfig>) => {
+    try {
+      const resp = await fetch(`${API}/downloads/config`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(partial),
+      });
+      const updated = await resp.json();
+      setDlConfig(updated);
+    } catch {}
+  };
 
   const pullScripts = async () => {
     setPullingScripts(true);
@@ -201,6 +224,26 @@ function DownloadsView() {
           </button>
         </div>
         {infoError && <div className="dl-error">{infoError}</div>}
+        <div className="dl-config">
+          <label>
+            Pages
+            <select value={dlConfig.parallelPages} onChange={(e) => updateConfig({ parallelPages: +e.target.value })}>
+              {[1,2,3,4,5,6,8,10].map((n) => <option key={n} value={n}>{n}</option>)}
+            </select>
+          </label>
+          <label>
+            Chapters
+            <select value={dlConfig.parallelChapters} onChange={(e) => updateConfig({ parallelChapters: +e.target.value })}>
+              {[1,2,3,4,5].map((n) => <option key={n} value={n}>{n}</option>)}
+            </select>
+          </label>
+          <label>
+            Retries
+            <select value={dlConfig.retries} onChange={(e) => updateConfig({ retries: +e.target.value })}>
+              {[0,1,2,3,5,10].map((n) => <option key={n} value={n}>{n}</option>)}
+            </select>
+          </label>
+        </div>
       </div>
 
       {/* Manga Preview (after fetch) */}

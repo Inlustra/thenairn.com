@@ -28,6 +28,42 @@ export interface ChapterDownload {
   error?: string;
 }
 
+export interface DownloadConfig {
+  parallelPages: number;
+  parallelChapters: number;
+  retries: number;
+  retryDelayMs: number;
+}
+
+const defaultConfig: DownloadConfig = {
+  parallelPages: 3,
+  parallelChapters: 1,
+  retries: 3,
+  retryDelayMs: 1000,
+};
+
+let config: DownloadConfig = { ...defaultConfig };
+
+export function getConfig(): DownloadConfig {
+  return { ...config };
+}
+
+export function setConfig(partial: Partial<DownloadConfig>): DownloadConfig {
+  if (partial.parallelPages !== undefined) {
+    config.parallelPages = Math.max(1, Math.min(10, partial.parallelPages));
+  }
+  if (partial.parallelChapters !== undefined) {
+    config.parallelChapters = Math.max(1, Math.min(5, partial.parallelChapters));
+  }
+  if (partial.retries !== undefined) {
+    config.retries = Math.max(0, Math.min(10, partial.retries));
+  }
+  if (partial.retryDelayMs !== undefined) {
+    config.retryDelayMs = Math.max(100, Math.min(30000, partial.retryDelayMs));
+  }
+  return { ...config };
+}
+
 // In-memory task store
 const tasks = new Map<string, DownloadTask>();
 let taskCounter = 0;
@@ -170,72 +206,119 @@ async function processTask(task: DownloadTask): Promise<void> {
     // Continue without metadata - download can still proceed
   }
 
-  for (const chapter of task.chapters) {
+  // Process chapters with configurable parallelism
+  const queuedChapters = task.chapters.filter((ch) => ch.status === "queued");
+  const { parallelChapters } = config;
+
+  for (let i = 0; i < queuedChapters.length; i += parallelChapters) {
     if (task.status === "cancelled") break;
-    if (chapter.status !== "queued") continue;
 
-    chapter.status = "downloading";
+    const batch = queuedChapters.slice(i, i + parallelChapters);
+    await Promise.all(
+      batch.map((chapter) => downloadChapter(task, script.path, seriesDir, chapter))
+    );
+  }
+}
+
+async function downloadChapter(
+  task: DownloadTask,
+  scriptPath: string,
+  seriesDir: string,
+  chapter: ChapterDownload
+): Promise<void> {
+  if (task.status === "cancelled") return;
+
+  chapter.status = "downloading";
+  task.updatedAt = Date.now();
+  console.log(`[download]   Chapter: ${chapter.name}`);
+
+  try {
+    // Get page URLs using Lua script
+    const result = await runModule(scriptPath, "GetPageNumber", {
+      url: chapter.url,
+    });
+
+    const pageUrls = result.pages.pageLinks;
+    chapter.pagesTotal = pageUrls.length;
     task.updatedAt = Date.now();
-    console.log(`[download]   Chapter: ${chapter.name}`);
 
+    if (pageUrls.length === 0) {
+      throw new Error("No pages found");
+    }
+
+    // Create chapter directory
+    const chapterDir = join(seriesDir, sanitizePath(chapter.name));
+    await mkdir(chapterDir, { recursive: true });
+
+    // Download pages with configurable parallelism
+    const { parallelPages } = config;
+    let downloaded = 0;
+
+    for (let i = 0; i < pageUrls.length; i += parallelPages) {
+      if (task.status === "cancelled") break;
+
+      const pageBatch = pageUrls.slice(i, i + parallelPages);
+      const results = await Promise.all(
+        pageBatch.map((pageUrl, batchIdx) =>
+          downloadPageWithRetry(pageUrl, chapter.url, chapterDir, i + batchIdx)
+        )
+      );
+
+      for (const ok of results) {
+        if (ok) downloaded++;
+      }
+      chapter.pagesDownloaded = downloaded;
+      task.updatedAt = Date.now();
+    }
+
+    chapter.status = downloaded === chapter.pagesTotal ? "completed" : "failed";
+    if (chapter.status === "failed") {
+      chapter.error = `Downloaded ${downloaded}/${chapter.pagesTotal} pages`;
+    }
+  } catch (e: any) {
+    chapter.status = "failed";
+    chapter.error = e?.message || String(e);
+    console.error(`[download]   Chapter failed: ${chapter.name}`, e);
+  }
+  task.updatedAt = Date.now();
+}
+
+async function downloadPageWithRetry(
+  pageUrl: string,
+  referer: string,
+  chapterDir: string,
+  pageIndex: number
+): Promise<boolean> {
+  const ext = getExtFromUrl(pageUrl);
+  const filename = `${String(pageIndex + 1).padStart(3, "0")}${ext}`;
+  const outPath = join(chapterDir, filename);
+  const { retries, retryDelayMs } = config;
+
+  for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      // Get page URLs using Lua script
-      const result = await runModule(script.path, "GetPageNumber", {
-        url: chapter.url,
+      const resp = await fetch(pageUrl, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+          Referer: referer,
+        },
       });
 
-      const pageUrls = result.pages.pageLinks;
-      chapter.pagesTotal = pageUrls.length;
-      task.updatedAt = Date.now();
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
 
-      if (pageUrls.length === 0) {
-        throw new Error("No pages found");
-      }
-
-      // Create chapter directory
-      const chapterDir = join(seriesDir, sanitizePath(chapter.name));
-      await mkdir(chapterDir, { recursive: true });
-
-      // Download each page
-      for (let i = 0; i < pageUrls.length; i++) {
-        if (task.status === "cancelled") break;
-
-        const pageUrl = pageUrls[i];
-        const ext = getExtFromUrl(pageUrl);
-        const filename = `${String(i + 1).padStart(3, "0")}${ext}`;
-        const outPath = join(chapterDir, filename);
-
-        try {
-          const resp = await fetch(pageUrl, {
-            headers: {
-              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-              Referer: chapter.url,
-            },
-          });
-
-          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-
-          const buffer = await resp.arrayBuffer();
-          await Bun.write(outPath, buffer);
-          chapter.pagesDownloaded = i + 1;
-          task.updatedAt = Date.now();
-        } catch (e: any) {
-          console.error(`[download]     Page ${i + 1} failed: ${e?.message}`);
-          // Continue with remaining pages
-        }
-      }
-
-      chapter.status = chapter.pagesDownloaded === chapter.pagesTotal ? "completed" : "failed";
-      if (chapter.status === "failed") {
-        chapter.error = `Downloaded ${chapter.pagesDownloaded}/${chapter.pagesTotal} pages`;
-      }
+      const buffer = await resp.arrayBuffer();
+      await Bun.write(outPath, buffer);
+      return true;
     } catch (e: any) {
-      chapter.status = "failed";
-      chapter.error = e?.message || String(e);
-      console.error(`[download]   Chapter failed: ${chapter.name}`, e);
+      if (attempt < retries) {
+        const delay = retryDelayMs * Math.pow(2, attempt);
+        console.log(`[download]     Page ${pageIndex + 1} attempt ${attempt + 1} failed, retrying in ${delay}ms...`);
+        await new Promise((r) => setTimeout(r, delay));
+      } else {
+        console.error(`[download]     Page ${pageIndex + 1} failed after ${retries + 1} attempts: ${e?.message}`);
+      }
     }
-    task.updatedAt = Date.now();
   }
+  return false;
 }
 
 function sanitizePath(name: string): string {

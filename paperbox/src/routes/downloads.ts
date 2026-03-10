@@ -6,9 +6,21 @@ import {
   cancelTask,
   retryTask,
   removeTask,
+  getConfig,
+  setConfig,
 } from "../downloads/manager";
 
 export const downloadRoutes = new Elysia({ prefix: "/api/downloads" })
+  // Get/set download config
+  .get("/config", () => getConfig())
+  .patch("/config", ({ body }) => setConfig(body), {
+    body: t.Object({
+      parallelPages: t.Optional(t.Number()),
+      parallelChapters: t.Optional(t.Number()),
+      retries: t.Optional(t.Number()),
+      retryDelayMs: t.Optional(t.Number()),
+    }),
+  })
   // List all download tasks
   .get("/", () => {
     return { data: listTasks() };
