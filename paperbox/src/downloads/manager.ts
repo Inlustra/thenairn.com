@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from "fs/promises";
 import { join } from "path";
-import { runModule } from "../lua/engine";
+import { runModule, type MangaInfo } from "../lua/engine";
 import { getScript, getScriptByName } from "../lua/scripts";
 import { getMangaDir, scan } from "../scanner";
 
@@ -189,18 +189,7 @@ async function processTask(task: DownloadTask): Promise<void> {
     const infoResult = await runModule(script.path, "GetInfo", {
       url: task.mangaUrl,
     });
-    const info = infoResult.mangaInfo;
-    const meta: Record<string, any> = {
-      title: info.title || task.mangaTitle,
-      author: info.authors || "",
-      artist: info.artists || "",
-      description: info.summary || "",
-      tags: info.genres ? info.genres.split(",").map((g: string) => g.trim()).filter(Boolean) : [],
-      status: info.status || "",
-      cover: info.coverLink || "",
-    };
-    await writeFile(join(seriesDir, "manga.json"), JSON.stringify(meta, null, 2));
-    console.log(`[download]   Saved metadata for: ${meta.title}`);
+    await saveMetadata(seriesDir, infoResult.mangaInfo, task.mangaTitle, task.mangaUrl);
   } catch (e: any) {
     console.error(`[download]   Failed to fetch metadata: ${e?.message}`);
     // Continue without metadata - download can still proceed
@@ -319,6 +308,68 @@ async function downloadPageWithRetry(
     }
   }
   return false;
+}
+
+/**
+ * Save full FMD2 metadata for a manga series: cover image, manga.json, and source-info.json.
+ */
+export async function saveMetadata(
+  seriesDir: string,
+  info: MangaInfo,
+  fallbackTitle: string,
+  sourceUrl: string,
+): Promise<void> {
+  // Download cover image
+  let coverFilename = "";
+  if (info.coverLink) {
+    try {
+      const coverResp = await fetch(info.coverLink, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+          Referer: sourceUrl,
+        },
+      });
+      if (coverResp.ok) {
+        const ext = getExtFromUrl(info.coverLink);
+        coverFilename = `cover${ext}`;
+        const buffer = await coverResp.arrayBuffer();
+        await Bun.write(join(seriesDir, coverFilename), buffer);
+        console.log(`[metadata]   Saved cover: ${coverFilename}`);
+      }
+    } catch (e: any) {
+      console.error(`[metadata]   Failed to download cover: ${e?.message}`);
+    }
+  }
+
+  // Save manga.json (library metadata)
+  const meta: Record<string, any> = {
+    title: info.title || fallbackTitle,
+    author: info.authors || "",
+    artist: info.artists || "",
+    description: info.summary || "",
+    link: info.link || sourceUrl || "",
+    tags: info.genres ? info.genres.split(",").map((g: string) => g.trim()).filter(Boolean) : [],
+    status: info.status || "",
+    cover: coverFilename || info.coverLink || "",
+  };
+  await writeFile(join(seriesDir, "manga.json"), JSON.stringify(meta, null, 2));
+  console.log(`[metadata]   Saved metadata for: ${meta.title}`);
+
+  // Save source-info.json (full raw FMD2 output)
+  const sourceInfo = {
+    title: info.title,
+    link: info.link,
+    coverLink: info.coverLink,
+    authors: info.authors,
+    artists: info.artists,
+    genres: info.genres,
+    summary: info.summary,
+    status: info.status,
+    chapterNames: info.chapterNames,
+    chapterLinks: info.chapterLinks,
+  };
+  await writeFile(join(seriesDir, "source-info.json"), JSON.stringify(sourceInfo, null, 2));
+  console.log(`[metadata]   Saved source-info.json`);
 }
 
 function sanitizePath(name: string): string {
