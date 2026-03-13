@@ -4,6 +4,7 @@ export interface MangaMeta {
   artist?: string;
   description?: string;
   cover?: string;
+  link?: string;
   tags?: string[];
   status?: "ongoing" | "completed" | "hiatus" | "cancelled";
 }

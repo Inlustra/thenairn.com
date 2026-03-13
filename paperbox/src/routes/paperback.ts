@@ -216,7 +216,7 @@ function toSuwayomiManga(manga: MangaDetail, numId: number) {
       displayName: "Paperbox",
     },
     meta: {},
-    realUrl: "",
+    realUrl: manga.meta.link || "",
     lastFetchedAt: NOW_SECS,
     chaptersLastFetchedAt: NOW_SECS,
     updateStrategy: "ALWAYS_UPDATE",
