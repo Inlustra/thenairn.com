@@ -1,0 +1,62 @@
+# Self-hosted UniFi Network Application — second controller, owns the "in-laws"
+# site (the home UDM Pro SE keeps its own built-in controller). APs/USG at the
+# in-laws reach this over the IPsec tunnel via the inform target
+# http://192.168.96.14:8080/inform  (Tower's LAN IP, host-published below).
+#
+# NOTE: 1900/udp (L2 discovery) is intentionally NOT published — Plex already
+# owns 1900/udp on the host. Adoption is done via set-inform (L3), so 1900 is
+# not needed.
+services:
+  unifi-db:
+    image: docker.io/mongo:7.0
+    container_name: unifi-db
+    labels:
+      plugsy.name: "UniFi DB"
+      plugsy.parents: "UniFi (In-laws)"
+      plugsy.icon: "@styled-icons/simple-icons/Mongodb"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=${UNIFI_MONGO_ROOT_PASS}
+      - MONGO_USER=unifi
+      - MONGO_PASS=${UNIFI_MONGO_PASS}
+      - MONGO_DBNAME=unifi
+      - MONGO_AUTHSOURCE=admin
+    volumes:
+      - ${CONFIG_DIR}/unifi-db/data:/data/db
+      - ${CONFIG_DIR}/unifi-db/init/init-mongo.sh:/docker-entrypoint-initdb.d/init-mongo.sh:ro
+    restart: unless-stopped
+
+  unifi-network-application:
+    image: lscr.io/linuxserver/unifi-network-application:latest
+    container_name: unifi-network-application
+    labels:
+      plugsy.name: "UniFi (In-laws)"
+      plugsy.category: "Infrastructure"
+      plugsy.icon: "@styled-icons/simple-icons/Ubiquiti"
+      plugsy.link: https://unifi24.thenairn.com
+    depends_on:
+      - unifi-db
+    environment:
+      - PUID=0
+      - PGID=0
+      - TZ=Europe/Paris
+      - MONGO_USER=unifi
+      - MONGO_PASS=${UNIFI_MONGO_PASS}
+      - MONGO_HOST=unifi-db
+      - MONGO_PORT=27017
+      - MONGO_DBNAME=unifi
+      # The init script creates the 'unifi' user inside the 'unifi' db, so the
+      # app must authenticate against authSource=unifi (NOT admin — verified by
+      # testing the credential directly against both).
+      - MONGO_AUTHSOURCE=unifi
+    volumes:
+      - ${CONFIG_DIR}/unifi/config:/config
+    ports:
+      - 8443:8443      # web admin UI (https, self-signed)
+      - 8080:8080      # device inform — APs/USG dial this over the tunnel
+      - 3478:3478/udp  # STUN
+      - 10001:10001/udp # AP discovery
+      - 8843:8843      # guest portal https (optional)
+      - 8880:8880      # guest portal http (optional)
+      - 6789:6789      # mobile throughput test (optional)
+    restart: unless-stopped

@@ -244,6 +244,27 @@ unifi.thenairn.com {
     }    
 }
 
+unifi24.thenairn.com {
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle @internal {
+        reverse_proxy https://unifi-network-application:8443 {
+            transport http {
+                tls_insecure_skip_verify
+            }
+        }
+    }
+    handle {
+        import admin
+        reverse_proxy https://unifi-network-application:8443 {
+            transport http {
+                tls_insecure_skip_verify
+            }
+        }
+    }
+}
+
 unraid.thenairn.com {
     @internal {
         remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
