@@ -2,6 +2,7 @@ services:
   go2rtc:
     container_name: go2rtc
     image: alexxit/go2rtc:latest
+    restart: unless-stopped
     labels:
       plugsy.name: "Cameras"
       plugsy.category: "Home"
@@ -49,3 +50,42 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+
+  frigate:
+    container_name: frigate
+    image: ghcr.io/blakeblackshear/frigate:stable
+    restart: unless-stopped
+    # GPU wired identically to Plex — shares the GTX 1660 cleanly. Frigate uses NVDEC
+    # (decode only), so it never consumes an NVENC session and won't affect Plex transcodes.
+    runtime: nvidia
+    shm_size: "256mb"
+    devices:
+      - /dev/bus/usb:/dev/bus/usb   # Coral USB Accelerator (re-enumerates on init)
+    environment:
+      - TZ=Europe/Paris
+      - NVIDIA_VISIBLE_DEVICES=GPU-c1d14a88-b2fa-5786-e47d-64af7a34ea34
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - FRIGATE_MQTT_USER=${FRIGATE_MQTT_USER}
+      - FRIGATE_MQTT_PASSWORD=${FRIGATE_MQTT_PASSWORD}
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ${CONFIG_DIR}/frigate:/config
+      - ${CAMERA_DIR}/frigate:/media/frigate
+      - type: tmpfs
+        target: /tmp/cache
+        tmpfs:
+          size: 1000000000
+    depends_on:
+      - go2rtc
+    links:
+      - go2rtc
+    labels:
+      plugsy.name: "Frigate"
+      plugsy.category: "Home"
+      plugsy.icon: "@styled-icons/feather/Video"
+      plugsy.link: https://frigate.thenairn.com
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

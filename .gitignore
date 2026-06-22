@@ -7,3 +7,18 @@ nohup.out
 ./vpn_config
 gallery
 plex-meta-manager
+
+# Separate git repo checked out here, not part of this repo
+nanoclaw/
+
+# Compiled binary build artifact
+hq/hq
+
+# Backups and local/junk files
+*.bak
+*.bak-*
+*.orca-bak
+*.bak.pre-zsh-141
+upgrade.log
+**/.fuse_hidden*
+.claude/settings.local.json

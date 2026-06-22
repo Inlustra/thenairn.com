@@ -17,7 +17,7 @@ sonarr:
         upgrade:
           allowed: true
           until_quality: Bluray-1080p
-          until_score: 10000
+          until_score: 1500   # SubsPlease 1080p = gold standard; stop upgrading once reached
         min_format_score: 100
         quality_sort: top
         qualities:
@@ -50,7 +50,7 @@ sonarr:
         upgrade:
           allowed: true
           until_quality: Bluray-1080p
-          until_score: 10000
+          until_score: 1500   # SubsPlease 1080p = gold standard; stop upgrading once reached
         min_format_score: 100
         quality_sort: top
         qualities:

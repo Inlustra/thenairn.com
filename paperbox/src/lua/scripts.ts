@@ -23,6 +23,11 @@ export async function pullScripts(): Promise<void> {
   await mkdir(join(SCRIPTS_DIR, "modules"), { recursive: true });
   await mkdir(join(SCRIPTS_DIR, "templates"), { recursive: true });
   await mkdir(join(SCRIPTS_DIR, "utils"), { recursive: true });
+  // Local overrides — never touched by the puller. Drop a {modules|templates|utils}/<Name>.lua
+  // here to override a stale or broken upstream script.
+  await mkdir(join(SCRIPTS_DIR, "local", "modules"), { recursive: true });
+  await mkdir(join(SCRIPTS_DIR, "local", "templates"), { recursive: true });
+  await mkdir(join(SCRIPTS_DIR, "local", "utils"), { recursive: true });
 
   // Download modules
   await downloadDir("modules");
@@ -77,13 +82,26 @@ async function downloadDir(subdir: string): Promise<void> {
 }
 
 /**
- * Scan local scripts directory
+ * Scan the scripts directory.
+ *
+ * Layout:
+ *   /scripts/modules/*.lua       — upstream FMD2 modules (pulled, may be overwritten on sync)
+ *   /scripts/templates/*.lua     — upstream FMD2 templates (pulled)
+ *   /scripts/local/modules/*.lua — local overrides (NEVER touched by the puller)
+ *   /scripts/local/templates/*.lua — local template overrides
+ *
+ * A file under `local/` with the same filename as an upstream script wins.
+ * This lets us patch broken upstream scripts without losing the fix on sync.
  */
 export async function scanScripts(): Promise<void> {
   scriptCache = [];
+  const byId = new Map<string, ScriptInfo>();
 
-  for (const category of ["modules", "templates"] as const) {
-    const dir = join(SCRIPTS_DIR, category);
+  const scanDir = async (
+    dir: string,
+    category: "module" | "template",
+    isOverride: boolean,
+  ): Promise<void> => {
     try {
       const files = await readdir(dir);
       for (const file of files) {
@@ -91,16 +109,21 @@ export async function scanScripts(): Promise<void> {
         const name = file.replace(".lua", "");
         const filePath = join(dir, file);
         const rootUrl = await extractRootUrl(filePath);
-        scriptCache.push({
-          id: `${category === "modules" ? "mod" : "tpl"}-${name.toLowerCase()}`,
-          name,
-          path: filePath,
-          category: category === "modules" ? "module" : "template",
-          rootUrl,
-        });
+        const id = `${category === "module" ? "mod" : "tpl"}-${name.toLowerCase()}`;
+        if (isOverride && byId.has(id)) {
+          console.log(`  Local override: ${id} <- ${filePath}`);
+        }
+        byId.set(id, { id, name, path: filePath, category, rootUrl });
       }
     } catch {}
-  }
+  };
+
+  await scanDir(join(SCRIPTS_DIR, "modules"), "module", false);
+  await scanDir(join(SCRIPTS_DIR, "templates"), "template", false);
+  await scanDir(join(SCRIPTS_DIR, "local", "modules"), "module", true);
+  await scanDir(join(SCRIPTS_DIR, "local", "templates"), "template", true);
+
+  scriptCache = Array.from(byId.values());
 }
 
 /**

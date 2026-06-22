@@ -98,7 +98,23 @@ export async function scan(): Promise<void> {
     }
     chapterDirs.sort(naturalSort);
 
-    const cover = meta.cover || (await findCover(mangaPath, chapterDirs));
+    // Resolve cover: local file > remote URL from meta > fallback to first chapter page
+    let coverUrl: string | null = null;
+    let localCover: string | null = null;
+    if (meta.cover && !meta.cover.startsWith("http")) {
+      try {
+        await stat(join(mangaPath, meta.cover));
+        localCover = meta.cover;
+      } catch {}
+    }
+    if (localCover) {
+      coverUrl = `/api/images/${entry}/${localCover}`;
+    } else if (meta.cover && meta.cover.startsWith("http")) {
+      coverUrl = meta.cover;
+    } else {
+      const fallback = await findCover(mangaPath, chapterDirs);
+      if (fallback) coverUrl = `/api/images/${entry}/${fallback}`;
+    }
 
     const chapters: Chapter[] = [];
     for (const dir of chapterDirs) {
@@ -115,7 +131,7 @@ export async function scan(): Promise<void> {
     newCache.set(id, {
       id,
       title: meta.title || entry,
-      coverUrl: cover ? `/api/images/${entry}/${cover}` : null,
+      coverUrl,
       chapterCount: chapters.length,
       meta,
       chapters,

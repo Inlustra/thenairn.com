@@ -1,0 +1,33 @@
+# CLIProxyAPI config for docs stack.
+# Wraps Codex CLI OAuth session as an OpenAI-compatible endpoint at :8317/v1.
+# See https://github.com/router-for-me/CLIProxyAPI
+
+host: ""
+port: 8317
+
+tls:
+  enable: false
+
+# Management API — disabled; we don't expose a panel.
+remote-management:
+  allow-remote: false
+  secret-key: ""
+  disable-control-panel: true
+
+auth-dir: "/root/.cli-proxy-api"
+
+# Clients (paperless-ai) must send one of these as the Bearer key.
+# Must match CUSTOM_API_KEY in .env.docs.
+api-keys:
+  - "CHANGEME_MATCH_ENV_DOCS"
+
+debug: false
+logging-to-file: true
+logs-max-total-size-mb: 100
+usage-statistics-enabled: false
+
+routing:
+  strategy: "round-robin"
+  session-affinity: false
+
+request-retry: 3

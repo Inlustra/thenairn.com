@@ -1,8 +1,12 @@
 import { serve, $ } from "bun";
 import { watch } from "fs";
 import index from "./index.html";
-import { readFileSync } from "fs";
-import { Database } from "bun:sqlite";
+import { readFileSync, readdirSync, existsSync } from "fs";
+
+// ─── Config ─────────────────────────────────────────────────────────
+
+const PROJECTS_DIR = "/Internal";
+const CLAUDE_HISTORY = "/root/.claude/history.jsonl";
 
 // ─── Hot-reloadable Commands ────────────────────────────────────────
 
@@ -15,37 +19,44 @@ interface Command {
 }
 
 const COMMANDS_PATH = process.env.COMMANDS_PATH || "/app/commands.json";
-
 let commands: Record<string, Command> = {};
 
 function loadCommands() {
   try {
     const raw = readFileSync(COMMANDS_PATH, "utf8");
     commands = JSON.parse(raw);
-    console.log(`✅ Loaded ${Object.keys(commands).length} commands from ${COMMANDS_PATH}`);
+    console.log(`Loaded ${Object.keys(commands).length} commands`);
   } catch (e: any) {
-    console.error(`❌ Failed to load commands: ${e.message}`);
+    console.error(`Failed to load commands: ${e.message}`);
   }
 }
 
-// Initial load
 loadCommands();
 
-// Watch for changes and hot-reload
 try {
   watch(COMMANDS_PATH, (eventType) => {
     if (eventType === "change") {
-      console.log("🔄 commands.json changed, reloading...");
+      console.log("commands.json changed, reloading...");
       loadCommands();
     }
   });
-  console.log(`👀 Watching ${COMMANDS_PATH} for changes`);
-} catch (e: any) {
-  console.warn(`⚠️ Could not watch ${COMMANDS_PATH}: ${e.message}`);
-}
+} catch {}
 
 // ─── Command execution history ──────────────────────────────────────
 const history: any[] = [];
+
+// ─── Helpers ────────────────────────────────────────────────────────
+
+async function shell(cmd: string): Promise<string> {
+  const result = await $`bash -c ${cmd}`.quiet().nothrow();
+  return result.stdout.toString().trim();
+}
+
+async function hostShell(cmd: string): Promise<string> {
+  const result = await $`nsenter -t 1 -m -u -i -n -p -- bash -c ${cmd}`.quiet().nothrow();
+  return result.stdout.toString().trim();
+}
+
 
 // ─── API Routes ─────────────────────────────────────────────────────
 
@@ -53,8 +64,180 @@ const server = serve({
   port: Number(process.env.PORT) || 3099,
 
   routes: {
-    // React app for all non-API routes
     "/*": index,
+
+    // ── Projects ──────────────────────────────────────────────────
+
+    "/api/projects": {
+      async GET() {
+        try {
+          const entries = readdirSync(PROJECTS_DIR, { withFileTypes: true });
+          const tmuxSessions = (await hostShell("tmux list-sessions -F '#{session_name}' 2>/dev/null")).split("\n").filter(Boolean);
+
+          const projects = entries
+            .filter(e => e.isDirectory() && !e.name.startsWith(".") && e.name !== "node_modules")
+            .map(e => ({
+              name: e.name,
+              path: `${PROJECTS_DIR}/${e.name}`,
+              hasSession: tmuxSessions.includes(e.name),
+            }))
+            .sort((a, b) => {
+              if (a.hasSession && !b.hasSession) return -1;
+              if (!a.hasSession && b.hasSession) return 1;
+              return a.name.localeCompare(b.name);
+            });
+
+          return Response.json({ projects });
+        } catch (e: any) {
+          return Response.json({ error: e.message }, { status: 500 });
+        }
+      },
+    },
+
+    // ── Tmux Sessions ─────────────────────────────────────────────
+
+    "/api/sessions": {
+      async GET() {
+        try {
+          const raw = await hostShell("tmux list-sessions -F '#{session_name}|#{session_created}|#{session_windows}|#{session_attached}' 2>/dev/null");
+          const sessions = raw.split("\n").filter(Boolean).map(line => {
+            const [name, created, windows, attached] = line.split("|");
+            return {
+              name,
+              created: Number(created) * 1000,
+              windows: Number(windows),
+              attached: Number(attached) > 0,
+            };
+          });
+          return Response.json({ sessions });
+        } catch (e: any) {
+          return Response.json({ sessions: [] });
+        }
+      },
+    },
+
+    // ── Claude History ────────────────────────────────────────────
+
+    "/api/claude/sessions": {
+      GET() {
+        try {
+          if (!existsSync(CLAUDE_HISTORY)) {
+            return Response.json({ sessions: [] });
+          }
+
+          const raw = readFileSync(CLAUDE_HISTORY, "utf8");
+          const lines = raw.trim().split("\n").filter(Boolean);
+
+          // Group by sessionId, get latest message per session
+          const sessionMap = new Map<string, { sessionId: string; project: string; lastMessage: string; timestamp: number; messageCount: number }>();
+
+          for (const line of lines) {
+            try {
+              const entry = JSON.parse(line);
+              const key = entry.sessionId;
+              const existing = sessionMap.get(key);
+              if (!existing) {
+                sessionMap.set(key, {
+                  sessionId: entry.sessionId,
+                  project: entry.project,
+                  lastMessage: entry.display,
+                  timestamp: entry.timestamp,
+                  messageCount: 1,
+                });
+              } else {
+                existing.messageCount++;
+                if (entry.timestamp > existing.timestamp) {
+                  existing.lastMessage = entry.display;
+                  existing.timestamp = entry.timestamp;
+                }
+              }
+            } catch {}
+          }
+
+          const sessions = Array.from(sessionMap.values())
+            .sort((a, b) => b.timestamp - a.timestamp)
+            .slice(0, 50);
+
+          return Response.json({ sessions });
+        } catch (e: any) {
+          return Response.json({ error: e.message }, { status: 500 });
+        }
+      },
+    },
+
+    // ── Connect (ensure happy/claude session in tmux) ─────────────
+
+    "/api/connect": {
+      async POST(req) {
+        try {
+          const body = await req.json() as { session: string; dir?: string; cmd?: string };
+          const { session, dir, cmd } = body;
+
+          if (!session) {
+            return Response.json({ error: "session is required" }, { status: 400 });
+          }
+
+          // Check if tmux session already exists
+          const exists = await hostShell(`tmux has-session -t ${JSON.stringify(session)} 2>/dev/null && echo yes || echo no`);
+
+          if (exists !== "yes") {
+            const workDir = dir || `/mnt/user/Internal/${session}`;
+            const dirExists = await hostShell(`[ -d ${JSON.stringify(workDir)} ] && echo yes || echo no`);
+            const finalDir = dirExists === "yes" ? workDir : "/mnt/user/Internal";
+
+            // Start happy (Claude Code wrapper) in a new tmux session
+            const runCmd = cmd || "happy";
+            await hostShell(
+              `tmux new-session -d -s ${JSON.stringify(session)} -c ${JSON.stringify(finalDir)} ` +
+              `'export PATH="/mnt/user/HQ/.bun/bin:/mnt/user/Internal/thenairn.com/hq:$PATH" && ${runCmd}'`
+            );
+          }
+
+          const command = `tmux attach -t ${session}`;
+
+          return Response.json({ command, session, created: exists !== "yes" });
+        } catch (e: any) {
+          return Response.json({ error: e.message }, { status: 500 });
+        }
+      },
+    },
+
+    // ── Health / Disk Status ──────────────────────────────────────
+
+    "/api/health": {
+      async GET() {
+        try {
+          const [diskRaw, containerCount, uptime] = await Promise.all([
+            hostShell("df -h /mnt/disk* /mnt/cache /mnt/user 2>/dev/null | tail -n +2"),
+            hostShell("docker ps -q 2>/dev/null | wc -l"),
+            hostShell("uptime -p 2>/dev/null || uptime"),
+          ]);
+
+          const disks = diskRaw.split("\n").filter(Boolean).map(line => {
+            const parts = line.split(/\s+/);
+            return {
+              mount: parts[5],
+              size: parts[1],
+              used: parts[2],
+              avail: parts[3],
+              percent: parseInt(parts[4]?.replace("%", "") || "0"),
+            };
+          });
+
+          return Response.json({
+            status: "ok",
+            uptime,
+            containers: Number(containerCount),
+            disks,
+            serverUptime: process.uptime(),
+          });
+        } catch (e: any) {
+          return Response.json({ error: e.message }, { status: 500 });
+        }
+      },
+    },
+
+    // ── Commands (kept from jarvis-console) ───────────────────────
 
     "/api/commands": {
       GET() {
@@ -124,249 +307,9 @@ const server = serve({
       },
     },
 
-    "/api/openclaw/session": {
-      GET() {
-        try {
-          const raw = readFileSync(
-            process.env.OPENCLAW_CONFIG || "/home/node/.openclaw/openclaw.json",
-            "utf8"
-          );
-          const config = JSON.parse(raw);
-          const token = config?.gateway?.auth?.token;
-          const baseUrl = process.env.OPENCLAW_URL || "https://openclaw.thenairn.com";
-          if (!token) {
-            return Response.json({ error: "No gateway token found" }, { status: 500 });
-          }
-          return Response.json({ url: `${baseUrl}/#token=${token}` });
-        } catch (e: any) {
-          return Response.json({ error: e.message }, { status: 500 });
-        }
-      },
-    },
-
-    "/api/openclaw/config": {
-      GET() {
-        try {
-          const raw = readFileSync("/home/node/.openclaw/openclaw.json", "utf8");
-          const config = JSON.parse(raw);
-          const redact = (obj: any, ...paths: string[]) => {
-            for (const path of paths) {
-              const parts = path.split(".");
-              let curr = obj;
-              for (let i = 0; i < parts.length - 1; i++) {
-                curr = curr?.[parts[i]];
-                if (!curr) break;
-              }
-              if (curr && parts[parts.length - 1] in curr) {
-                curr[parts[parts.length - 1]] = "[REDACTED]";
-              }
-            }
-          };
-          redact(
-            config,
-            "gateway.auth.token",
-            "channels.slack.botToken",
-            "channels.slack.appToken",
-            "tools.web.search.apiKey"
-          );
-          if (config.skills?.entries) {
-            for (const v of Object.values(config.skills.entries) as any[]) {
-              if (v.apiKey) v.apiKey = "[REDACTED]";
-            }
-          }
-          return Response.json(config);
-        } catch (e: any) {
-          return Response.json({ error: e.message }, { status: 500 });
-        }
-      },
-    },
-
     "/api/history": {
       GET() {
         return Response.json({ history: history.slice(0, 20) });
-      },
-    },
-
-    "/api/email/approve/:id": {
-      async GET(req) {
-        const id = req.params.id;
-        try {
-          // Approve via docker exec
-          const approveProc = Bun.spawn([
-            "docker", "exec", "openclaw-gateway",
-            "/home/node/.openclaw/workspace/.bun/bin/bun", 
-            "/home/node/.openclaw/workspace/skills/email-outbox/scripts/approve.ts", id
-          ], { stdout: "pipe", stderr: "pipe" });
-          await approveProc.exited;
-
-          if (approveProc.exitCode !== 0) {
-            const error = await new Response(approveProc.stderr).text();
-            return new Response(`❌ Failed to approve: ${error}`, { status: 500 });
-          }
-
-          // Send via docker exec (openclaw-gateway has gog)
-          const sendProc = Bun.spawn([
-            "docker", "exec", "openclaw-gateway",
-            "/home/node/.openclaw/workspace/.bun/bin/bun",
-            "/home/node/.openclaw/workspace/skills/email-outbox/scripts/send.ts", id
-          ], { stdout: "pipe", stderr: "pipe" });
-          const stdout = await new Response(sendProc.stdout).text();
-          const stderr = await new Response(sendProc.stderr).text();
-          await sendProc.exited;
-
-          if (sendProc.exitCode !== 0) {
-            return new Response(`✅ Approved but send failed: ${stderr}`, { status: 500 });
-          }
-
-          return new Response(`✅ Email ${id} approved and sent!\n\n${stdout}`, { 
-            headers: { "content-type": "text/plain" }
-          });
-        } catch (e: any) {
-          return new Response(`❌ Error: ${e.message}`, { status: 500 });
-        }
-      },
-    },
-
-    "/api/email/reject/:id": {
-      async GET(req) {
-        const id = req.params.id;
-        try {
-          const proc = Bun.spawn([
-            "docker", "exec", "openclaw-gateway",
-            "/home/node/.openclaw/workspace/.bun/bin/bun",
-            "/home/node/.openclaw/workspace/skills/email-outbox/scripts/reject.ts",
-            id, "--reason", "Rejected by Tom via approval link"
-          ], { stdout: "pipe", stderr: "pipe" });
-          
-          const stdout = await new Response(proc.stdout).text();
-          const stderr = await new Response(proc.stderr).text();
-          await proc.exited;
-
-          if (proc.exitCode !== 0) {
-            return new Response(`❌ Failed to reject: ${stderr}`, { status: 500 });
-          }
-
-          return new Response(`❌ Email ${id} rejected.\n\n${stdout}`, {
-            headers: { "content-type": "text/plain" }
-          });
-        } catch (e: any) {
-          return new Response(`❌ Error: ${e.message}`, { status: 500 });
-        }
-      },
-    },
-
-    "/api/dashboard/overview": {
-      GET() {
-        try {
-          const overview = {
-            emailTracker: { processed: 0, last24h: 0 },
-            receipts: { pending: 0, processed: 0 },
-            outbox: { pending: 0, approved: 0, sent: 0 },
-            vendors: { total: 0 },
-          };
-
-          // Email tracker
-          try {
-            const db = new Database("/home/node/.openclaw/shared/email-tracker.db", { readonly: true });
-            overview.emailTracker.processed = db.query("SELECT COUNT(*) as count FROM emails").get()?.count || 0;
-            const day_ago = Date.now() - 86400000;
-            overview.emailTracker.last24h = db.query("SELECT COUNT(*) as count FROM emails WHERE processed_at >= ?").get(day_ago)?.count || 0;
-            db.close();
-          } catch (e: any) {
-            console.error("Email tracker DB error:", e.message);
-          }
-
-          // Receipts
-          try {
-            const db = new Database("/home/node/.openclaw/shared/receipt-queue.db", { readonly: true });
-            overview.receipts.pending = db.query("SELECT COUNT(*) as count FROM receipts WHERE status = 'pending'").get()?.count || 0;
-            overview.receipts.processed = db.query("SELECT COUNT(*) as count FROM receipts WHERE status IN ('processed', 'matched')").get()?.count || 0;
-            db.close();
-          } catch (e: any) {
-            console.error("Receipt queue DB error:", e.message);
-          }
-
-          // Email outbox
-          try {
-            const db = new Database("/home/node/.openclaw/shared/email-outbox.db", { readonly: true });
-            overview.outbox.pending = db.query("SELECT COUNT(*) as count FROM drafts WHERE status = 'pending'").get()?.count || 0;
-            overview.outbox.approved = db.query("SELECT COUNT(*) as count FROM drafts WHERE status = 'approved'").get()?.count || 0;
-            overview.outbox.sent = db.query("SELECT COUNT(*) as count FROM drafts WHERE status = 'sent'").get()?.count || 0;
-            db.close();
-          } catch (e: any) {
-            console.error("Email outbox DB error:", e.message);
-          }
-
-          // Vendor patterns
-          try {
-            const db = new Database("/home/node/.openclaw/workspace/skills/vendor-patterns/db/vendor-patterns.db", { readonly: true });
-            overview.vendors.total = db.query("SELECT COUNT(*) as count FROM vendor_patterns").get()?.count || 0;
-            db.close();
-          } catch (e: any) {
-            console.error("Vendor patterns DB error:", e.message);
-          }
-
-          return Response.json(overview);
-        } catch (e: any) {
-          return Response.json({ error: e.message }, { status: 500 });
-        }
-      },
-    },
-
-    "/api/dashboard/receipts": {
-      GET() {
-        try {
-          const db = new Database("/home/node/.openclaw/shared/receipt-queue.db", { readonly: true });
-          const receipts = db.query("SELECT * FROM receipts ORDER BY created_at DESC LIMIT 50").all();
-          db.close();
-          return Response.json({ receipts });
-        } catch (e: any) {
-          return Response.json({ error: e.message }, { status: 500 });
-        }
-      },
-    },
-
-    "/api/dashboard/outbox": {
-      GET() {
-        try {
-          const db = new Database("/home/node/.openclaw/shared/email-outbox.db", { readonly: true });
-          const drafts = db.query("SELECT * FROM drafts WHERE status IN ('pending', 'approved') ORDER BY created_at DESC").all();
-          db.close();
-          return Response.json({ drafts });
-        } catch (e: any) {
-          return Response.json({ error: e.message }, { status: 500 });
-        }
-      },
-    },
-
-    "/api/dashboard/vendors": {
-      GET() {
-        try {
-          const db = new Database("/home/node/.openclaw/workspace/skills/vendor-patterns/db/vendor-patterns.db", { readonly: true });
-          const vendors = db.query("SELECT * FROM vendor_patterns ORDER BY vendor").all();
-          db.close();
-          return Response.json({ vendors });
-        } catch (e: any) {
-          return Response.json({ error: e.message }, { status: 500 });
-        }
-      },
-    },
-
-    "/api/dashboard/agents": {
-      GET() {
-        try {
-          const config = JSON.parse(readFileSync("/home/node/.openclaw/openclaw.json", "utf8"));
-          const agents = config.agents?.list || [];
-          return Response.json({ agents });
-        } catch (e: any) {
-          return Response.json({ error: e.message }, { status: 500 });
-        }
-      },
-    },
-
-    "/api/health": {
-      GET() {
-        return Response.json({ status: "ok", uptime: process.uptime() });
       },
     },
   },
@@ -377,4 +320,4 @@ const server = serve({
   },
 });
 
-console.log(`🤖 Jarvis Console running at ${server.url}`);
+console.log(`HQ Web running at ${server.url}`);

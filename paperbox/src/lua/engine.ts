@@ -1,7 +1,35 @@
 import { LuaFactory } from "wasmoon";
 import { JSDOM } from "jsdom";
+import { readdir } from "fs/promises";
+import { join } from "path";
+
+const SCRIPTS_DIR = process.env.SCRIPTS_DIR || "/scripts";
 
 let factory: LuaFactory | null = null;
+let utilModuleCache: Map<string, string> | null = null;
+
+async function loadUtilModules(): Promise<Map<string, string>> {
+  if (utilModuleCache) return utilModuleCache;
+  const cache = new Map<string, string>();
+  // Upstream first, then local/ overlays so local wins by filename.
+  const sources: Array<[string, "utils" | "templates"]> = [
+    [join(SCRIPTS_DIR, "utils"), "utils"],
+    [join(SCRIPTS_DIR, "templates"), "templates"],
+    [join(SCRIPTS_DIR, "local", "utils"), "utils"],
+    [join(SCRIPTS_DIR, "local", "templates"), "templates"],
+  ];
+  for (const [dir, prefix] of sources) {
+    try {
+      for (const f of await readdir(dir)) {
+        if (!f.endsWith(".lua")) continue;
+        const modName = `${prefix}.${f.slice(0, -4)}`;
+        cache.set(modName, await Bun.file(join(dir, f)).text());
+      }
+    } catch {}
+  }
+  utilModuleCache = cache;
+  return cache;
+}
 
 export async function getFactory(): Promise<LuaFactory> {
   if (!factory) {
@@ -41,6 +69,7 @@ export async function runModule(
   opts: {
     url?: string;
     pageNumber?: number;
+    rootUrl?: string;
   } = {}
 ): Promise<{ mangaInfo: MangaInfo; search: SearchResult; pages: PageResult }> {
   const fact = await getFactory();
@@ -70,39 +99,56 @@ export async function runModule(
       mimeType: "",
     };
 
+    // Synchronous HTTP via curl subprocess. FMD2 scripts call HTTP.GET expecting
+    // a sync boolean. wasmoon can't yield across C-call boundaries (i.e. yields
+    // inside script functions), so async fetch + :await isn't usable here.
+    const buildCurlArgs = (url: string, extra: string[] = []): string[] => {
+      const args = [
+        "-sSL",
+        "--max-time", "60",
+        "--compressed",
+        "-A", httpState.userAgent,
+      ];
+      if (httpState.cookies) args.push("-b", httpState.cookies);
+      if (httpState.mimeType) args.push("-H", `Content-Type: ${httpState.mimeType}`);
+      for (const [k, v] of Object.entries(httpState.headers)) {
+        args.push("-H", `${k}: ${v}`);
+      }
+      args.push(...extra, url);
+      return args;
+    };
+
     lua.global.set("HTTP", {
-      GET: async (url: string) => {
+      GET: (url: string) => {
         try {
           console.log(`  [lua] HTTP.GET ${url}`);
-          const headers: Record<string, string> = {
-            "User-Agent": httpState.userAgent,
-          };
-          if (httpState.cookies) headers["Cookie"] = httpState.cookies;
-          if (httpState.mimeType) headers["Content-Type"] = httpState.mimeType;
-          Object.assign(headers, httpState.headers);
-
-          const resp = await fetch(url, { headers, redirect: "follow" });
-          httpState.document = await resp.text();
-          return true;
+          const result = Bun.spawnSync(["curl", ...buildCurlArgs(url)]);
+          if (result.exitCode === 0) {
+            httpState.document = result.stdout.toString();
+            return true;
+          }
+          console.error(`  [lua] HTTP.GET curl exit ${result.exitCode}: ${result.stderr.toString().trim()}`);
+          httpState.document = "";
+          return false;
         } catch (e) {
           console.error(`  [lua] HTTP.GET failed: ${e}`);
           httpState.document = "";
           return false;
         }
       },
-      POST: async (url: string, body?: string) => {
+      POST: (url: string, body?: string) => {
         try {
           console.log(`  [lua] HTTP.POST ${url}`);
-          const headers: Record<string, string> = {
-            "User-Agent": httpState.userAgent,
-          };
-          if (httpState.cookies) headers["Cookie"] = httpState.cookies;
-          if (httpState.mimeType) headers["Content-Type"] = httpState.mimeType;
-          Object.assign(headers, httpState.headers);
-
-          const resp = await fetch(url, { method: "POST", headers, body, redirect: "follow" });
-          httpState.document = await resp.text();
-          return true;
+          const extra = ["-X", "POST"];
+          if (body) extra.push("--data-binary", body);
+          const result = Bun.spawnSync(["curl", ...buildCurlArgs(url, extra)]);
+          if (result.exitCode === 0) {
+            httpState.document = result.stdout.toString();
+            return true;
+          }
+          console.error(`  [lua] HTTP.POST curl exit ${result.exitCode}`);
+          httpState.document = "";
+          return false;
         } catch (e) {
           console.error(`  [lua] HTTP.POST failed: ${e}`);
           httpState.document = "";
@@ -179,7 +225,7 @@ export async function runModule(
         get: (_t, k) => moduleStorage[k as string] || "",
         set: (_t, k, v) => { moduleStorage[k as string] = v; return true; },
       }),
-      RootURL: "",
+      RootURL: opts.rootUrl || "",
       Category: "",
     });
 
@@ -203,12 +249,10 @@ export async function runModule(
     lua.global.set("StringReplace", (s: string, from: string, to: string) =>
       s?.replaceAll(from, to) || ""
     );
-    lua.global.set("GetPage", async (url: string) => {
+    lua.global.set("GetPage", (url: string) => {
       try {
-        const resp = await fetch(url, {
-          headers: { "User-Agent": httpState.userAgent },
-        });
-        return await resp.text();
+        const result = Bun.spawnSync(["curl", "-sSL", "--max-time", "60", "--compressed", "-A", httpState.userAgent, url]);
+        return result.exitCode === 0 ? result.stdout.toString() : "";
       } catch {
         return "";
       }
@@ -249,11 +293,44 @@ export async function runModule(
       AddOptionCheckBox: () => {},
     }));
 
-    // require stub for 'fmd.env'
-    lua.global.set("require", (mod: string) => {
-      if (mod === "fmd.env") return { SelectedLanguage: "en" };
-      return {};
+    // require: handles fmd.* stubs and loads utils.*/templates.* lua modules
+    const utilModules = await loadUtilModules();
+    lua.global.set("__paperbox_module_source", (mod: string) => {
+      return utilModules.get(mod) ?? null;
     });
+    await lua.doString(`
+      local _loaded = {}
+      local _fmd_env = { SelectedLanguage = 'en' }
+      local _empty = {}
+      function require(mod)
+        if _loaded[mod] ~= nil then return _loaded[mod] end
+        if mod == 'fmd.env' then _loaded[mod] = _fmd_env; return _fmd_env end
+        if mod == 'fmd.crypto' then
+          local crypto = {
+            HTMLEncode = function(s) return s end,
+            HTMLDecode = function(s) return s end,
+            URLEncode = function(s) return s end,
+          }
+          _loaded[mod] = crypto; return crypto
+        end
+        if mod == 'fmd.duktape' or mod == 'fmd.fileutil' then
+          _loaded[mod] = _empty; return _empty
+        end
+        local src = __paperbox_module_source(mod)
+        if src then
+          local chunk, err = load(src, mod)
+          if chunk then
+            local ok, result = pcall(chunk)
+            if ok then
+              _loaded[mod] = (result == nil) and _empty or result
+              return _loaded[mod]
+            end
+          end
+        end
+        _loaded[mod] = _empty
+        return _empty
+      end
+    `);
 
     // Load and run the script
     const scriptContent = await Bun.file(scriptPath).text();

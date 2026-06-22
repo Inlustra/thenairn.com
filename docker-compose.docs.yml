@@ -1,0 +1,74 @@
+services:
+  paperless-broker:
+    image: docker.io/library/redis:7
+    labels:
+      plugsy.name: "Redis Cache"
+      plugsy.parents: "Paperless"
+      plugsy.icon: "@styled-icons/feather/Database"
+    restart: unless-stopped
+    volumes:
+      - ${CONFIG_DIR}/paperless-redis:/data
+
+  paperless:
+    image: ghcr.io/paperless-ngx/paperless-ngx:latest
+    container_name: paperless
+    labels:
+      plugsy.name: 'Paperless'
+      plugsy.category: 'Home'
+      plugsy.icon: '@styled-icons/bootstrap/Paperclip'
+      plugsy.link: https://docs.thenairn.com
+    depends_on:
+      - paperless-broker
+    environment:
+      USERMAP_UID: 0
+      USERMAP_GID: 0
+      PAPERLESS_REDIS: redis://paperless-broker:6379
+      TZ: Europe/Paris
+      PAPERLESS_TIMEZONE: Europe/Paris
+      DOCKER_MODS: linuxserver/mods:papermerge-multilangocr
+      OCRLANG: fra,eng
+      PAPERLESS_CONSUMPTION_DIR: /data/consume
+      PAPERLESS_CONSUMER_POLLING: 20
+      PAPERLESS_CONSUMER_RECURSIVE: 1
+      PAPERLESS_CONSUMER_SUBDIRS_AS_TAGS: 1
+      PAPERLESS_URL: "https://docs.thenairn.com"
+      PAPERLESS_DATA_DIR: "/config"
+      PAPERLESS_MEDIA_ROOT: "/data/media"
+    volumes:
+      - ${CONFIG_DIR}/paperless:/config
+      - ${SCANS_DIR}:/data/consume
+      - ${PAPERLESS_DOCS_DIR}:/data/media
+
+  codex-proxy:
+    image: eceasy/cli-proxy-api:latest
+    container_name: codex-proxy
+    labels:
+      plugsy.name: "Codex Proxy"
+      plugsy.parents: "Paperless AI"
+      plugsy.icon: "@styled-icons/feather/Shuffle"
+    restart: unless-stopped
+    volumes:
+      - ./codex-proxy/config.yaml:/CLIProxyAPI/config.yaml
+      - ${CONFIG_DIR}/codex-proxy/auths:/root/.cli-proxy-api
+      - ${CONFIG_DIR}/codex-proxy/logs:/CLIProxyAPI/logs
+
+  paperless-gpt:
+    image: icereed/paperless-gpt:latest
+    container_name: paperless-gpt
+    labels:
+      plugsy.name: "Paperless GPT"
+      plugsy.category: "Home"
+      plugsy.icon: "@styled-icons/feather/Cpu"
+      plugsy.link: https://ai.docs.thenairn.com
+    depends_on:
+      - paperless
+      - codex-proxy
+    restart: unless-stopped
+    env_file:
+      - .env.docs
+    environment:
+      PAPERLESS_BASE_URL: http://paperless:8000
+    ports:
+      - "3000:8080"
+    volumes:
+      - ${CONFIG_DIR}/paperless-gpt:/app/data

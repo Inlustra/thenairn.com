@@ -71,6 +71,12 @@
 
             transform user {
 				match realm google
+                match email thomas@rowm.co
+                action add role authp/admin
+            }
+
+            transform user {
+				match realm google
                 match email grace.nairn@gmail.com
                 action add role authp/superuser
             }
@@ -124,7 +130,53 @@
     }
 }
 
+(proxy_error_page) {
+    handle_errors {
+        header Content-Type text/html
+        respond <<HTML
+            <!DOCTYPE html>
+            <html><head>
+            <meta name="viewport" content="width=device-width,initial-scale=1">
+            <style>
+            body{font-family:-apple-system,system-ui,sans-serif;background:#0a0a0a;color:#e5e5e5;display:flex;justify-content:center;align-items:center;height:100vh;margin:0}
+            .box{text-align:center;padding:32px}
+            h1{font-size:3rem;margin:0;color:#333}
+            p{color:#666;margin-top:8px}
+            </style></head>
+            <body><div class="box"><h1>{err.status_code}</h1><p>Service unavailable — try again shortly.</p></div></body></html>
+HTML
+    }
+}
+
  # DOMAINS
+
+hq.thenairn.com {
+    import proxy_error_page
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle @internal {
+        reverse_proxy 192.168.96.14:3777
+    }
+    handle {
+        import admin
+        reverse_proxy 192.168.96.14:3777
+    }
+}
+
+claw.thenairn.com {
+    import proxy_error_page
+    import admin
+    reverse_proxy 192.168.96.14:18790 {
+        header_up Authorization "Bearer 7u88crYayckAQO9QkoW7Z8BcOFi8XLNMWRumgCviFj8"
+    }
+}
+
+http://192.168.96.14 { 
+    reverse_proxy go2rtc:1984 {
+        flush_interval -1
+    }
+}
 
 auth.thenairn.com {
     authenticate with myportal
@@ -430,12 +482,33 @@ cameras.thenairn.com {
     @internal {
         remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
     }
+      handle @internal {
+          reverse_proxy go2rtc:1984 {
+              flush_interval -1
+          }
+      }
+      handle {
+          import family
+          reverse_proxy go2rtc:1984 {
+              flush_interval -1
+          }
+      }
+}
+
+frigate.thenairn.com {
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
     handle @internal {
-        reverse_proxy go2rtc:1984
+        reverse_proxy frigate:5000 {
+            flush_interval -1
+        }
     }
     handle {
         import family
-        reverse_proxy go2rtc:1984
+        reverse_proxy frigate:5000 {
+            flush_interval -1
+        }
     }
 }
 
@@ -583,4 +656,75 @@ openclaw.thenairn.com {
 
 hooks.openclaw.thenairn.com {
     reverse_proxy openclaw-gateway:8788
+}
+
+# iplayer.thenairn.com — primary user-facing UI (iplayarr)
+iplayer.thenairn.com {
+    tls {
+        resolvers 1.1.1.1 8.8.8.8
+    }
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle @internal {
+        reverse_proxy gluetun-uk:4404
+    }
+    handle {
+        import admin
+        reverse_proxy gluetun-uk:4404
+    }
+}
+
+# backend.iplayer.thenairn.com — direct get_iplayer web UI (manual use)
+backend.iplayer.thenairn.com {
+    tls {
+        resolvers 1.1.1.1 8.8.8.8
+    }
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle @internal {
+        reverse_proxy gluetun-uk:1935
+    }
+    handle {
+        import admin
+        reverse_proxy gluetun-uk:1935
+    }
+}
+
+# Catch-all: reject unknown subdomains (no TLS, just abort)
+http://*.thenairn.com {
+    abort
+}
+orca.thenairn.com {
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle @internal {
+        reverse_proxy orca:6768
+    }
+    handle {
+        import admin
+        reverse_proxy orca:6768
+    }
+}
+
+playground.thenairn.com {
+    tls {
+        resolvers 1.1.1.1 8.8.8.8
+    }
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle @internal {
+        root * /Playground
+        encode zstd gzip
+        file_server browse
+    }
+    handle {
+        import admin
+        root * /Playground
+        encode zstd gzip
+        file_server browse
+    }
 }

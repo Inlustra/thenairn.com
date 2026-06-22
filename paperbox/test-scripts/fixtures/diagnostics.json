@@ -1,155 +1,229 @@
 [
   {
-    "timestamp": 1773131584010,
+    "timestamp": 1773482672805,
     "action": "target_url",
-    "detail": "https://asuracomic.net/series/sword-devouring-swordmaster-2fd445c0"
+    "detail": "https://asuracomic.net/series/sss-class-suicide-hunter-cb0d4822"
   },
   {
-    "timestamp": 1773131584010,
+    "timestamp": 1773482672806,
     "action": "script_path",
-    "detail": "/home/user/thenairn.com/paperbox/test-scripts/AsuraScans.lua"
+    "detail": "/Internal/thenairn.com/paperbox/test-scripts/AsuraScans.lua"
   },
   {
-    "timestamp": 1773131584010,
+    "timestamp": 1773482672807,
     "action": "script_loaded",
     "detail": "4668 chars"
   },
   {
-    "timestamp": 1773131584010,
+    "timestamp": 1773482672807,
     "action": "fetching_url",
-    "detail": "https://asuracomic.net/series/sword-devouring-swordmaster-2fd445c0"
+    "detail": "https://asuracomic.net/series/sss-class-suicide-hunter-cb0d4822"
   },
   {
-    "timestamp": 1773131584024,
+    "timestamp": 1773482672906,
     "action": "http_status",
-    "detail": 403
+    "detail": 200
   },
   {
-    "timestamp": 1773131584024,
+    "timestamp": 1773482672906,
     "action": "http_headers",
     "detail": {
-      "connection": "close",
-      "content-length": "16",
-      "content-type": "text/plain",
-      "date": "Tue, 10 Mar 2026 08:33:03 GMT",
-      "server": "envoy",
-      "x-deny-reason": "host_not_allowed"
+      "age": "206",
+      "alt-svc": "h3=\":443\"; ma=86400",
+      "cache-control": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "cf-cache-status": "DYNAMIC",
+      "cf-ray": "9dc274715bf62a4c-CDG",
+      "connection": "keep-alive",
+      "content-encoding": "zstd",
+      "content-type": "text/html; charset=utf-8",
+      "date": "Sat, 14 Mar 2026 10:04:32 GMT",
+      "link": "</_next/static/media/07f0d0991c204e49-s.p.woff2>; rel=preload; as=\"font\"; crossorigin=\"\"; type=\"font/woff2\", </_next/static/media/10170d15601e5444-s.p.woff2>; rel=preload; as=\"font\"; crossorigin=\"\"; type=\"font/woff2\", </_next/static/media/442946fed64c2011-s.p.woff2>; rel=preload; as=\"font\"; crossorigin=\"\"; type=\"font/woff2\", </_next/static/media/4bf0e4025499f009-s.p.woff2>; rel=preload; as=\"font\"; crossorigin=\"\"; type=\"font/woff2\", </_next/static/media/4f498a2054f9dc71-s.p.woff2>; rel=preload; as=\"font\"; crossorigin=\"\"; type=\"font/woff2\"",
+      "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+      "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=ZO%2FFBOmIhUMQWFlJr1sxItU4HjxX9ce5gjM3xX2dp%2F8O1KSwLND8WtfToQ432AcVRHnEBmZDwh1mpFe37sPdHjaBgtFJPVJAfiEz9qnQ\"}]}",
+      "server": "cloudflare",
+      "speculation-rules": "\"/cdn-cgi/speculation\"",
+      "strict-transport-security": "max-age=31536000; includeSubDomains",
+      "transfer-encoding": "chunked",
+      "vary": "RSC, Next-Router-State-Tree, Next-Router-Prefetch, Accept-Encoding",
+      "via": "1.1 varnish-0 (Varnish/7.3)",
+      "x-cache": "HIT",
+      "x-varnish": "322208108 332925155"
     }
   },
   {
-    "timestamp": 1773131584024,
+    "timestamp": 1773482673002,
     "action": "html_length",
-    "detail": 16
+    "detail": 712315
   },
   {
-    "timestamp": 1773131584024,
+    "timestamp": 1773482673003,
     "action": "html_preview",
-    "detail": "Host not allowed"
+    "detail": "<!DOCTYPE html><html lang=\"en\" class=\"__variable_4a6d48 dark\"><head><meta charSet=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes\"/><link rel=\"preload\" href=\"/_next/static/media/64d67560db5baada-s.p.woff2\" as=\"font\" crossorigin=\"\" type=\"font/woff2\"/><link rel=\"preload\" href=\"/_next/static/media/6d55bf7a5d72bfe8-s.p.woff2\" as=\"font\" crossorigin=\"\" type=\"font/woff2\"/><link rel=\"preload\" href=\"/_next/static/media/794d29e41a12b5c4-s.p.w"
   },
   {
-    "timestamp": 1773131584024,
+    "timestamp": 1773482673007,
     "action": "fixture_saved",
-    "detail": "/home/user/thenairn.com/paperbox/test-scripts/fixtures/asura-page.html"
+    "detail": "/Internal/thenairn.com/paperbox/test-scripts/fixtures/asura-page.html"
   },
   {
-    "timestamp": 1773131584024,
+    "timestamp": 1773482673007,
     "action": "testing_xpath_directly",
     "detail": null
   },
   {
-    "timestamp": 1773131584070,
+    "timestamp": 1773482673500,
     "action": "xpath_title",
     "detail": {
       "xpath": "//span[@class=\"text-xl font-bold\"]",
-      "count": 0,
-      "values": []
+      "count": 1,
+      "values": [
+        "SSS-Class Suicide Hunter"
+      ]
     }
   },
   {
-    "timestamp": 1773131584071,
+    "timestamp": 1773482673528,
     "action": "xpath_cover",
     "detail": {
       "xpath": "(//img[@alt=\"poster\"])[1]/@src",
-      "count": 0,
-      "values": []
+      "count": 1,
+      "values": [
+        "https://gg.asuracomic.net/storage/media/255711/conversions/01JECM40YCAZ6W46MBJJ4784MF-optimized.webp"
+      ]
     }
   },
   {
-    "timestamp": 1773131584071,
+    "timestamp": 1773482673578,
     "action": "xpath_authors",
     "detail": {
       "xpath": "//h3[contains(., \"Author\")]/following-sibling::h3",
-      "count": 0,
-      "values": []
+      "count": 1,
+      "values": [
+        "Shin Noah,신노아"
+      ]
     }
   },
   {
-    "timestamp": 1773131584072,
+    "timestamp": 1773482673608,
     "action": "xpath_status",
     "detail": {
       "xpath": "//h3[contains(., \"Status\")]/following-sibling::h3",
-      "count": 0,
-      "values": []
+      "count": 1,
+      "values": [
+        "Ongoing"
+      ]
     }
   },
   {
-    "timestamp": 1773131584072,
+    "timestamp": 1773482673655,
     "action": "xpath_chapters",
     "detail": {
       "xpath": "//div[contains(@class, \"group\")]/a",
-      "count": 0,
-      "values": []
+      "count": 151,
+      "values": [
+        "Chapter 151-S4 END-September 5th 2025",
+        "Chapter 150August 28th 2025",
+        "Chapter 149August 21st 2025",
+        "Chapter 148August 14th 2025",
+        "Chapter 147July 31st 2025"
+      ]
     }
   },
   {
-    "timestamp": 1773131584073,
+    "timestamp": 1773482673682,
     "action": "xpath_genres",
     "detail": {
       "xpath": "//h3[contains(., \"Genres\")]/following-sibling::div/button",
-      "count": 0,
-      "values": []
+      "count": 8,
+      "values": [
+        "Action",
+        "Comedy",
+        "Dungeons",
+        "Fantasy",
+        "Martial Arts"
+      ]
     }
   },
   {
-    "timestamp": 1773131584073,
+    "timestamp": 1773482673711,
     "action": "xpath_summary",
     "detail": {
       "xpath": "//span[@class=\"font-medium text-sm text-[#A2A2A2]\"]",
-      "count": 0,
-      "values": []
+      "count": 1,
+      "values": [
+        "I want an S-Rank skill too! I want it so badly, I could die for it![You have awakened an S-Rank skill.] [But it only works when you die.]HUH!? WHAT’S THE POINT OF GETTING ONE IF I DIE !?"
+      ]
     }
   },
   {
-    "timestamp": 1773131584073,
+    "timestamp": 1773482673711,
     "action": "testing_css_selectors",
     "detail": null
   },
   {
-    "timestamp": 1773131584077,
+    "timestamp": 1773482673727,
     "action": "css_title_span",
     "detail": {
-      "count": 0,
-      "samples": []
+      "count": 1,
+      "samples": [
+        {
+          "tag": "SPAN",
+          "text": "SSS-Class Suicide Hunter",
+          "class": "text-xl font-bold"
+        }
+      ]
     }
   },
   {
-    "timestamp": 1773131584078,
+    "timestamp": 1773482673729,
     "action": "css_any_h1",
     "detail": {
-      "count": 0,
-      "samples": []
+      "count": 1,
+      "samples": [
+        {
+          "tag": "H1",
+          "text": "Read on ourNew Beta Site!",
+          "class": "jsx-c0e7ec60c626fa91 __className_d758cf leading-[0.85] tracking-[0.05em] upperca"
+        }
+      ]
     }
   },
   {
-    "timestamp": 1773131584078,
+    "timestamp": 1773482673730,
     "action": "css_any_h2",
     "detail": {
-      "count": 0,
-      "samples": []
+      "count": 19,
+      "samples": [
+        {
+          "tag": "H2",
+          "text": "What do you think?",
+          "class": "text-base font-medium text-zinc-300 mb-1"
+        },
+        {
+          "tag": "H2",
+          "text": "Trash of the Count’s Family",
+          "class": "text-[13px] text-[#DDDDDD] text-left pt-4 font-bold"
+        },
+        {
+          "tag": "H2",
+          "text": "Chapter 173",
+          "class": "text-[13px] text-[#DDDDDD] text-left pt-"
+        },
+        {
+          "tag": "H2",
+          "text": "Murim Login",
+          "class": "text-[13px] text-[#DDDDDD] text-left pt-4 font-bold"
+        },
+        {
+          "tag": "H2",
+          "text": "Chapter 251",
+          "class": "text-[13px] text-[#DDDDDD] text-left pt-"
+        }
+      ]
     }
   },
   {
-    "timestamp": 1773131584079,
+    "timestamp": 1773482673738,
     "action": "css_any_title_attr",
     "detail": {
       "count": 0,
@@ -157,159 +231,2712 @@
     }
   },
   {
-    "timestamp": 1773131584079,
+    "timestamp": 1773482673744,
     "action": "css_any_bold",
     "detail": {
-      "count": 0,
-      "samples": []
+      "count": 23,
+      "samples": [
+        {
+          "tag": "SPAN",
+          "text": "New Beta Site!",
+          "class": "jsx-c0e7ec60c626fa91 block font-bold"
+        },
+        {
+          "tag": "SPAN",
+          "text": "Try the Beta",
+          "class": "jsx-c0e7ec60c626fa91 __className_4e0b73 bb-btn relative inline-flex items-center"
+        },
+        {
+          "tag": "SPAN",
+          "text": "SSS-Class Suicide Hunter",
+          "class": "text-xl font-bold"
+        },
+        {
+          "tag": "DIV",
+          "text": "Chapter SSS-Class Suicide Hunter",
+          "class": "border-b-[1px] border-[#312f40] font-bold leading-[33.6px] tracking-[0.27px] tex"
+        },
+        {
+          "tag": "H3",
+          "text": "Chapter 1",
+          "class": "font-bold text-xl"
+        }
+      ]
     }
   },
   {
-    "timestamp": 1773131584080,
+    "timestamp": 1773482673747,
     "action": "css_links_with_chapter",
     "detail": {
-      "count": 0,
-      "samples": []
+      "count": 153,
+      "samples": [
+        {
+          "tag": "A",
+          "text": "First ChapterChapter 1",
+          "href": "sss-class-suicide-hunter-cb0d4822/chapter/1"
+        },
+        {
+          "tag": "A",
+          "text": "-S4 END-Chapter 151",
+          "href": "sss-class-suicide-hunter-cb0d4822/chapter/151"
+        },
+        {
+          "tag": "A",
+          "text": "Chapter 151-S4 END-September 5th 2025",
+          "href": "sss-class-suicide-hunter-cb0d4822/chapter/151"
+        },
+        {
+          "tag": "A",
+          "text": "Chapter 150August 28th 2025",
+          "href": "sss-class-suicide-hunter-cb0d4822/chapter/150"
+        },
+        {
+          "tag": "A",
+          "text": "Chapter 149August 21st 2025",
+          "href": "sss-class-suicide-hunter-cb0d4822/chapter/149"
+        }
+      ]
     }
   },
   {
-    "timestamp": 1773131584080,
+    "timestamp": 1773482673751,
     "action": "css_group_divs",
     "detail": {
-      "count": 0,
-      "samples": []
+      "count": 161,
+      "samples": [
+        {
+          "tag": "DIV",
+          "text": "Chapter 151-S4 END-September 5th 2025",
+          "class": "pl-4 py-2 border rounded-md group w-full hover:bg-[#343434] cursor-pointer borde"
+        },
+        {
+          "tag": "DIV",
+          "text": "Chapter 150August 28th 2025",
+          "class": "pl-4 py-2 border rounded-md group w-full hover:bg-[#343434] cursor-pointer borde"
+        },
+        {
+          "tag": "DIV",
+          "text": "Chapter 149August 21st 2025",
+          "class": "pl-4 py-2 border rounded-md group w-full hover:bg-[#343434] cursor-pointer borde"
+        },
+        {
+          "tag": "DIV",
+          "text": "Chapter 148August 14th 2025",
+          "class": "pl-4 py-2 border rounded-md group w-full hover:bg-[#343434] cursor-pointer borde"
+        },
+        {
+          "tag": "DIV",
+          "text": "Chapter 147July 31st 2025",
+          "class": "pl-4 py-2 border rounded-md group w-full hover:bg-[#343434] cursor-pointer borde"
+        }
+      ]
     }
   },
   {
-    "timestamp": 1773131584080,
+    "timestamp": 1773482673752,
     "action": "css_all_a_tags",
     "detail": {
-      "count": 0,
-      "samples": []
+      "count": 275,
+      "samples": [
+        {
+          "tag": "A",
+          "text": "",
+          "href": "/",
+          "class": "flex h-12 w-12"
+        },
+        {
+          "tag": "A",
+          "text": "Home",
+          "href": "/"
+        },
+        {
+          "tag": "A",
+          "text": "Bookmarks",
+          "href": "/bookmarks"
+        },
+        {
+          "tag": "A",
+          "text": "Comics",
+          "href": "/series?page=1"
+        },
+        {
+          "tag": "A",
+          "text": "Recruitment",
+          "href": "https://docs.google.com/forms/d/1g4-7-_stnOV52-7gHZhwBTufdL6ieVm6vNGDyZzfMuE/viewform"
+        }
+      ]
     }
   },
   {
-    "timestamp": 1773131584080,
+    "timestamp": 1773482673752,
     "action": "running_lua_module",
     "detail": null
   },
   {
-    "timestamp": 1773131584116,
+    "timestamp": 1773482673801,
     "action": "calling_GetInfo",
     "detail": null
   },
   {
-    "timestamp": 1773131584117,
+    "timestamp": 1773482673802,
     "action": "lua_HTTP_GET",
-    "detail": "https://asuracomic.net/series/sword-devouring-swordmaster-2fd445c0"
+    "detail": "https://asuracomic.net/series/sss-class-suicide-hunter-cb0d4822"
   },
   {
-    "timestamp": 1773131584125,
+    "timestamp": 1773482674132,
     "action": "lua_XPathString",
     "detail": {
       "xpath": "//span[@class=\"text-xl font-bold\"]",
-      "result": ""
+      "result": "SSS-Class Suicide Hunter"
     }
   },
   {
-    "timestamp": 1773131584125,
+    "timestamp": 1773482674132,
     "action": "lua_set_Title",
-    "detail": ""
+    "detail": "SSS-Class Suicide Hunter"
   },
   {
-    "timestamp": 1773131584126,
+    "timestamp": 1773482674164,
     "action": "lua_XPathString",
     "detail": {
       "xpath": "(//img[@alt=\"poster\"])[1]/@src",
-      "result": ""
+      "result": "https://gg.asuracomic.net/storage/media/255711/conversions/01JECM40YCAZ6W46MBJJ4784MF-optimized.webp"
     }
   },
   {
-    "timestamp": 1773131584126,
+    "timestamp": 1773482674164,
     "action": "lua_set_CoverLink",
-    "detail": ""
+    "detail": "https://gg.asuracomic.net/storage/media/255711/conversions/01JECM40YCAZ6W46MBJJ4784MF-optimized.webp"
   },
   {
-    "timestamp": 1773131584126,
+    "timestamp": 1773482674204,
     "action": "lua_XPathString",
     "detail": {
       "xpath": "//h3[contains(., \"Author\")]/following-sibling::h3",
-      "result": ""
+      "result": "Shin Noah,신노아"
     }
   },
   {
-    "timestamp": 1773131584127,
+    "timestamp": 1773482674204,
     "action": "lua_set_Authors",
-    "detail": ""
+    "detail": "Shin Noah,신노아"
   },
   {
-    "timestamp": 1773131584128,
+    "timestamp": 1773482674243,
     "action": "lua_XPathString",
     "detail": {
       "xpath": "//h3[contains(., \"Artist\")]/following-sibling::h3",
-      "result": ""
+      "result": "Mintaka Kim,망령풍뎅이"
     }
   },
   {
-    "timestamp": 1773131584128,
+    "timestamp": 1773482674243,
     "action": "lua_set_Artists",
-    "detail": ""
+    "detail": "Mintaka Kim,망령풍뎅이"
   },
   {
-    "timestamp": 1773131584129,
+    "timestamp": 1773482674278,
     "action": "lua_XPathStringAll",
     "detail": {
       "xpath": "//h3[contains(., \"Genres\")]/following-sibling::div/button",
-      "count": 0
+      "count": 8
     }
   },
   {
-    "timestamp": 1773131584129,
+    "timestamp": 1773482674279,
     "action": "lua_set_Genres",
-    "detail": ""
+    "detail": "Action, Comedy, Dungeons, Fantasy, Martial Arts, Seinen, Supernatural, Tragedy"
   },
   {
-    "timestamp": 1773131584130,
+    "timestamp": 1773482674312,
     "action": "lua_XPathString",
     "detail": {
       "xpath": "//h3[contains(., \"Status\")]/following-sibling::h3",
-      "result": ""
+      "result": "Ongoing"
     }
   },
   {
-    "timestamp": 1773131584130,
+    "timestamp": 1773482674312,
     "action": "lua_set_Status",
-    "detail": ""
+    "detail": "Ongoing"
   },
   {
-    "timestamp": 1773131584130,
+    "timestamp": 1773482674350,
     "action": "lua_XPathString",
     "detail": {
       "xpath": "//span[@class=\"font-medium text-sm text-[#A2A2A2]\"]",
-      "result": ""
+      "result": "I want an S-Rank skill too! I want it so badly, I could die for it![You have awakened an S-Rank skil"
     }
   },
   {
-    "timestamp": 1773131584130,
+    "timestamp": 1773482674351,
     "action": "lua_set_Summary",
-    "detail": ""
+    "detail": "I want an S-Rank skill too! I want it so badly, I could die for it![You have awakened an S-Rank skil"
   },
   {
-    "timestamp": 1773131584131,
+    "timestamp": 1773482674404,
     "action": "lua_XPath",
     "detail": {
       "xpath": "//div[contains(@class, \"group\")]/a",
+      "count": 151
+    }
+  },
+  {
+    "timestamp": 1773482674431,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/151\"]//h3[contains(@class, ",
       "count": 0
     }
   },
   {
-    "timestamp": 1773131584132,
+    "timestamp": 1773482674432,
+    "action": "lua_chapter_link",
+    "detail": "series/sss-class-suicide-hunter-/chapter/151"
+  },
+  {
+    "timestamp": 1773482674432,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482674432,
+    "action": "lua_chapter_name",
+    "detail": ""
+  },
+  {
+    "timestamp": 1773482674459,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/150\"]//h3[contains(@class, ",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482674459,
+    "action": "lua_chapter_link",
+    "detail": "series/sss-class-suicide-hunter-/chapter/150"
+  },
+  {
+    "timestamp": 1773482674460,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482674460,
+    "action": "lua_chapter_name",
+    "detail": ""
+  },
+  {
+    "timestamp": 1773482674485,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/149\"]//h3[contains(@class, ",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482674485,
+    "action": "lua_chapter_link",
+    "detail": "series/sss-class-suicide-hunter-/chapter/149"
+  },
+  {
+    "timestamp": 1773482674486,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482674486,
+    "action": "lua_chapter_name",
+    "detail": ""
+  },
+  {
+    "timestamp": 1773482674512,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/148\"]//h3[contains(@class, ",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482674513,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482674546,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/147\"]//h3[contains(@class, ",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482674546,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482674573,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/146\"]//h3[contains(@class, ",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482674574,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482674599,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/145\"]//h3[contains(@class, ",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482674599,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482674625,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/144\"]//h3[contains(@class, ",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482674626,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482674651,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/143\"]//h3[contains(@class, ",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482674651,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482674677,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/142\"]//h3[contains(@class, ",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482674677,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482674703,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/141\"]//h3[contains(@class, ",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482674703,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482674727,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/140\"]//h3[contains(@class, ",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482674727,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482674751,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/139\"]//h3[contains(@class, ",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482674751,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482674780,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/138\"]//h3[contains(@class, ",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482674780,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482674808,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/137\"]//h3[contains(@class, ",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482674808,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482674839,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/136\"]//h3[contains(@class, ",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482674840,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482674874,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/135\"]//h3[contains(@class, ",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482674875,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482674906,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/134\"]//h3[contains(@class, ",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482674907,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482674935,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/133\"]//h3[contains(@class, ",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482674935,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482674966,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/132\"]//h3[contains(@class, ",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482674967,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482674998,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/131\"]//h3[contains(@class, ",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482674998,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482675030,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/130\"]//h3[contains(@class, ",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482675031,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482675069,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/129\"]//h3[contains(@class, ",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482675070,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482675098,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/128\"]//h3[contains(@class, ",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482675098,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482675126,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/127\"]//h3[contains(@class, ",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482675126,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482675154,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/126\"]//h3[contains(@class, ",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482675154,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482675182,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/125\"]//h3[contains(@class, ",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482675182,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482675209,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/124\"]//h3[contains(@class, ",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482675209,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482675238,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/123\"]//h3[contains(@class, ",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482675238,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482675266,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/122\"]//h3[contains(@class, ",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482675267,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482675297,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/121\"]//h3[contains(@class, ",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482675297,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482675323,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/120\"]//h3[contains(@class, ",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482675324,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482675350,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/119\"]//h3[contains(@class, ",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482675351,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482675379,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/118\"]//h3[contains(@class, ",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482675380,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482675412,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/117\"]//h3[contains(@class, ",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482675413,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482675449,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/116\"]//h3[contains(@class, ",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482675450,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482675475,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/115\"]//h3[contains(@class, ",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482675476,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482675500,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/114\"]//h3[contains(@class, ",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482675501,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482675524,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/113\"]//h3[contains(@class, ",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482675524,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482675547,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/112\"]//h3[contains(@class, ",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482675547,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482675571,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/111\"]//h3[contains(@class, ",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482675571,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482675593,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/110\"]//h3[contains(@class, ",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482675593,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482675616,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/109\"]//h3[contains(@class, ",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482675616,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482675638,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/108\"]//h3[contains(@class, ",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482675638,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482675662,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/107\"]//h3[contains(@class, ",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482675663,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482675687,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/106\"]//h3[contains(@class, ",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482675687,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482675709,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/105\"]//h3[contains(@class, ",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482675709,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482675732,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/104\"]//h3[contains(@class, ",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482675732,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482675755,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/103\"]//h3[contains(@class, ",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482675755,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482675778,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/102\"]//h3[contains(@class, ",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482675778,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482675801,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/101\"]//h3[contains(@class, ",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482675802,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482675825,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/100\"]//h3[contains(@class, ",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482675825,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482675849,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/99\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482675849,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482675872,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/98\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482675873,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482675896,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/97\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482675897,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482675922,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/96\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482675922,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482675945,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/95\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482675946,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482675972,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/94\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482675972,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482675997,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/93\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482675997,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482676022,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/92\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482676023,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482676046,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/91\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482676046,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482676070,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/90\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482676071,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482676094,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/89\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482676094,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482676117,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/88\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482676118,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482676141,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/87\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482676141,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482676164,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/86\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482676165,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482676192,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/85\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482676193,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482676226,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/84\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482676227,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482676255,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/83\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482676258,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482676284,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/82\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482676285,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482676308,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/81\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482676308,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482676334,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/80\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482676335,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482676361,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/79\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482676362,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482676387,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/78\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482676388,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482676416,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/77\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482676416,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482676444,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/76\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482676444,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482676472,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/75\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482676472,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482676497,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/74\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482676498,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482676523,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/73\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482676524,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482676551,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/72\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482676551,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482676576,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/71\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482676577,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482676602,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/70\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482676603,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482676628,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/69\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482676629,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482676655,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/68\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482676655,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482676680,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/67\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482676680,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482676706,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/66\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482676707,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482676732,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/65\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482676733,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482676758,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/64\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482676759,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482676785,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/63\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482676785,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482676809,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/62\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482676809,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482676834,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/61\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482676835,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482676859,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/60\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482676860,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482676885,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/59\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482676885,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482676910,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/58\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482676911,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482676936,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/57\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482676936,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482676964,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/56\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482676964,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482676989,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/55\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482676990,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482677019,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/54\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482677019,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482677051,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/53\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482677051,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482677081,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/52\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482677081,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482677113,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/51\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482677113,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482677143,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/50\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482677144,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482677173,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/49\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482677174,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482677201,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/48\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482677201,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482677226,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/47\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482677226,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482677252,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/46\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482677252,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482677277,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/45\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482677277,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482677306,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/44\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482677307,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482677331,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/43\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482677332,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482677356,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/42\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482677356,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482677379,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/41\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482677379,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482677400,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/40\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482677400,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482677422,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/39\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482677423,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482677444,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/38\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482677444,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482677468,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/37\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482677469,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482677495,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/36\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482677495,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482677520,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/35\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482677520,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482677542,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/34\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482677543,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482677566,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/33\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482677566,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482677587,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/32\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482677588,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482677610,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/31\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482677610,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482677633,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/30\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482677633,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482677654,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/29\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482677655,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482677675,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/28\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482677675,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482677697,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/27\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482677697,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482677720,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/26\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482677720,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482677742,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/25\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482677742,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482677766,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/24\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482677766,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482677787,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/23\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482677787,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482677810,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/22\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482677811,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482677832,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/21\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482677833,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482677859,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/20\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482677860,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482677887,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/19\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482677888,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482677909,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/18\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482677910,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482677932,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/17\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482677932,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482677956,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/16\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482677956,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482677980,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/15\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482677980,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482678003,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/14\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482678004,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482678026,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/13\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482678026,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482678050,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/12\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482678051,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482678073,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/11\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482678073,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482678098,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/10\"]//h3[contains(@class, \"",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482678098,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482678120,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/9\"]//h3[contains(@class, \"t",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482678121,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482678145,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/8\"]//h3[contains(@class, \"t",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482678146,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482678167,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/7\"]//h3[contains(@class, \"t",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482678168,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482678190,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/6\"]//h3[contains(@class, \"t",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482678191,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482678216,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/5\"]//h3[contains(@class, \"t",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482678217,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482678238,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/4\"]//h3[contains(@class, \"t",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482678238,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482678260,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/3\"]//h3[contains(@class, \"t",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482678261,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482678284,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/2\"]//h3[contains(@class, \"t",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482678285,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482678308,
+    "action": "lua_XPath",
+    "detail": {
+      "xpath": "//a[@href=\"sss-class-suicide-hunter-cb0d4822/chapter/1\"]//h3[contains(@class, \"t",
+      "count": 0
+    }
+  },
+  {
+    "timestamp": 1773482678308,
+    "action": "lua_XPathString_error",
+    "detail": {
+      "xpath": "string-join(h3[contains(@class, \"text-sm text-white font-medium\")]//text(), \" \")",
+      "error": "Unknown function: string-join"
+    }
+  },
+  {
+    "timestamp": 1773482678309,
     "action": "final_result",
     "detail": {
-      "title": "",
-      "authors": "",
-      "status": "",
-      "chapterCount": 0
+      "title": "SSS-Class Suicide Hunter",
+      "authors": "Shin Noah,신노아",
+      "status": "Ongoing",
+      "chapterCount": 151,
+      "firstChapter": "",
+      "lastChapter": ""
     }
   }
 ]

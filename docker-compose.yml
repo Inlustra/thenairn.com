@@ -86,46 +86,6 @@ services:
       - ./Playground:/Playground
     restart: unless-stopped
 
-  paperless-broker:
-    image: docker.io/library/redis:7
-    labels:
-      plugsy.name: "Redis Cache"
-      plugsy.parents: "Paperless"
-      plugsy.icon: "@styled-icons/feather/Database"
-    restart: unless-stopped
-    volumes:
-      - ${CONFIG_DIR}/paperless-redis:/data
-
-  paperless:
-    image: ghcr.io/paperless-ngx/paperless-ngx:latest
-    container_name: paperless
-    labels: 
-      plugsy.name: 'Paperless'
-      plugsy.category: 'Home'
-      plugsy.icon: '@styled-icons/bootstrap/Paperclip'
-      plugsy.link: https://docs.thenairn.com
-    depends_on: 
-      - paperless-broker
-    environment:
-      USERMAP_UID: 0
-      USERMAP_GID: 0
-      PAPERLESS_REDIS: redis://paperless-broker:6379
-      TZ: Europe/Paris
-      PAPERLESS_TIMEZONE: Europe/Paris
-      DOCKER_MODS: linuxserver/mods:papermerge-multilangocr
-      OCRLANG: fra,eng
-      PAPERLESS_CONSUMPTION_DIR: /data/consume
-      PAPERLESS_CONSUMER_POLLING: 20
-      PAPERLESS_CONSUMER_RECURSIVE: 1
-      PAPERLESS_CONSUMER_SUBDIRS_AS_TAGS: 1
-      PAPERLESS_URL: "https://docs.thenairn.com"
-      PAPERLESS_DATA_DIR: "/config"
-      PAPERLESS_MEDIA_ROOT: "/data/media"
-    volumes:
-      - ${CONFIG_DIR}/paperless:/config
-      - ${SCANS_DIR}:/data/consume
-      - ${PAPERLESS_DOCS_DIR}:/data/media
-
   plugsy:
     container_name: plugsy
     image: plugsy/core:latest
@@ -177,17 +137,20 @@ services:
   jarvis-console:
     container_name: jarvis-console
     labels:
-      plugsy.name: "Jarvis Console"
+      plugsy.name: "HQ Console"
       plugsy.category: "Infrastructure"
       plugsy.icon: "@styled-icons/feather/Terminal"
       plugsy.link: https://console.thenairn.com
     build:
       context: ./jarvis-console
       dockerfile: Dockerfile.dev
+    pid: host
+    privileged: true
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./:/docker:ro
-      - /mnt/user/Internal/thenairn.com/.openclaw:/home/node/.openclaw:ro
+      - /mnt/user/Internal:/Internal:ro
+      - /root/.claude:/root/.claude:ro
       - ./jarvis-console/src:/app/src
       - ./jarvis-console/commands.json:/app/commands.json
       - ./jarvis-console/tsconfig.json:/app/tsconfig.json

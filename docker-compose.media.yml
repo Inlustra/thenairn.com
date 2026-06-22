@@ -222,17 +222,17 @@ services:
       - radarr
       - transmission
     
-  # CAPTCHA SOLVER - Now routes through gluetun VPN
+  # CAPTCHA SOLVER — Byparr (FlareSolverr-API-compatible, but uses undetected-chromedriver
+  # which currently beats Cloudflare where FlareSolverr 3.5.0 can't pass cookies properly).
+  # Listens on 8191 inside the gluetun network namespace — Prowlarr hits http://gluetun:8191/v1.
   flaresolverr:
-    image: ghcr.io/flaresolverr/flaresolverr:latest
+    image: ghcr.io/thephaseless/byparr:latest
     container_name: flaresolverr
-    network_mode: "service:gluetun"  # Changed from service:transmission
+    network_mode: "service:gluetun"
     depends_on:
       - gluetun
     environment:
-      - LOG_LEVEL=${LOG_LEVEL:-debug}
-      - LOG_HTML=${LOG_HTML:-false}
-      - CAPTCHA_SOLVER=${CAPTCHA_SOLVER:-none}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
       - TZ=Europe/London
     restart: unless-stopped
 
@@ -301,4 +301,79 @@ services:
       - ${CONFIG_DIR}/metube/cookies:/srv/cookies:rw
       - ${CONFIG_DIR}/filebrowser:/config
       - ${CONFIG_DIR}/filebrowser/database:/database
+    restart: unless-stopped
+
+  # UK-EXIT VPN — dedicated for BBC iPlayer and other UK-region content.
+  # Separate from the main gluetun (Switzerland) which routes Transmission.
+  gluetun-uk:
+    image: qmcgaw/gluetun:latest
+    container_name: gluetun-uk
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    environment:
+      - VPN_SERVICE_PROVIDER=mullvad
+      - VPN_TYPE=wireguard
+      - WIREGUARD_PRIVATE_KEY=${MULLVAD_UK_WIREGUARD_PRIVATE_KEY}
+      - WIREGUARD_ADDRESSES=${MULLVAD_UK_WIREGUARD_ADDRESSES}
+      - SERVER_COUNTRIES=UK
+      - FIREWALL_INPUT_PORTS=1935,4404
+      - FIREWALL_OUTBOUND_SUBNETS=172.18.0.0/16  # allow containers behind this VPN to reach the Docker network (for Sonarr API)
+      - TZ=Europe/Paris
+      - LOG_LEVEL=info
+      - DOT=off
+      - DNS_ADDRESS=1.1.1.1
+    ports:
+      - 1935:1935/tcp        # get_iplayer web UI (routed via this gluetun)
+    restart: unless-stopped
+
+  # BBC iPlayer downloader — routes through gluetun-uk so it appears to be in the UK.
+  # Retained for manual use; the primary Sonarr-integrated path is iplayarr below.
+  get_iplayer:
+    image: thespad/get_iplayer:latest
+    container_name: get_iplayer
+    labels:
+      plugsy.name: "get_iplayer (backend)"
+      plugsy.category: "Media"
+      plugsy.icon: "@styled-icons/simple-icons/Bbciplayer"
+      plugsy.link: https://backend.iplayer.thenairn.com
+    network_mode: "service:gluetun-uk"
+    depends_on:
+      - gluetun-uk
+    environment:
+      - PUID=0
+      - PGID=0
+      - TZ=Europe/Paris
+    volumes:
+      - ${CONFIG_DIR}/get_iplayer:/config
+      - ${DOWNLOADS_DIR}/iplayer:/downloads
+    restart: unless-stopped
+
+  # Sonarr/Radarr-facing bridge over iPlayer. Presents as a Newznab indexer + SABnzbd
+  # download client; uses its own bundled get_iplayer under the hood.
+  iplayarr:
+    image: nikorag/iplayarr:latest
+    container_name: iplayarr
+    labels:
+      plugsy.name: "iPlayer"
+      plugsy.category: "Media"
+      plugsy.icon: "@styled-icons/simple-icons/Bbciplayer"
+      plugsy.link: https://iplayer.thenairn.com
+    network_mode: "service:gluetun-uk"
+    depends_on:
+      - gluetun-uk
+    environment:
+      - PUID=0
+      - PGID=0
+      - TZ=Europe/Paris
+      - API_KEY=${IPLAYARR_API_KEY}
+      - AUTH_TYPE=none   # built-in login disabled; Caddy admin OAuth gates external access
+      - DOWNLOAD_DIR=/data/incomplete
+      - COMPLETE_DIR=/data/complete
+    volumes:
+      - ${CONFIG_DIR}/iplayarr/config:/config
+      - ${CONFIG_DIR}/iplayarr/logs:/logs
+      - ${CONFIG_DIR}/iplayarr/cache:/cache
+      - ${DOWNLOADS_DIR}/iplayarr:/data
     restart: unless-stopped

@@ -421,10 +421,90 @@ function MangaGrid({ onSelect }: { onSelect: (id: string) => void }) {
 }
 
 function MangaDetailView({ id, onBack }: { id: string; onBack: () => void }) {
-  const { data: manga, loading } = useFetch<MangaDetail>(`${API}/manga/${id}`, [id]);
+  const [manga, setManga] = useState<MangaDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [sources, setSources] = useState<ScriptInfo[]>([]);
+  const [editSourceId, setEditSourceId] = useState("");
+  const [editUrl, setEditUrl] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [cacheBust, setCacheBust] = useState(0);
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [refreshReport, setRefreshReport] = useState<{
+    fetched: Record<string, any>;
+    coverSaved: boolean;
+  } | null>(null);
+
+  const loadManga = useCallback(() => {
+    setLoading(true);
+    fetch(`${API}/manga/${id}`)
+      .then((r) => r.json())
+      .then((d) => {
+        setManga(d);
+        setEditSourceId(d.meta?.sourceId || "");
+        setEditUrl(d.meta?.link || "");
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, [id]);
+
+  useEffect(() => {
+    loadManga();
+    fetch(`${API}/scripts`).then((r) => r.json()).then((d) => setSources(d.data || [])).catch(() => {});
+  }, [loadManga]);
+
+  const saveSource = async () => {
+    setSaving(true);
+    setMessage(null);
+    try {
+      const resp = await fetch(`${API}/manga/${id}/source`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sourceId: editSourceId, url: editUrl }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || "Failed to save");
+      setManga(data.manga);
+      setMessage({ type: "success", text: "Source updated" });
+    } catch (e: any) {
+      setMessage({ type: "error", text: e?.message || "Failed to save" });
+    }
+    setSaving(false);
+  };
+
+  const refreshMetadata = async () => {
+    if (!editSourceId || !editUrl) {
+      setMessage({ type: "error", text: "Set a source and URL first" });
+      return;
+    }
+    setRefreshing(true);
+    setMessage(null);
+    setRefreshReport(null);
+    try {
+      const resp = await fetch(`${API}/manga/${id}/refresh`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sourceId: editSourceId, url: editUrl }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || "Refresh failed");
+      setManga(data.manga);
+      setEditSourceId(data.manga?.meta?.sourceId || editSourceId);
+      setEditUrl(data.manga?.meta?.link || editUrl);
+      setCacheBust((c) => c + 1);
+      setRefreshReport({ fetched: data.fetched, coverSaved: data.coverSaved });
+      setMessage({ type: "success", text: "Metadata refreshed successfully" });
+    } catch (e: any) {
+      setRefreshReport(null);
+      setMessage({ type: "error", text: e?.message || "Refresh failed" });
+    }
+    setRefreshing(false);
+  };
 
   if (loading) return <div className="loading">Loading...</div>;
   if (!manga) return <div className="loading">Not found</div>;
+
+  const sourceChanged = editSourceId !== (manga.meta.sourceId || "") || editUrl !== (manga.meta.link || "");
 
   return (
     <div className="container">
@@ -432,24 +512,160 @@ function MangaDetailView({ id, onBack }: { id: string; onBack: () => void }) {
       <div className="manga-detail">
         <div>
           {manga.coverUrl ? (
-            <img className="manga-detail-cover" src={manga.coverUrl} alt={manga.title} />
+            <img className="manga-detail-cover" src={manga.coverUrl + (cacheBust ? `?v=${cacheBust}` : "")} alt={manga.title} />
           ) : (
             <div className="no-cover manga-detail-cover">No Cover</div>
           )}
         </div>
         <div>
           <h2 className="manga-detail-title">{manga.title}</h2>
-          <div className="manga-detail-meta">
-            {manga.meta.author && <span>Author: {manga.meta.author}</span>}
-            {manga.meta.artist && <span>Artist: {manga.meta.artist}</span>}
-            {manga.meta.status && <span>Status: {manga.meta.status}</span>}
+
+          {/* Metadata Card */}
+          <div className="meta-card">
+            <div className="meta-grid">
+              {manga.meta.status && (
+                <div className="meta-field">
+                  <span className="meta-field-label">Status</span>
+                  <span className={`meta-status meta-status-${manga.meta.status}`}>
+                    {manga.meta.status.charAt(0).toUpperCase() + manga.meta.status.slice(1)}
+                  </span>
+                </div>
+              )}
+              {manga.meta.author && (
+                <div className="meta-field">
+                  <span className="meta-field-label">Author</span>
+                  <span className="meta-field-value">{manga.meta.author}</span>
+                </div>
+              )}
+              {manga.meta.artist && manga.meta.artist !== manga.meta.author && (
+                <div className="meta-field">
+                  <span className="meta-field-label">Artist</span>
+                  <span className="meta-field-value">{manga.meta.artist}</span>
+                </div>
+              )}
+              <div className="meta-field">
+                <span className="meta-field-label">Chapters</span>
+                <span className="meta-field-value">{manga.chapters.length}</span>
+              </div>
+              {manga.meta.link && (
+                <div className="meta-field">
+                  <span className="meta-field-label">Source</span>
+                  <a className="meta-field-link" href={manga.meta.link} target="_blank" rel="noopener noreferrer">
+                    {(() => { try { return new URL(manga.meta.link).hostname; } catch { return "Link"; } })()}
+                  </a>
+                </div>
+              )}
+            </div>
+            {manga.meta.description && (
+              <div className="meta-description">
+                <span className="meta-field-label">Synopsis</span>
+                <p className="meta-description-text">{manga.meta.description}</p>
+              </div>
+            )}
+            {manga.meta.tags && manga.meta.tags.length > 0 && (
+              <div className="meta-tags">
+                <span className="meta-field-label">Genres</span>
+                <div className="meta-tags-list">
+                  {manga.meta.tags.map((t) => <span key={t} className="tag">{t}</span>)}
+                </div>
+              </div>
+            )}
           </div>
-          {manga.meta.description && (
-            <p className="manga-detail-desc">{manga.meta.description}</p>
-          )}
-          {manga.meta.tags && (
-            <div>{manga.meta.tags.map((t) => <span key={t} className="tag">{t}</span>)}</div>
-          )}
+
+          {/* Source Management */}
+          <div className="manage-section">
+            <h3>Manage Source</h3>
+            <div className="manage-form">
+              <label className="manage-label">
+                Source
+                <select
+                  className="dl-select manage-select"
+                  value={editSourceId}
+                  onChange={(e) => setEditSourceId(e.target.value)}
+                >
+                  <option value="">-- None --</option>
+                  {sources.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="manage-label">
+                URL
+                <input
+                  className="search-input manage-url"
+                  placeholder="Manga source URL..."
+                  value={editUrl}
+                  onChange={(e) => {
+                    const url = e.target.value;
+                    setEditUrl(url);
+                    try {
+                      const hostname = new URL(url).hostname.replace(/^www\./, "");
+                      const match = sources.find((s) => {
+                        if (!s.rootUrl) return false;
+                        try { return new URL(s.rootUrl).hostname.replace(/^www\./, "") === hostname; }
+                        catch { return false; }
+                      });
+                      if (match) setEditSourceId(match.id);
+                    } catch {}
+                  }}
+                />
+              </label>
+              <div className="manage-actions">
+                {sourceChanged && (
+                  <button className="btn btn-primary" onClick={saveSource} disabled={saving}>
+                    {saving ? "Saving..." : "Save Source"}
+                  </button>
+                )}
+                <button
+                  className="btn btn-refresh"
+                  onClick={refreshMetadata}
+                  disabled={refreshing || !editSourceId || !editUrl}
+                >
+                  {refreshing ? "Refreshing..." : "Refresh Metadata"}
+                </button>
+              </div>
+            </div>
+            {message && (
+              <div className={message.type === "success" ? "manage-success" : "dl-error"}>
+                {message.text}
+              </div>
+            )}
+            {refreshReport && (
+              <div className="refresh-report">
+                <div className="refresh-report-title">Refresh Results</div>
+                <div className="refresh-report-grid">
+                  {([
+                    ["Title", refreshReport.fetched.title],
+                    ["Authors", refreshReport.fetched.authors],
+                    ["Artists", refreshReport.fetched.artists],
+                    ["Status", refreshReport.fetched.status],
+                    ["Genres", refreshReport.fetched.genres],
+                    ["Chapters Found", refreshReport.fetched.chapters > 0 ? String(refreshReport.fetched.chapters) : null],
+                  ] as [string, string | null][]).map(([label, value]) => (
+                    <div key={label} className="refresh-report-item">
+                      <span className="refresh-report-label">{label}</span>
+                      <span className={`refresh-report-value ${value ? "refresh-report-found" : "refresh-report-missing"}`}>
+                        {value || "Not found"}
+                      </span>
+                    </div>
+                  ))}
+                  <div className="refresh-report-item">
+                    <span className="refresh-report-label">Cover Image</span>
+                    <span className={`refresh-report-value ${refreshReport.coverSaved ? "refresh-report-found" : "refresh-report-missing"}`}>
+                      {refreshReport.coverSaved ? "Downloaded" : refreshReport.fetched.coverLink ? "Found but failed to download" : "Not found"}
+                    </span>
+                  </div>
+                  <div className="refresh-report-item">
+                    <span className="refresh-report-label">Description</span>
+                    <span className={`refresh-report-value ${refreshReport.fetched.description ? "refresh-report-found" : "refresh-report-missing"}`}>
+                      {refreshReport.fetched.description ? `${refreshReport.fetched.description.length} chars` : "Not found"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
           <div className="chapter-list">
             <h3>Chapters ({manga.chapters.length})</h3>
             {manga.chapters.map((ch) => (

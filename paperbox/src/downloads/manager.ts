@@ -188,8 +188,9 @@ async function processTask(task: DownloadTask): Promise<void> {
   try {
     const infoResult = await runModule(script.path, "GetInfo", {
       url: task.mangaUrl,
+      rootUrl: script.rootUrl,
     });
-    await saveMetadata(seriesDir, infoResult.mangaInfo, task.mangaTitle, task.mangaUrl);
+    await saveMetadata(seriesDir, infoResult.mangaInfo, task.mangaTitle, task.mangaUrl, task.sourceId);
   } catch (e: any) {
     console.error(`[download]   Failed to fetch metadata: ${e?.message}`);
     // Continue without metadata - download can still proceed
@@ -204,7 +205,7 @@ async function processTask(task: DownloadTask): Promise<void> {
 
     const batch = queuedChapters.slice(i, i + parallelChapters);
     await Promise.all(
-      batch.map((chapter) => downloadChapter(task, script.path, seriesDir, chapter))
+      batch.map((chapter) => downloadChapter(task, script.path, script.rootUrl, seriesDir, chapter))
     );
   }
 }
@@ -212,6 +213,7 @@ async function processTask(task: DownloadTask): Promise<void> {
 async function downloadChapter(
   task: DownloadTask,
   scriptPath: string,
+  rootUrl: string,
   seriesDir: string,
   chapter: ChapterDownload
 ): Promise<void> {
@@ -225,6 +227,7 @@ async function downloadChapter(
     // Get page URLs using Lua script
     const result = await runModule(scriptPath, "GetPageNumber", {
       url: chapter.url,
+      rootUrl,
     });
 
     const pageUrls = result.pages.pageLinks;
@@ -313,12 +316,20 @@ async function downloadPageWithRetry(
 /**
  * Save full FMD2 metadata for a manga series: cover image, manga.json, and source-info.json.
  */
+export interface SaveMetadataResult {
+  coverSaved: boolean;
+  coverError?: string;
+}
+
 export async function saveMetadata(
   seriesDir: string,
   info: MangaInfo,
   fallbackTitle: string,
   sourceUrl: string,
-): Promise<void> {
+  sourceId?: string,
+): Promise<SaveMetadataResult> {
+  const result: SaveMetadataResult = { coverSaved: false };
+
   // Download cover image
   let coverFilename = "";
   if (info.coverLink) {
@@ -335,9 +346,13 @@ export async function saveMetadata(
         const buffer = await coverResp.arrayBuffer();
         await Bun.write(join(seriesDir, coverFilename), buffer);
         console.log(`[metadata]   Saved cover: ${coverFilename}`);
+        result.coverSaved = true;
+      } else {
+        result.coverError = `HTTP ${coverResp.status}`;
       }
     } catch (e: any) {
       console.error(`[metadata]   Failed to download cover: ${e?.message}`);
+      result.coverError = e?.message || "Download failed";
     }
   }
 
@@ -348,6 +363,7 @@ export async function saveMetadata(
     artist: info.artists || "",
     description: info.summary || "",
     link: info.link || sourceUrl || "",
+    sourceId: sourceId || "",
     tags: info.genres ? info.genres.split(",").map((g: string) => g.trim()).filter(Boolean) : [],
     status: info.status || "",
     cover: coverFilename || info.coverLink || "",
@@ -370,6 +386,8 @@ export async function saveMetadata(
   };
   await writeFile(join(seriesDir, "source-info.json"), JSON.stringify(sourceInfo, null, 2));
   console.log(`[metadata]   Saved source-info.json`);
+
+  return result;
 }
 
 function sanitizePath(name: string): string {

@@ -55,6 +55,7 @@ export const scriptRoutes = new Elysia({ prefix: "/api/scripts" })
       const result = await runModule(script.path, "GetNameAndLink", {
         url: query.q || "",
         pageNumber: Number(query.page) || 1,
+        rootUrl: script.rootUrl,
       });
 
       const results = result.search.names.map((name, i) => ({
@@ -92,6 +93,7 @@ export const scriptRoutes = new Elysia({ prefix: "/api/scripts" })
       console.log(`[info] ${script.name}: ${query.url}`);
       const result = await runModule(script.path, "GetInfo", {
         url: query.url,
+        rootUrl: script.rootUrl,
       });
 
       return {
