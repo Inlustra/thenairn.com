@@ -1,0 +1,284 @@
+{
+  "_comment": "Image -> upstream mapping for the docker upgrade sweep. repo = GitHub repo for releases+advisories. eol = endoflife.date product slug. probe = shell cmd run inside the container to get the RUNNING version. pinned = compose pins an explicit tag (will never auto-update).",
+  "services": [
+    {
+      "container": "frigate",
+      "image": "ghcr.io/blakeblackshear/frigate:stable",
+      "repo": "blakeblackshear/frigate",
+      "probe": "python3 -c 'import frigate.version;print(frigate.version.VERSION)'",
+      "compose": "docker-compose.cameras.yml",
+      "criticality": "high",
+      "note": "NVR, camera credentials, Coral TPU"
+    },
+    {
+      "container": "go2rtc",
+      "image": "alexxit/go2rtc:latest",
+      "repo": "AlexxIT/go2rtc",
+      "compose": "docker-compose.cameras.yml",
+      "criticality": "medium"
+    },
+    {
+      "container": "caddy",
+      "image": "thenairncom-caddy",
+      "repo": "caddyserver/caddy",
+      "compose": "docker-compose.yml",
+      "criticality": "high",
+      "custom_build": true,
+      "note": "reverse proxy fronting all public services"
+    },
+    {
+      "container": "immich_server",
+      "image": "ghcr.io/immich-app/immich-server:release",
+      "repo": "immich-app/immich",
+      "probe": "grep -m1 version /usr/src/app/package.json",
+      "compose": "docker-compose.immich.yml",
+      "criticality": "high"
+    },
+    {
+      "container": "immich_machine_learning",
+      "image": "ghcr.io/immich-app/immich-machine-learning:release",
+      "repo": "immich-app/immich",
+      "compose": "docker-compose.immich.yml",
+      "criticality": "medium"
+    },
+    {
+      "container": "immich-kiosk",
+      "image": "ghcr.io/damongolding/immich-kiosk:0.41.0",
+      "repo": "damongolding/immich-kiosk",
+      "compose": "docker-compose.immich.yml",
+      "criticality": "low"
+    },
+    {
+      "container": "immich_redis",
+      "image": "valkey/valkey:9",
+      "repo": "valkey-io/valkey",
+      "compose": "docker-compose.immich.yml",
+      "criticality": "medium",
+      "pinned": true
+    },
+    {
+      "container": "paperless",
+      "image": "ghcr.io/paperless-ngx/paperless-ngx:2.20.15",
+      "repo": "paperless-ngx/paperless-ngx",
+      "compose": "docker-compose.docs.yml",
+      "criticality": "high",
+      "note": "holds scanned personal/financial documents"
+    },
+    {
+      "container": "thenairncom-paperless-broker-1",
+      "image": "redis:7",
+      "eol": "redis",
+      "compose": "docker-compose.docs.yml",
+      "criticality": "medium",
+      "pinned": true
+    },
+    {
+      "container": "invoiceninja",
+      "image": "invoiceninja/invoiceninja:5.13.26",
+      "repo": "invoiceninja/invoiceninja",
+      "compose": "docker-compose.invoicing.yml",
+      "criticality": "high",
+      "pinned": true,
+      "note": "business financial data"
+    },
+    {
+      "container": "invoiceninjadb",
+      "image": "mysql:8.4",
+      "eol": "mysql",
+      "compose": "docker-compose.invoicing.yml",
+      "criticality": "high",
+      "pinned": true
+    },
+    {
+      "container": "unifi-network-application",
+      "image": "lscr.io/linuxserver/unifi-network-application:latest",
+      "repo": "linuxserver/docker-unifi-network-application",
+      "compose": "docker-compose.unifi.yml",
+      "criticality": "high",
+      "note": "MongoDB compat is version-dependent - verify against linuxserver docs, not assumptions"
+    },
+    {
+      "container": "unifi-db",
+      "image": "mongo:7.0",
+      "eol": "mongodb",
+      "compose": "docker-compose.unifi.yml",
+      "criticality": "high",
+      "pinned": true,
+      "note": "major upgrades are non-rollbackable and cannot skip majors"
+    },
+    {
+      "container": "vscode",
+      "image": "linuxserver/code-server:4.103.2",
+      "repo": "coder/code-server",
+      "compose": "docker-compose.yml",
+      "criticality": "high",
+      "pinned": true,
+      "note": "code execution surface"
+    },
+    {
+      "container": "3d2367deeb5e_plugsy",
+      "image": "plugsy/core:latest",
+      "repo": "Plugsy/core",
+      "compose": "docker-compose.yml",
+      "criticality": "low"
+    },
+    {
+      "container": "gallery",
+      "image": "inlustra/the-photo-gallery:0.0.3",
+      "repo": "Inlustra/the-photo-gallery",
+      "compose": "docker-compose.yml",
+      "criticality": "low",
+      "pinned": true,
+      "note": "self-authored project"
+    },
+    {
+      "container": "rclone",
+      "image": "rclone/rclone:latest",
+      "repo": "rclone/rclone",
+      "compose": "docker-compose.yml",
+      "criticality": "high",
+      "note": "encrypted backup path - crypt backward-compat is critical"
+    },
+    {
+      "container": "plex",
+      "image": "plexinc/pms-docker:latest",
+      "probe": "/usr/lib/plexmediaserver/Plex\\ Media\\ Server --version",
+      "compose": "docker-compose.media.yml",
+      "criticality": "high",
+      "note": "internet-facing; no GitHub releases, needs web lookup"
+    },
+    {
+      "container": "gluetun",
+      "image": "qmcgaw/gluetun:latest",
+      "repo": "qdm12/gluetun",
+      "compose": "docker-compose.media.yml",
+      "criticality": "medium"
+    },
+    {
+      "container": "sonarr",
+      "image": "linuxserver/sonarr:latest",
+      "repo": "Sonarr/Sonarr",
+      "compose": "docker-compose.media.yml",
+      "criticality": "medium"
+    },
+    {
+      "container": "animesonarr",
+      "image": "linuxserver/sonarr:develop",
+      "repo": "Sonarr/Sonarr",
+      "compose": "docker-compose.media.yml",
+      "criticality": "medium",
+      "note": "tracks develop branch in production"
+    },
+    {
+      "container": "radarr",
+      "image": "linuxserver/radarr",
+      "repo": "Radarr/Radarr",
+      "compose": "docker-compose.media.yml",
+      "criticality": "medium",
+      "note": "no tag pinned in compose"
+    },
+    {
+      "container": "prowlarr",
+      "image": "ghcr.io/linuxserver/prowlarr:develop",
+      "repo": "Prowlarr/Prowlarr",
+      "compose": "docker-compose.media.yml",
+      "criticality": "medium",
+      "note": "tracks develop branch in production"
+    },
+    {
+      "container": "transmission",
+      "image": "linuxserver/transmission:latest",
+      "repo": "transmission/transmission",
+      "compose": "docker-compose.media.yml",
+      "criticality": "medium"
+    },
+    {
+      "container": "flaresolverr",
+      "image": "ghcr.io/thephaseless/byparr:latest",
+      "repo": "thephaseless/byparr",
+      "compose": "docker-compose.media.yml",
+      "criticality": "low"
+    },
+    {
+      "container": "recyclarr",
+      "image": "ghcr.io/recyclarr/recyclarr:8",
+      "repo": "recyclarr/recyclarr",
+      "compose": "docker-compose.media.yml",
+      "criticality": "medium"
+    },
+    {
+      "container": "kometa",
+      "image": "lscr.io/linuxserver/kometa:latest",
+      "repo": "Kometa-Team/Kometa",
+      "compose": "docker-compose.media.yml",
+      "criticality": "low"
+    },
+    {
+      "container": "suwayomi",
+      "image": "ghcr.io/suwayomi/suwayomi-server:preview",
+      "repo": "Suwayomi/Suwayomi-Server",
+      "compose": "docker-compose.media.yml",
+      "criticality": "low",
+      "note": "tracks preview/nightly"
+    },
+    {
+      "container": "syncyomi",
+      "image": "ghcr.io/syncyomi/syncyomi:latest",
+      "repo": "SyncYomi/SyncYomi",
+      "compose": "docker-compose.media.yml",
+      "criticality": "low"
+    },
+    {
+      "container": "get_iplayer",
+      "image": "thespad/get_iplayer:latest",
+      "repo": "thespad/docker-get_iplayer",
+      "compose": "docker-compose.media.yml",
+      "criticality": "low"
+    },
+    {
+      "container": "iplayarr",
+      "image": "nikorag/iplayarr:latest",
+      "repo": "Nikorag/iplayarr",
+      "compose": "docker-compose.media.yml",
+      "criticality": "low"
+    },
+    {
+      "container": "syncthing",
+      "image": "lscr.io/linuxserver/syncthing:latest",
+      "repo": "syncthing/syncthing",
+      "compose": "docker-compose.syncthing.yml",
+      "criticality": "medium"
+    },
+    {
+      "container": "clawmander-postgres",
+      "image": "postgres:16-alpine",
+      "eol": "postgresql",
+      "criticality": "medium",
+      "pinned": true
+    },
+    {
+      "container": "chromium",
+      "image": "ghcr.io/browserless/chromium:latest",
+      "repo": "browserless/browserless",
+      "criticality": "medium",
+      "note": "check licensing terms"
+    },
+    {
+      "container": "orca",
+      "image": "thenairncom-orca",
+      "repo": "stablyai/orca",
+      "compose": "docker-compose.orca.yml",
+      "criticality": "high",
+      "custom_build": true,
+      "note": "hosts this Claude session; recreate kills running sessions"
+    },
+    {
+      "container": "seerr",
+      "image": "ghcr.io/seerr-team/seerr:latest",
+      "repo": "seerr-team/seerr",
+      "compose": "docker-compose.media.yml",
+      "criticality": "low",
+      "note": "migrated from overseerr 2026-08-01"
+    }
+  ]
+}

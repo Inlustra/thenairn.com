@@ -188,18 +188,17 @@ services:
       - TZ=Europe/Paris
     restart: unless-stopped
 
-  overseerr:
-    image: lscr.io/linuxserver/overseerr
-    container_name: overseerr
+  # overseerr replaced by seerr (merged Overseerr+Jellyseerr successor) 2026-08-01.
+  # Overseerr upstream archived; config migrated to ${CONFIG_DIR}/seerr. Original
+  # ${CONFIG_DIR}/overseer + stopped `overseerr` container retained as rollback.
+  seerr:
+    image: ghcr.io/seerr-team/seerr:latest
+    container_name: seerr
     environment:
-      - PUID=0
-      - PGID=0
       - TZ=Europe/Paris
-    links:
-      - sonarr
-      - radarr
+      - LOG_LEVEL=info
     volumes:
-      - ${CONFIG_DIR}/overseer:/config
+      - ${CONFIG_DIR}/seerr:/app/config
     restart: unless-stopped
 
   prowlarr:
@@ -237,7 +236,7 @@ services:
     restart: unless-stopped
 
   recyclarr:
-    image: ghcr.io/recyclarr/recyclarr:latest
+    image: ghcr.io/recyclarr/recyclarr:8
     container_name: recyclarr
     user: 0:0
     volumes:
@@ -284,24 +283,6 @@ services:
       - TZ=Europe/Paris
     volumes:
       - ${CONFIG_DIR}/syncyomi/config:/config
-
-  filebrowser:
-    image: filebrowser/filebrowser:s6
-    container_name: filebrowser
-    labels:
-      plugsy.name: "File Browser"
-      plugsy.category: "Media"
-      plugsy.icon: "@styled-icons/feather/Folder"
-      plugsy.link: https://files.thenairn.com
-    environment:
-      - PUID=0
-      - PGID=0
-      - TZ=Europe/Paris
-    volumes:
-      - ${CONFIG_DIR}/metube/cookies:/srv/cookies:rw
-      - ${CONFIG_DIR}/filebrowser:/config
-      - ${CONFIG_DIR}/filebrowser/database:/database
-    restart: unless-stopped
 
   # UK-EXIT VPN — dedicated for BBC iPlayer and other UK-region content.
   # Separate from the main gluetun (Switzerland) which routes Transmission.
