@@ -211,14 +211,6 @@ media.thenairn.com {
     reverse_proxy seerr:5055
 } 
  
-*.code.thenairn.com {
-    tls { 
-        on_demand
-    }
-
-    reverse_proxy vscode:8443
-}
-
 home.thenairn.com {
     reverse_proxy 192.168.96.15:8123
 }
@@ -275,31 +267,6 @@ unraid.thenairn.com {
     handle {
         import admin
         reverse_proxy 192.168.96.14:6059
-    }
-}
-
-code.thenairn.com {
-    @internal {
-        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
-    }
-    handle @internal {
-        reverse_proxy vscode:8443
-    }
-    handle {
-        import superuser
-        reverse_proxy vscode:8443
-    }
-}
-
-http://code.thenairn.com {
-    @internal {
-        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
-    }
-    handle @internal {
-        reverse_proxy vscode:8443
-    }
-    handle {
-        redir https://{host}{uri}
     }
 }
 
@@ -636,37 +603,6 @@ metube.thenairn.com {
     }
 }
 
-console.thenairn.com {
-    @internal {
-        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
-    }
-    handle @internal {
-        reverse_proxy jarvis-console:3099
-    }
-    handle {
-        import admin
-        reverse_proxy jarvis-console:3099
-    }
-}
-
-openclaw.thenairn.com {
-    @internal {
-        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
-    }
-    handle @internal {
-        reverse_proxy openclaw-gateway:18789
-    }
-    handle {
-        import admin
-        reverse_proxy openclaw-gateway:18789
-    }
-}
-
-hooks.openclaw.thenairn.com {
-    reverse_proxy openclaw-gateway:8788
-}
-
-# iplayer.thenairn.com — primary user-facing UI (iplayarr)
 iplayer.thenairn.com {
     tls {
         resolvers 1.1.1.1 8.8.8.8
