@@ -12,6 +12,7 @@ services:
   paperless:
     image: ghcr.io/paperless-ngx/paperless-ngx:2.20.15
     container_name: paperless
+    restart: unless-stopped
     labels:
       plugsy.name: 'Paperless'
       plugsy.category: 'Home'
