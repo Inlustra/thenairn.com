@@ -42,40 +42,11 @@ export const scriptRoutes = new Elysia({ prefix: "/api/scripts" })
     await pullScripts();
     return { ok: true, count: listScripts().length };
   })
-  // Search manga using a source script
-  .get("/:id/search", async ({ params, query, set }) => {
-    const script = getScript(params.id);
-    if (!script) {
-      set.status = 404;
-      return { error: "Script not found" };
-    }
-
-    try {
-      console.log(`[search] ${script.name}: "${query.q || ""}"`);
-      const result = await runModule(script.path, "GetNameAndLink", {
-        url: query.q || "",
-        pageNumber: Number(query.page) || 1,
-        rootUrl: script.rootUrl,
-      });
-
-      const results = result.search.names.map((name, i) => ({
-        name,
-        url: result.search.links[i] || "",
-      }));
-
-      return { data: results, source: script.name };
-    } catch (e: any) {
-      console.error(`[search] Failed:`, e);
-      set.status = 500;
-      return { error: e?.message || "Search failed" };
-    }
-  }, {
-    params: t.Object({ id: t.String() }),
-    query: t.Object({
-      q: t.Optional(t.String()),
-      page: t.Optional(t.String()),
-    }),
-  })
+  // NOTE: there is deliberately no source keyword-search endpoint. FMD2's
+  // directory modules don't do server-side search — "search" meant crawling a
+  // site's whole catalogue, which is slow and gets the IP rate-limited.
+  // Discovery happens outside the app: web-search the title, get the source URL,
+  // and paste it into the URL-add flow (auto-detect source -> GetInfo -> download).
   // Get manga info from a source
   .get("/:id/info", async ({ params, query, set }) => {
     const script = getScript(params.id);

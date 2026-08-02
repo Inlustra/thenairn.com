@@ -169,7 +169,18 @@ export async function runModule(
       set MimeType(v: string) { httpState.mimeType = v; },
       get Cookies() { return httpState.cookies; },
       set Cookies(v: string) { httpState.cookies = v; },
-      Headers: httpState.headers,
+      // FMD2 scripts set request headers via `HTTP.Headers.Values['Name'] = value`
+      // (a TStringList name/value accessor). Expose `.Values` as a live proxy over
+      // httpState.headers so writes reach buildCurlArgs — and re-read httpState.headers
+      // on every access so it survives HTTP.Reset() reassigning the object.
+      get Headers() {
+        return {
+          Values: new Proxy({} as Record<string, string>, {
+            get: (_t, k) => httpState.headers[k as string] ?? "",
+            set: (_t, k, v) => { httpState.headers[k as string] = String(v); return true; },
+          }),
+        };
+      },
       Reset: () => {
         httpState.document = "";
         httpState.headers = {};
@@ -518,6 +529,34 @@ function createTXQuery(content: string) {
       } catch (e) {
         console.error(`  [txquery] XPathStringAll error for "${xpath}": ${e}`);
         return "";
+      }
+    },
+
+    /**
+     * XPathHREFAll - FMD2 helper. Matches <a> elements and, for each, adds its
+     * @href to the first target list and its normalized text to the second.
+     * The two lists stay index-aligned (used for both directory listings ->
+     * LINKS/NAMES and chapter lists -> MANGAINFO.ChapterLinks/ChapterNames).
+     */
+    XPathHREFAll: (
+      xpath: string,
+      hrefTarget?: { Add: (s: string) => void },
+      textTarget?: { Add: (s: string) => void },
+    ): void => {
+      try {
+        const domDoc = getDocument();
+        const nodes = evaluateXPath(domDoc, xpath);
+        for (const n of nodes) {
+          const href =
+            typeof (n as Element).getAttribute === "function"
+              ? (n as Element).getAttribute("href") || ""
+              : "";
+          const text = (n.textContent || "").replace(/\s+/g, " ").trim();
+          if (hrefTarget) hrefTarget.Add(href);
+          if (textTarget) textTarget.Add(text);
+        }
+      } catch (e) {
+        console.error(`  [txquery] XPathHREFAll error for "${xpath}": ${e}`);
       }
     },
 

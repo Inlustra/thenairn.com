@@ -275,6 +275,23 @@ async function downloadChapter(
   task.updatedAt = Date.now();
 }
 
+// Detect real image bytes by magic number (JPEG/PNG/GIF/WebP/AVIF/BMP), so we
+// never save an HTML block page as if it were a comic page.
+function isImageBytes(buf: ArrayBuffer, contentType: string): boolean {
+  if (contentType.startsWith("text/") || contentType.includes("html")) return false;
+  const b = new Uint8Array(buf);
+  if (b.length < 12) return false;
+  if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return true;                       // JPEG
+  if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return true;       // PNG
+  if (b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46) return true;                        // GIF
+  if (b[0] === 0x42 && b[1] === 0x4d) return true;                                         // BMP
+  if (b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46 &&
+      b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50) return true;      // RIFF....WEBP
+  if (b[4] === 0x66 && b[5] === 0x74 && b[6] === 0x79 && b[7] === 0x70) return true;        // ....ftyp (AVIF/HEIC)
+  // Fall back to the server's declared type if it clearly claims an image.
+  return contentType.startsWith("image/");
+}
+
 async function downloadPageWithRetry(
   pageUrl: string,
   referer: string,
@@ -290,7 +307,8 @@ async function downloadPageWithRetry(
     try {
       const resp = await fetch(pageUrl, {
         headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+          Accept: "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
           Referer: referer,
         },
       });
@@ -298,6 +316,17 @@ async function downloadPageWithRetry(
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
 
       const buffer = await resp.arrayBuffer();
+
+      // Validate we actually got image bytes. Scraper sites (e.g. XoxoComics)
+      // return a 200 HTML page — homepage / hotlink-block / soft-404 — instead
+      // of the image when they don't like the request. Saving that as .jpg
+      // yields "downloaded" chapters full of unreadable HTML, so reject it and
+      // let the retry/fail path handle it.
+      const ct = (resp.headers.get("content-type") || "").toLowerCase();
+      if (!isImageBytes(buffer, ct)) {
+        throw new Error(`not an image (content-type: ${ct || "?"}, ${buffer.byteLength} bytes)`);
+      }
+
       await Bun.write(outPath, buffer);
       return true;
     } catch (e: any) {

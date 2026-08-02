@@ -7,6 +7,7 @@ import { imageRoutes } from "./routes/images";
 import { paperbackRoutes } from "./routes/paperback";
 import { scriptRoutes } from "./routes/scripts";
 import { downloadRoutes } from "./routes/downloads";
+import { graphqlRoutes } from "./routes/graphql";
 import { scan } from "./scanner";
 import { pullScripts, scanScripts } from "./lua/scripts";
 
@@ -37,6 +38,7 @@ const app = new Elysia()
   .use(paperbackRoutes)
   .use(scriptRoutes)
   .use(downloadRoutes)
+  .use(graphqlRoutes)
   .use(staticPlugin({ assets: "frontend/dist", prefix: "/" }))
   .get("/", () => Bun.file("frontend/dist/index.html"))
   .get("/paperback", () => Bun.file("frontend/paperback.html"))
