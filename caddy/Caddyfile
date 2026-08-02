@@ -736,3 +736,31 @@ playground.thenairn.com {
         file_server browse
     }
 }
+
+memory.thenairn.com {
+    import proxy_error_page
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle @internal {
+        reverse_proxy 192.168.96.14:9999
+    }
+    handle {
+        import admin
+        reverse_proxy 192.168.96.14:9999
+    }
+}
+
+memory-api.thenairn.com {
+    import proxy_error_page
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle @internal {
+        reverse_proxy 192.168.96.14:8890
+    }
+    handle {
+        import admin
+        reverse_proxy 192.168.96.14:8890
+    }
+}
