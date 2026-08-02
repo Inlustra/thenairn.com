@@ -3,3 +3,5 @@ logs
 configs
 cache
 repositories
+# recyclarr runtime-managed clones (trash-guides, config-templates) — churn on every sync
+resources/
