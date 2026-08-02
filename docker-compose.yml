@@ -1,29 +1,4 @@
 services:
-  vscode:
-    container_name: vscode
-    labels:
-      plugsy.name: 'VSCode'
-      plugsy.category: 'Code'
-      plugsy.icon: '@styled-icons/simple-icons/Visualstudiocode'
-      plugsy.link: https://code.thenairn.com
-    image: linuxserver/code-server:4.103.2
-    volumes:
-      - ${DOWNLOADS_DIR}:/srv/Downloads
-      - ${CONFIG_DIR}/vscode:/config
-      - ${BOOT_DIR}:/ServerBoot
-      - ${CONFIG_DIR}:/ServerConfig
-      - ${INTERNAL_DIR}:/Internal:cached
-      - /boot/.ssh:/config/host/.ssh:ro
-      - /boot/.aws:/config/host/.aws:ro
-      - /var/run/docker.sock:/var/run/docker.sock
-    environment:
-      - PGID=0
-      - PUID=0
-      - PROXY_DOMAIN=code.thenairn.com
-      - DOCKER_MODS=linuxserver/mods:code-server-zsh|linuxserver/mods:universal-docker|linuxserver/mods:code-server-shellcheck|inlustra/docker-mods:1password|inlustra/docker-mods:dotfiles|bambam018/docker-mod-java17|linuxserver/mods:code-server-terraform
-      - DEFAULT_WORKSPACE=/Internal/thenairn.com
-    restart: unless-stopped
-
   port-permission-module:
     container_name: port-permission-module
     image: port-permission-module
@@ -66,12 +41,11 @@ services:
       - plex
       - plugsy
       - prowlarr
-      - overseerr
+      - seerr
       - paperless
       - rclone
       - invoiceninja
       - port-permission-module
-      - jarvis-console
     ports:
       - "80:80/tcp"
       - "443:443/tcp"
@@ -134,31 +108,6 @@ services:
       DISABLE_CACHE: 'true'
     restart: unless-stopped
 
-  jarvis-console:
-    container_name: jarvis-console
-    labels:
-      plugsy.name: "HQ Console"
-      plugsy.category: "Infrastructure"
-      plugsy.icon: "@styled-icons/feather/Terminal"
-      plugsy.link: https://console.thenairn.com
-    build:
-      context: ./jarvis-console
-      dockerfile: Dockerfile.dev
-    pid: host
-    privileged: true
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - ./:/docker:ro
-      - /mnt/user/Internal:/Internal:ro
-      - /root/.claude:/root/.claude:ro
-      - ./jarvis-console/src:/app/src
-      - ./jarvis-console/commands.json:/app/commands.json
-      - ./jarvis-console/tsconfig.json:/app/tsconfig.json
-    environment:
-      - PORT=3099
-      - NODE_ENV=development
-    restart: always
-
   gallery:
     container_name: gallery
     image: inlustra/the-photo-gallery:0.0.3
@@ -169,8 +118,8 @@ services:
       plugsy.link: https://gallery.thenairn.com
     #To build from source, comment previous line and uncomment next line
     volumes:
-      - /mnt/user/Internal/thenairn.com/gallery/photos:/app/public/photos
-      - /mnt/user/Internal/thenairn.com/gallery/storage:/app/storage
+      - ./gallery/photos:/app/public/photos
+      - ./gallery/storage:/app/storage
     environment:
       PAGE_TITLE: 'Example Gallery'
       PAGE_HEADER_TEXT: 'Example Gallery'

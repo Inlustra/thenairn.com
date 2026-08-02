@@ -25,8 +25,10 @@ services:
       - /mnt/cache/Config/orca:/home/orca
       # Code + full cache (direct btrfs, no shfs). Repos live under /mnt/cache/HQ.
       - /mnt/cache:/mnt/cache
-      # thenairn.com at its registered path, sourced direct (shadows the shfs view).
-      - /mnt/cache/Internal/thenairn.com:/mnt/user/Internal/thenairn.com
+      # thenairn.com sourced direct from cache (shadows the slower shfs view).
+      # Moved from Internal/ to HQ/ on 2026-08-02; /mnt/cache is already mounted
+      # wholesale above, so this is an optimisation, not a requirement.
+      - /mnt/cache/HQ/thenairn.com:/mnt/user/HQ/thenairn.com
       # Broad host access for managing the box.
       - /mnt/user:/mnt/user
       - /boot:/boot
