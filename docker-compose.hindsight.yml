@@ -23,7 +23,11 @@ services:
       POSTGRES_PASSWORD: ${HINDSIGHT_DB_PASSWORD:?set HINDSIGHT_DB_PASSWORD in .env.hindsight}
       POSTGRES_DB: ${HINDSIGHT_DB_NAME:-hindsight_db}
     volumes:
-      - hindsight_pg:/var/lib/postgresql/18/docker
+      # Bind-mount under CONFIG_DIR rather than a docker named volume: volumes
+      # live inside docker.img and are NOT covered by the weekly rclone backup,
+      # which sweeps /mnt/user/{Config,HQ,Nextcloud,Paperless,PersonalMedia}.
+      # Matches how every other DB in this stack is mounted.
+      - ${CONFIG_DIR}/hindsight/pgdata:/var/lib/postgresql/18/docker
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${HINDSIGHT_DB_USER:-hindsight_user} -d ${HINDSIGHT_DB_NAME:-hindsight_db}"]
       interval: 10s
@@ -54,12 +58,18 @@ services:
       HINDSIGHT_API_LLM_PROVIDER: openai
       HINDSIGHT_API_LLM_BASE_URL: https://openrouter.ai/api/v1
       HINDSIGHT_API_LLM_API_KEY: ${OPENROUTER_API_KEY:?set OPENROUTER_API_KEY in .env.hindsight}
-      # deepseek-v4-flash supports `structured_outputs` (enforced schema-constrained
-      # decoding), not just `response_format`. That matters: the local 2B model
-      # failed extraction with a JSONDecodeError, and STRICT_SCHEMA below relies
-      # on the strict path. Date-pinned rather than `-latest` so it can't shift.
-      HINDSIGHT_API_LLM_MODEL: ${HINDSIGHT_LLM_MODEL:-deepseek/deepseek-v4-flash-0731}
+      # Model is set in .env (HINDSIGHT_LLM_MODEL). Currently google/gemma-4-31b-it:
+      # 86.0 with 12/12 schema conformance on hindsight's own retain leaderboard,
+      # and ~80 tokens/fact. Needs `structured_outputs` support.
+      HINDSIGHT_API_LLM_MODEL: ${HINDSIGHT_LLM_MODEL:-google/gemma-4-31b-it}
       HINDSIGHT_API_LLM_STRICT_SCHEMA: "true"
+      # Without these, a hung provider wedges an operation indefinitely — observed
+      # four ops stuck 700-1200s at attempt=1/4 with nothing timing out, which also
+      # blocks the reserved consolidation slot so no consolidation can run. gemma
+      # has 18 OpenRouter endpoints and requests round-robin, so one slow provider
+      # is enough to cause it.
+      HINDSIGHT_API_LLM_TIMEOUT: "120"
+      HINDSIGHT_API_CONSOLIDATION_LLM_TIMEOUT: "180"
       # Cap reasoning. Extraction is retrieval-plus-transpilation — the facts are
       # already in the text — and every source measured says extended reasoning
       # costs 3.7x the output tokens for ~0 quality, while risking empty output
@@ -79,5 +89,3 @@ networks:
   hindsight-net:
     driver: bridge
 
-volumes:
-  hindsight_pg:
