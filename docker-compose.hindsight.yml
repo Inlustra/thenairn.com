@@ -33,8 +33,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-    networks:
-      - hindsight-net
 
   # NOTE: extraction previously ran on a local llama.cpp sidecar (gemma-4-E2B on
   # the GTX 1660). Removed 2026-08-02: a 2B model was ~81s/document AND produced
@@ -82,10 +80,4 @@ services:
     depends_on:
       hindsight-db:
         condition: service_healthy
-    networks:
-      - hindsight-net
-
-networks:
-  hindsight-net:
-    driver: bridge
 

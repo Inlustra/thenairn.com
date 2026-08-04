@@ -36,13 +36,4 @@ services:
       # Host root home, live — entrypoint symlinks its configs (claude/gh/git/ssh)
       # into the container HOME so agents share the host's creds + history.
       - /root:/hostroot
-    networks:
-      # `default` MUST stay listed: naming any network opts the service out of
-      # the implicit default, which is where the rest of the stack lives.
-      - default
-      # Reach the memory server directly at http://hindsight:8888 rather than
-      # looping out through Caddy (3.5ms vs 109ms, and no dependency on the
-      # reverse proxy). This was attached by hand on 2026-08-02 and would have
-      # been lost on the next recreate; declaring it here makes it survive.
-      - hindsight-net
     restart: unless-stopped
