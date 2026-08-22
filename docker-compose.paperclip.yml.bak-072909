@@ -1,0 +1,54 @@
+services:
+  # Dedicated Postgres. Deliberately NOT shared with hindsight-db /
+  # clawmander-postgres / immich_postgres: Paperclip is the board this business
+  # runs on, and its data should not inherit another app's upgrade, restart or
+  # backup lifecycle.
+  paperclip-postgres:
+    container_name: paperclip-postgres
+    image: postgres:16-alpine
+    labels:
+      plugsy.name: "Paperclip DB"
+      plugsy.category: "Infrastructure"
+      plugsy.parents: "Paperclip"
+      plugsy.icon: "@styled-icons/feather/Database"
+    environment:
+      - POSTGRES_USER=paperclip
+      - POSTGRES_DB=paperclip
+      - POSTGRES_PASSWORD=${PAPERCLIP_DB_PASSWORD}
+    volumes:
+      - /mnt/cache/Config/paperclip-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U paperclip -d paperclip"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  paperclip:
+    container_name: paperclip
+    labels:
+      plugsy.name: "Paperclip"
+      plugsy.category: "Code"
+      plugsy.icon: "@styled-icons/feather/Clipboard"
+      plugsy.link: https://rainn.thenairn.com
+    build:
+      context: ./paperclip
+    depends_on:
+      paperclip-postgres:
+        condition: service_healthy
+    environment:
+      - HOME=/root
+      - DATABASE_URL=postgres://paperclip:${PAPERCLIP_DB_PASSWORD}@paperclip-postgres:5432/paperclip
+    volumes:
+      # Instance state: config, secrets key, local storage, logs.
+      - /mnt/cache/Config/paperclip:/root/.paperclip
+      # Shared Claude login. Mounted at the RESOLVED path rather than via the
+      # host's /root/.claude symlink, which lives in tmpfs and is recreated by
+      # the array-start user script - this way the container does not depend on
+      # that script having run.
+      - /mnt/user/HQ/.claude:/root/.claude
+      # Repos the agents work on.
+      - /mnt/cache/HQ:/mnt/cache/HQ
+    # No host port binding: Caddy reaches it as paperclip:3100 on
+    # thenairncom_default, the same way it reaches orca:6768.
+    restart: unless-stopped
