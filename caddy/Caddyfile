@@ -653,6 +653,52 @@ orca.thenairn.com {
     }
 }
 
+# Paperclip instance running on the Mac (192.168.99.86:3100), plain HTTP on the
+# LAN. Only answers while the Mac is awake — a 502 here means the Mac is asleep,
+# not a config fault.
+#
+# Auth mirrors orca.thenairn.com exactly: LAN/Docker ranges bypass the portal,
+# everything else goes through the OAuth admin policy.
+#
+# Do NOT add `header_up Host` — Paperclip checks Host against an allowlist and
+# 403s anything it doesn't recognise. Caddy passes the original Host through by
+# default, which is what we want. WebSocket upgrades need no extra config either:
+# Caddy proxies them transparently, and LAN clients (the live-update UI) hit the
+# @internal branch, so the auth layer is never in the upgrade path for them.
+rowm.thenairn.com {
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle @internal {
+        reverse_proxy 192.168.99.86:3100
+    }
+    handle {
+        import admin
+        reverse_proxy 192.168.99.86:3100
+    }
+}
+
+# Second Paperclip instance — the one that runs on Tower itself, as the
+# `paperclip` compose service (docker-compose.paperclip.yml) with its own
+# Postgres. Unlike rowm.thenairn.com (which proxies to the Mac and is only up
+# while the Mac is awake), this one is local to the box and always on.
+#
+# Same auth shape as orca/rowm: LAN bypasses the portal, external goes through
+# the OAuth admin policy. Host is passed through unrewritten — Paperclip's
+# allowlist is set to rainn.thenairn.com and 403s anything else.
+rainn.thenairn.com {
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle @internal {
+        reverse_proxy paperclip:3100
+    }
+    handle {
+        import admin
+        reverse_proxy paperclip:3100
+    }
+}
+
 playground.thenairn.com {
     tls {
         resolvers 1.1.1.1 8.8.8.8
