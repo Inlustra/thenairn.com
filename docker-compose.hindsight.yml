@@ -81,3 +81,54 @@ services:
       hindsight-db:
         condition: service_healthy
 
+  # Daily pg_dump + retention. Replaces the `hindsight-backup` Unraid User
+  # Script, which was created 2026-08-04, run once by hand, and never fired on
+  # schedule — 18 days with no backup, discovered 2026-08-22 (RAI-5).
+  #
+  # Deliberately a compose sidecar rather than a User Script: the script lived
+  # on the flash drive, outside git, invisible to anything that reviews this
+  # stack, and unreadable from any container that doesn't mount /boot. Here it
+  # is version-controlled next to the database it protects, comes back with the
+  # stack on reboot, and its failures land in `docker logs hindsight-backup`
+  # instead of nowhere.
+  #
+  # Reuses the pgvector/pgvector:pg18 image already pulled for hindsight-db, so
+  # pg_dump always matches the server major version and no new image enters the
+  # supply chain.
+  #
+  # Manual run:  docker exec hindsight-backup /opt/hindsight/backup.sh once
+  #
+  # ⚠️ NEVER STARTED as of 2026-08-22. Starting it was deferred pending a
+  # decision on whether hindsight is kept at all (RAI-5), so this definition is
+  # currently inert. Check `docker ps | grep hindsight-backup` before assuming
+  # any automated dump exists — the presence of this block is not coverage.
+  hindsight-backup:
+    image: pgvector/pgvector:pg18
+    container_name: hindsight-backup
+    restart: unless-stopped
+    entrypoint: ["/opt/hindsight/backup.sh", "daemon"]
+    environment:
+      PGHOST: hindsight-db
+      PGUSER: ${HINDSIGHT_DB_USER:-hindsight_user}
+      PGDATABASE: ${HINDSIGHT_DB_NAME:-hindsight_db}
+      PGPASSWORD: ${HINDSIGHT_DB_PASSWORD:?set HINDSIGHT_DB_PASSWORD in .env.hindsight}
+      BACKUP_DIR: /backups
+      RETENTION_DAYS: "14"
+      # Local wall-clock time. The container is UTC by default, and "04:00" is
+      # meant as 04:00 here, not 04:00 UTC — override TZ in .env.hindsight if
+      # this box is not on UK time.
+      BACKUP_AT: "04:00"
+      TZ: ${TZ:-Europe/London}
+    volumes:
+      # Mount the directory, not the file: a bind-mounted single file breaks
+      # when an editor replaces it via rename() instead of writing in place.
+      - ./hindsight:/opt/hindsight:ro
+      # Same directory as /mnt/user/HQ/backups/hindsight — HQ is a cache-only
+      # share, so the cache path is authoritative and the mover will never
+      # relocate it. Bound here rather than through shfs for the same reason
+      # orca and paperclip do it.
+      - /mnt/cache/HQ/backups/hindsight:/backups
+    depends_on:
+      hindsight-db:
+        condition: service_healthy
+
