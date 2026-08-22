@@ -71,7 +71,6 @@ services:
       - ${MEDIA_DIR}/Anime:/data/anime
       - ${MEDIA_DIR}/AnimeMovies:/data/animemovies
       - ${MEDIA_DIR}/Audiobooks:/data/audiobooks
-      - ${PERSONAL_MEDIA_DIR}/:/data/personal
     restart: unless-stopped
 
   # TORRENT CLIENT - Now routes through gluetun VPN
@@ -227,6 +226,10 @@ services:
   flaresolverr:
     image: ghcr.io/thephaseless/byparr:latest
     container_name: flaresolverr
+    # PID 1 in this image is `uv`, which never reaps. Every browser launch (incl. the
+    # 15-min healthcheck) orphans 3 Firefox helpers — Utility/Socket/RDD — and they
+    # pile up as zombies forever: 4215 of them in 14 days. tini reaps them.
+    init: true
     network_mode: "service:gluetun"
     depends_on:
       - gluetun
