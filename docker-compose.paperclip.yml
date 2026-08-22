@@ -39,6 +39,15 @@ services:
     environment:
       - HOME=/root
       - DATABASE_URL=postgres://paperclip:${PAPERCLIP_DB_PASSWORD}@paperclip-postgres:5432/paperclip
+      # Docker client config. The compose plugin ships in HQ rather than the
+      # image (same reasoning as gh in entrypoint.sh: one copy, no rebuild to
+      # bump it), and the CLI only finds plugins under $DOCKER_CONFIG.
+      - DOCKER_CONFIG=/mnt/user/HQ/.docker
+      # Prepend HQ/tools so `docker` - and, as a side effect, the `op` and `gh`
+      # that already live there - resolve without a symlink. The rest of this
+      # value is node:22's stock PATH verbatim; do not drop entries, Node
+      # itself is in /usr/local/bin.
+      - PATH=/mnt/user/HQ/tools:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
     volumes:
       # Instance state: config, secrets key, local storage, logs.
       - /mnt/cache/Config/paperclip:/root/.paperclip
@@ -67,6 +76,23 @@ services:
       # will never relocate it - the same optimisation orca uses for
       # thenairn.com, and it skips the shfs layer.
       - /mnt/cache/HQ:/mnt/user/HQ
+      # The host Docker daemon. Granted by Thomas on RAI-25 (interaction
+      # `rai25-infra-access-path`, 2026-08-22) so the infra agent can actually
+      # run the bring-up in up.sh instead of only writing it. He was offered
+      # SSH and declined it: this is Docker, and nothing else.
+      #
+      # NOT :ro, deliberately. A read-only bind mount does not make the Docker
+      # API read-only - connect(2) on a unix socket is an inode permission
+      # check, not a filesystem write, so `:ro` still permits container create,
+      # start, stop and delete. All it actually prevents is unlinking the
+      # socket file. `plugsy` and `orca` both mount it rw for the same reason.
+      # Writing `:ro` here would buy nothing and would leave a misleading
+      # "paperclip has read-only Docker" signal in a public repo.
+      #
+      # Blast radius, stated once: this is root-equivalent on Tower. Anything
+      # that can reach the daemon can start a privileged container and mount
+      # the host filesystem. That is inherent to the socket, not to this line.
+      - /var/run/docker.sock:/var/run/docker.sock
     # No host port binding: Caddy reaches it as paperclip:3100 on
     # thenairncom_default, the same way it reaches orca:6768.
     restart: unless-stopped
