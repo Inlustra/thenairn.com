@@ -86,6 +86,12 @@
                 match email francesca.nairn@gmail.com
                 action add role authp/family
             }
+
+            transform user {
+                match realm google
+                match email nikkihazell@yahoo.co.uk
+                action add role authp/family
+            }
 		}
 
 		authorization policy adminpolicy {
