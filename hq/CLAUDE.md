@@ -1,5 +1,28 @@
 # HQ — Homelab Control Panel
 
+> # ⚠️ THIS DOES NOT RUN. Nothing below is currently true.
+>
+> Verified on the box 2026-08-22 (RAI-7 / decision D7). Everything after this banner is
+> written in the present tense and describes a system that is not deployed:
+>
+> | Documented | Reality |
+> |---|---|
+> | Web UI at `console.thenairn.com` | **No vhost.** No entry in the 988-line `caddy/Caddyfile`, and the host does not resolve at all — not a 502, nothing. |
+> | `jarvis-console` container | **No such service** in any of the 13 `docker-compose*.yml` files. |
+> | `hq` TUI reachable via `hq.thenairn.com` | The vhost exists (`caddy/Caddyfile:159`) and **502s** — nothing listens on `192.168.96.14:3777`. Dead since the agent platform stopped in April. |
+> | Paths under `/mnt/user/Internal/thenairn.com/…` | Pre-migration. That path resolves only through a symlink; the current root is `/mnt/user/HQ/thenairn.com/`. |
+>
+> **The source is still here.** `thenairn.com/hq/` and `thenairn.com/jarvis-console/`
+> are both intact on disk, inside the live infra repo. Nothing has been deleted.
+>
+> **Retire-or-revive is Thomas's decision** and it is open. If retire: move both trees to
+> `_retired/`, delete the `hq.thenairn.com` vhost, delete this file. If revive: the
+> `console.thenairn.com` vhost has to be written from scratch and the `jarvis-console`
+> service added to a compose file — neither exists to restore.
+>
+> Until then, **do not follow the instructions below** and do not treat anything here as
+> a description of the running stack.
+
 Two interfaces for the same homelab: a TUI (for SSH/Termius) and a Web UI (for mobile browser).
 
 ## Architecture
