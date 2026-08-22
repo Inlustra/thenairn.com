@@ -1,0 +1,42 @@
+# compose.manifest — the live compose set for project `thenairncom`.
+#
+# This file is the RECORD of which docker-compose files are part of the stack.
+# `tools/up.sh` reads it, and asserts in both directions on every run:
+#
+#   * every file listed here exists on disk        -> a deleted file is a loud error
+#   * every docker-compose*.yml on disk is listed  -> a new file is a loud error
+#
+# WHY A LIST, GIVEN THE LAST LIST BROKE EVERYTHING
+# ------------------------------------------------
+# `COMPOSE_FILE` in `.env` was also a list, and it took the stack out: it named
+# `docker-compose.hindsight.yml` for three weeks after 630dde0 (RAI-5) deleted
+# the file, and Compose hard-errors on a COMPOSE_FILE entry that is missing.
+#
+# The bug there was not "a list". It was a list kept OUTSIDE the directory it
+# described (in `.env`, regenerated from a 1Password field), with nothing
+# checking it against reality, in a file nobody diffs because it is untracked.
+#
+# This list lives next to the files it names, is version-controlled, and is
+# checked against the directory on every single run. Drift fails the bring-up
+# instead of silently dropping a service.
+#
+# ORDER IS THE COMPOSE MERGE ORDER, NOT THE START ORDER.
+# Later files win on conflicting keys. `docker-compose.yml` leads by convention.
+# Start order is the STAGE_* map in tools/up.sh — a different thing entirely.
+#
+# Counted 2026-08-22 by parsing each file's `services:` map: 12 files, 43 services.
+# If you add or remove a file here, `tools/up.sh check` will tell you what else
+# needs updating before anything starts.
+
+docker-compose.yml                # 6  caddy, plugsy, rclone, port-permission-module, +2
+docker-compose.cameras.yml        # 3  go2rtc, frigate, frame-cams
+docker-compose.docs.yml           # 2  paperless, paperless-broker
+docker-compose.gracewedding.yml   # 1  gracewedding
+docker-compose.immich.yml         # 5  immich-server, -machine-learning, -kiosk, -redis, -database
+docker-compose.invoicing.yml      # 2  invoiceninja, invoiceninjadb
+docker-compose.media.yml          # 17 the media zoo, both gluetun tunnels
+docker-compose.orca.yml           # 1  orca
+docker-compose.paperbox.yml       # 1  paperbox
+docker-compose.paperclip.yml      # 2  paperclip, paperclip-postgres
+docker-compose.syncthing.yml      # 1  syncthing
+docker-compose.unifi.yml          # 2  unifi-network-application, unifi-db

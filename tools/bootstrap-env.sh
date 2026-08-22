@@ -1,7 +1,13 @@
 #!/bin/bash
 # Rebuild thenairn.com/.env from 1Password. One command, no interactive login.
 #
-#     tools/bootstrap-env.sh && docker compose up -d
+#     tools/bootstrap-env.sh && tools/up.sh --build
+#
+# Those two commands are the whole recovery: .env rebuilt from the vault, then
+# all 43 services up in a recorded order. NOT `docker compose up -d` — no single
+# compose file here is a valid project on its own (caddy links to ten services
+# defined in three other files), so a bare compose command needs the full -f
+# chain that tools/up.sh assembles from compose.manifest.
 #
 # This is the ssh path (RAI-15). It is deliberately dependency-light: it needs
 # the `op` binary, a service account token, and network. Nothing else.
