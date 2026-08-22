@@ -8,8 +8,14 @@ nohup.out
 gallery
 plex-meta-manager
 
-# Separate git repo checked out here, not part of this repo
+# Separate git repos checked out here, not part of this repo.
+# openclaw/ is an upstream vendor checkout of openclaw/openclaw pinned at
+# 2026.2.6-3. It was committed as a bare gitlink (mode 160000) with no
+# .gitmodules entry, so every fresh clone got an empty, unresolvable
+# openclaw/ directory. De-registered 2026-08-22; the working copy on Tower
+# is untouched and upstream is recoverable with a normal clone.
 nanoclaw/
+openclaw/
 
 # Compiled binary build artifact
 hq/hq
