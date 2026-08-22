@@ -39,6 +39,25 @@ services:
     environment:
       - HOME=/root
       - DATABASE_URL=postgres://paperclip:${PAPERCLIP_DB_PASSWORD}@paperclip-postgres:5432/paperclip
+      # The base URL agent runs are told to call (RAI-8). Left unset, the server
+      # derives it from server.allowedHostnames in config.json and hands every
+      # agent `http://rainn.thenairn.com:3100`, which does not resolve to
+      # anything reachable from inside this container - that name is the LAN
+      # address 192.168.96.14 and nothing binds host port 3100, deliberately
+      # (see the "No host port binding" note below). The advertised fallback,
+      # the container's own bridge IP, is then refused 403 by the hostname
+      # allowlist. So the documented path had no working URL and every agent
+      # burned its opening tool calls rediscovering loopback.
+      #
+      # localhost is the right answer while the agents share this container's
+      # network namespace with the server, and it is stable: the hostname guard
+      # hardcodes localhost/127.0.0.1/::1 into its allow set regardless of
+      # config (server/dist/middleware/private-hostname-guard.js). This value
+      # also becomes the first entry in PAPERCLIP_RUNTIME_API_CANDIDATES_JSON,
+      # so the fallback list starts with something that works.
+      #
+      # If the API ever moves off this container, this must change with it.
+      - PAPERCLIP_API_URL=http://localhost:3100
       # Docker client config. The compose plugin ships in HQ rather than the
       # image (same reasoning as gh in entrypoint.sh: one copy, no rebuild to
       # bump it), and the CLI only finds plugins under $DOCKER_CONFIG.
