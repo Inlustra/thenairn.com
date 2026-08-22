@@ -181,19 +181,24 @@ build_file_args() {
 # script stays correct even when that line is stale (it was, on 2026-08-22).
 dc() { docker compose -p "$PROJECT" "${FILE_ARGS[@]}" "$@"; }
 
-# Services declared across the merged project, per the files themselves.
-# python3, not shell: zsh does not word-split unquoted parameters and this
-# repo has been bitten by that three separate times.
+# Services declared across the merged project — asked of Compose itself.
+#
+# This used to hand-parse the YAML with python3 + PyYAML. That broke the moment
+# it was first actually executed (2026-08-22, once RAI-28 granted the socket):
+# `check` — and therefore `up`, which calls it first — died on
+# ModuleNotFoundError before starting a single service. Failing closed was
+# correct; needing a pip install to bring the stack up was not.
+#
+# Verified missing in the paperclip container. NOT verified on the Unraid host,
+# which is where this script normally runs — so treat "the host was broken too"
+# as unproven. The dependency is unnecessary either way.
+#
+# `config --services` has no dependency beyond the compose binary this script
+# already requires, and it is authoritative rather than approximate: it answers
+# for the MERGED project, so overrides, extends and anchors resolve the way
+# they will at `up` time. Interpolation is exercised as a side effect.
 declared_services() {
-  python3 - "$@" <<'PY'
-import sys, yaml
-names = []
-for path in sys.argv[1:]:
-    with open(path) as fh:
-        doc = yaml.safe_load(fh) or {}
-    names += list((doc.get('services') or {}).keys())
-print('\n'.join(sorted(names)))
-PY
+  dc config --services | LC_ALL=C sort
 }
 
 staged_services() {
@@ -213,7 +218,7 @@ cmd_check() {
   printf '   %s\n' "${files[@]}"
 
   local declared staged
-  declared="$(declared_services "${files[@]}")"
+  declared="$(declared_services)"
   staged="$(staged_services)"
 
   say "Services: $(wc -l <<<"$declared") declared, $(wc -l <<<"$staged") staged"
@@ -253,6 +258,13 @@ cmd_preflight() {
   # Every *_DIR the compose files interpolate must exist, or Docker silently
   # creates an empty directory at the bind path and the service comes up
   # looking healthy with no data.
+  #
+  # THIS CHECK IS ONLY MEANINGFUL ON THE HOST. It tests our own mount namespace,
+  # but the daemon binds from the host's. Run from inside the paperclip
+  # container (which mounts only HQ and Internal) 15 of 17 paths report missing
+  # while being perfectly present on Tower — measured 2026-08-22, RAI-28.
+  # The socket grants Docker, not the host filesystem. Do not "fix" the paths
+  # this prints without confirming where you are running.
   local missing=0 name path
   while IFS='=' read -r name path; do
     path="${path%\"}"; path="${path#\"}"
@@ -261,7 +273,7 @@ cmd_preflight() {
       missing=1
     fi
   done < <(grep -E '^[A-Z_]+_DIR=' .env)
-  [[ $missing -eq 0 ]] || die "host paths above do not exist — fix before bringing anything up"
+  [[ $missing -eq 0 ]] || die "host paths above do not exist — fix before bringing anything up (if you are inside a container, see the note above: run this on the host)"
   info "all *_DIR paths in .env exist"
 
   # plex and frigate both declare `runtime: nvidia`.
@@ -364,7 +376,7 @@ cmd_status() {
   echo
   printf 'running: %s / declared: %s\n' \
     "$(dc ps -q | wc -l)" \
-    "$(declared_services $(compose_files) | wc -l)"
+    "$(declared_services | wc -l)"
 }
 
 cmd_down() {
