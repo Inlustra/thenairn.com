@@ -17,9 +17,6 @@ plex-meta-manager
 nanoclaw/
 openclaw/
 
-# Compiled binary build artifact
-hq/hq
-
 # Served content, not source. Caddy mounts /Playground straight off this
 # directory, but what lands here is BUILD OUTPUT published by
 # nairn-book/bin/publish.sh — the book, the 22 spread JPEGs, the 113 MB of 4K
