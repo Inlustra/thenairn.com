@@ -699,6 +699,232 @@ rainn.thenairn.com {
     }
 }
 
+# Illustrated-book review + build UI for the Grace & Quentin wedding book.
+# Runs inside the orca container (project: /mnt/cache/HQ/nairn-book), started by
+# nairn-book/bin/serve.sh. 172.18.0.14 is orca on thenairncom_default; "orca:7790"
+# resolves to the same place if the address ever drifts.
+grace-wedding.thenairn.com {
+    import proxy_error_page
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle @internal {
+        reverse_proxy 172.18.0.14:7790
+    }
+    handle {
+        import admin
+        reverse_proxy 172.18.0.14:7790
+    }
+}
+
+# The book itself — the shareable artefact, and the thing the presenter's QR
+# code points at. Deliberately still behind the admin portal from outside: the
+# wedding has not happened and this is a surprise. To open it to guests, delete
+# the `handle { import admin ... }` block and leave a single unguarded
+# file_server, then reload.
+# PUBLIC — no auth. Opened 2026-08-15 at Thomas's request so guests' phones can
+# reach it over cellular at the wedding. Anyone with the URL can read the book.
+# To close it again, restore the @internal + `import admin` pair used by
+# grace-wedding-present below, and reload.
+grace-wedding-book.thenairn.com {
+    import proxy_error_page
+    root * /Playground/grace-wedding/book
+    encode zstd gzip
+    file_server
+}
+
+# The guests' phones, and the state they follow.
+#
+# PUBLIC — no `import admin`, on purpose. Quentin is French and much of his
+# family speaks little English; Thomas reads the English aloud and these phones
+# carry the FRENCH, in sync, line by line. They are held by guests sitting in a
+# room on cellular, and an OAuth wall would make the feature useless to exactly
+# the people it exists for. Nothing here is not about to be read aloud anyway.
+#
+# The split matters: Caddy serves the page and the twenty-two spread JPEGs
+# itself, straight off the Playground mount, so fifty phones loading a picture
+# never touch the Bun process. That process only fans out a few hundred bytes of
+# JSON per slide change.
+grace-wedding-live.thenairn.com {
+    import proxy_error_page
+
+    # `flush_interval -1` turns off response buffering. Without it Caddy could
+    # hold the SSE stream in a buffer and the whole room would sit a slide
+    # behind — silently, which is the worst way for this to fail.
+    handle /api/* {
+        reverse_proxy gracewedding:7791 {
+            flush_interval -1
+        }
+    }
+
+    handle {
+        root * /Playground/grace-wedding/live
+        encode zstd gzip
+        # ── caching, which is the difference between a primed room and a
+        # stalled one ────────────────────────────────────────────────────────
+        # Caddy's file_server sends Etag and Last-Modified but NO Cache-Control,
+        # so a browser falls back to heuristic freshness — which for a file
+        # written minutes ago is close to zero. Every phone would revalidate
+        # every picture on every view: a round trip each, over the one congested
+        # cell in the building, at the exact moment it matters. The page
+        # prefetches all 22 pictures while guests are still sitting down, and
+        # without these headers that work would be thrown away.
+        #
+        # The pictures are safe to pin hard because the page requests them with
+        # a ?v=<content hash>, and browsers key the cache on the full URL: a
+        # republish changes the query and simply misses. A week comfortably
+        # covers the wedding.
+        @pics path /img/*
+        header @pics Cache-Control "public, max-age=604800, immutable"
+        # The page and the manifest must NOT be pinned — Thomas may republish an
+        # hour before he stands up. `no-cache` still allows a 304, so it is one
+        # small conditional request, not a re-download.
+        @fresh path / /index.html /manifest.json
+        header @fresh Cache-Control "no-cache"
+        file_server
+    }
+}
+
+# ══ roussel.nairn.wedding ═══════════════════════════════════════════════════
+#
+# ONE address for the wedding, on the couple's own domain — Roussel is Quentin's
+# surname. This is what goes on the QR code and what people are told out loud;
+# "roussel dot nairn dot wedding" survives being said across a room in a way
+# that "grace-wedding-live dot thenairn dot com" does not.
+#
+#   /            the guests' phones — the live follow-along        PUBLIC
+#   /book/       the whole book                                    PUBLIC
+#   /narrator/   the presenter, Thomas's own tool                  gated
+#   /api/*       the live state service (Bun, in-memory)
+#
+# The live view is at the ROOT deliberately. It loads `img/NN.jpg` and
+# `manifest.json` with relative paths and talks to `/api/*` as a sibling, so
+# nothing has to be rewritten, and no phone ever gets a rewritten URL wrong.
+#
+# The grace-wedding-*.thenairn.com vhosts above serve the same three directories
+# and are left exactly as they were — this is an additional front door, not a
+# migration, and they are already verified.
+roussel.nairn.wedding {
+    import proxy_error_page
+
+    # `flush_interval -1` turns off response buffering. Without it Caddy could
+    # hold the SSE stream in a buffer and the whole room would sit a slide
+    # behind — silently, which is the worst way for this to fail.
+    handle /api/* {
+        reverse_proxy gracewedding:7791 {
+            flush_interval -1
+        }
+    }
+
+    # A bare /book has no trailing slash, so `handle_path /book/*` would miss it
+    # and the guest would land on the live view instead of the book. One redirect
+    # each, and both spellings work.
+    #
+    # `?{query}` is not decoration. Without it the redirect DROPS the query, so
+    # /book?full=1 became /book/ and the reader opened in its partial,
+    # follow-the-speech mode instead of the whole book — which looks exactly
+    # like "the reveal didn't work". A trailing bare `?` when there is no query
+    # is harmless.
+    redir /book /book/?{query} 308
+    redir /narrator /narrator/?{query} 308
+
+    handle_path /book/* {
+        root * /Playground/grace-wedding/book
+        encode zstd gzip
+        # The book is a single ~7 MB self-contained file. Fifty phones fetching
+        # it at the instant of the release is the worst moment to ask for it, so
+        # the phone page pulls it in the background while people are seated and
+        # this makes that cache worth having: `no-cache` still revalidates, but
+        # a 304 reuses the copy already on the device instead of sending 7 MB
+        # again.
+        header Cache-Control "no-cache"
+        file_server
+    }
+
+    # PUBLIC, deliberately — Thomas's call. This is the script with his private
+    # notes on it, so it was gated at first, but `import admin` CANNOT work on
+    # this domain: the auth portal sets `cookie domain thenairn.com`, so its
+    # session cookie is never sent to nairn.wedding. The gate would bounce to
+    # Google, come back, find no cookie, and loop forever. A login loop in his
+    # hand two minutes before he stands up is worse than a guest reading ahead.
+    #
+    # So the URL simply being unadvertised is the protection. Worst case, one
+    # guest guesses /narrator and sees the jokes early.
+    #
+    # The presenter is also a self-contained file: opening dist/present/index.html
+    # off his laptop needs no network and no login at all, and remains the most
+    # reliable way to run it on the night.
+    handle_path /narrator/* {
+        root * /Playground/grace-wedding/present
+        encode zstd gzip
+        file_server
+    }
+
+    # The 4K print plates, for reviewing before ordering. Gated like /narrator:
+    # 113 MB of artwork has no business on a public URL a hundred guests hold,
+    # and nobody needs it but Thomas and the printer.
+    handle_path /plates/* {
+        @lan {
+            remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+        }
+        handle @lan {
+            root * /Playground/grace-wedding/plates
+            encode zstd gzip
+            file_server browse
+        }
+        handle {
+            respond "Not here." 404
+        }
+    }
+
+    handle {
+        root * /Playground/grace-wedding/live
+        encode zstd gzip
+        # ── caching, which is the difference between a primed room and a
+        # stalled one ────────────────────────────────────────────────────────
+        # Caddy's file_server sends Etag and Last-Modified but NO Cache-Control,
+        # so a browser falls back to heuristic freshness — which for a file
+        # written minutes ago is close to zero. Every phone would revalidate
+        # every picture on every view: a round trip each, over the one congested
+        # cell in the building, at the exact moment it matters. The page
+        # prefetches all 22 pictures while guests are still sitting down, and
+        # without these headers that work would be thrown away.
+        #
+        # The pictures are safe to pin hard because the page requests them with
+        # a ?v=<content hash>, and browsers key the cache on the full URL: a
+        # republish changes the query and simply misses. A week comfortably
+        # covers the wedding.
+        @pics path /img/*
+        header @pics Cache-Control "public, max-age=604800, immutable"
+        # The page and the manifest must NOT be pinned — Thomas may republish an
+        # hour before he stands up. `no-cache` still allows a 304, so it is one
+        # small conditional request, not a re-download.
+        @fresh path / /index.html /manifest.json
+        header @fresh Cache-Control "no-cache"
+        file_server
+    }
+}
+
+# The live presenter — script on his device, picture on the projector. This one
+# stays gated permanently; it is a tool, not an artefact.
+grace-wedding-present.thenairn.com {
+    import proxy_error_page
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle @internal {
+        root * /Playground/grace-wedding/present
+        encode zstd gzip
+        file_server
+    }
+    handle {
+        import admin
+        root * /Playground/grace-wedding/present
+        encode zstd gzip
+        file_server
+    }
+}
+
 playground.thenairn.com {
     tls {
         resolvers 1.1.1.1 8.8.8.8

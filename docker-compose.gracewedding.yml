@@ -1,0 +1,34 @@
+# Grace & Quentin — live slide state for the wedding reading.
+#
+# One Bun process holding ONE object, `{mode, index, rev}`, in memory, fanning
+# changes out over SSE. That is the whole service. There is no database, no
+# volume and no state on disk: if it restarts mid-speech it comes back on
+# `waiting`, Thomas presses next once, and the room catches up. Engineering
+# durability for a twelve-minute event would add more ways to fail than it
+# removes.
+#
+# It does NOT serve the phone page. Caddy serves that, and the spread images,
+# straight off the Playground mount — fifty phones loading a picture must never
+# touch this process. See the grace-wedding-live vhost in caddy/Caddyfile.
+#
+#   docker compose -p thenairncom up -d --no-deps gracewedding
+#
+# NEVER --remove-orphans, and never a bare `up -d`: every compose file here
+# shares the project name, so either one would take the other ~45 containers
+# with it.
+services:
+  gracewedding:
+    build: ./gracewedding
+    container_name: gracewedding
+    restart: unless-stopped
+    environment:
+      - TZ=Europe/Paris
+      - PORT=7791
+      # The only credential. Writes are refused outright if it is unset, so an
+      # empty value is fail-closed rather than fail-open.
+      - GRACE_LIVE_TOKEN=${GRACE_LIVE_TOKEN}
+    labels:
+      plugsy.name: "Grace & Quentin live"
+      plugsy.category: "Playground"
+      plugsy.icon: "@styled-icons/boxicons-regular/Book"
+      plugsy.link: "https://grace-wedding-live.thenairn.com"
