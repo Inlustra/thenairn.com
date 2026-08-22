@@ -9,7 +9,7 @@ services:
     build:
       context: ./orca
       args:
-        ORCA_VERSION: "1.4.144"
+        ORCA_VERSION: "1.4.184"
     # Full host management (mirrors jarvis-console): privileged + host PID
     # namespace lets agents nsenter the host; docker.sock drives the stack.
     privileged: true

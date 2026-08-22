@@ -5,7 +5,7 @@ FROM node:22
 ENV DEBIAN_FRONTEND=noninteractive
 ENV ELECTRON_DISABLE_SANDBOX=1
 
-ARG ORCA_VERSION=1.4.144
+ARG ORCA_VERSION=1.4.184
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
       xvfb xauth ca-certificates curl gnupg zsh \
