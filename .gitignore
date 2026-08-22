@@ -8,12 +8,22 @@ nohup.out
 gallery
 plex-meta-manager
 
-# Separate git repos checked out here, not part of this repo.
-# openclaw/ is an upstream vendor checkout of openclaw/openclaw pinned at
-# 2026.2.6-3. It was committed as a bare gitlink (mode 160000) with no
-# .gitmodules entry, so every fresh clone got an empty, unresolvable
-# openclaw/ directory. De-registered 2026-08-22; the working copy on Tower
-# is untouched and upstream is recoverable with a normal clone.
+# Separate git repos that used to be checked out here. Both deleted from Tower
+# on 2026-08-22 (RAI-9); these entries stay so neither comes back by accident.
+#
+# openclaw/ was an upstream vendor checkout of openclaw/openclaw pinned at
+# 2026.2.6-3 (9f703a44). It was committed as a bare gitlink (mode 160000) with
+# no .gitmodules entry, so every fresh clone got an empty, unresolvable
+# openclaw/ directory. De-registered 2026-08-22. Nothing in this stack read it
+# — the gateway is RainnWorks/clawmander, not upstream openclaw. Recoverable
+# with a normal clone of openclaw/openclaw at 9f703a44.
+#
+# nanoclaw/ was a second checkout of RainnWorks/clawmander under its old name.
+# Its HEAD b8d6797 is a strict ancestor of clawmander main, so it held no
+# unique commits. It did hold 40 gitignored files under data/tools/ that had
+# never reached any remote; those were pushed first, to
+# RainnWorks/clawmander branch rescue/nanoclaw-data-tools-2026-08-22.
+# The live checkout is HQ/clawmander.
 nanoclaw/
 openclaw/
 
