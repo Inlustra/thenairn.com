@@ -39,24 +39,50 @@ services:
     environment:
       - HOME=/root
       - DATABASE_URL=postgres://paperclip:${PAPERCLIP_DB_PASSWORD}@paperclip-postgres:5432/paperclip
-      # The base URL agent runs are told to call (RAI-8). Left unset, the server
-      # derives it from server.allowedHostnames in config.json and hands every
-      # agent `http://rainn.thenairn.com:3100`, which does not resolve to
-      # anything reachable from inside this container - that name is the LAN
-      # address 192.168.96.14 and nothing binds host port 3100, deliberately
-      # (see the "No host port binding" note below). The advertised fallback,
-      # the container's own bridge IP, is then refused 403 by the hostname
-      # allowlist. So the documented path had no working URL and every agent
-      # burned its opening tool calls rediscovering loopback.
+      # RAI-8. Two variables, because one was not enough - measured, not assumed.
       #
-      # localhost is the right answer while the agents share this container's
-      # network namespace with the server, and it is stable: the hostname guard
-      # hardcodes localhost/127.0.0.1/::1 into its allow set regardless of
-      # config (server/dist/middleware/private-hostname-guard.js). This value
-      # also becomes the first entry in PAPERCLIP_RUNTIME_API_CANDIDATES_JSON,
-      # so the fallback list starts with something that works.
+      # The bug: every agent run is handed `PAPERCLIP_API_URL=
+      # http://rainn.thenairn.com:3100`, which is unreachable from inside this
+      # container. That name is the LAN address 192.168.96.14 and nothing binds
+      # host port 3100, deliberately (see "No host port binding" below). The
+      # advertised fallback, the container's own bridge IP, is then refused 403
+      # by the hostname allowlist. So the documented path has no working URL.
       #
-      # If the API ever moves off this container, this must change with it.
+      # PAPERCLIP_ALLOWED_HOSTNAMES is the line that fixes what runs receive.
+      # The value handed to a run is built by `buildPaperclipEnv` in
+      # @paperclipai/adapter-utils/dist/server-utils.js:1383:
+      #
+      #   const apiUrl = process.env.PAPERCLIP_RUNTIME_API_URL
+      #     ?? process.env.PAPERCLIP_API_URL
+      #     ?? `http://${runtimeHost}:${runtimePort}`;
+      #
+      # PAPERCLIP_RUNTIME_API_URL is set unconditionally at server startup
+      # (server/dist/index.js:624) to the *derived* URL, so that `??` chain never
+      # reaches PAPERCLIP_API_URL. The only way to change what runs get is to
+      # change the derivation. `choosePrimaryRuntimeApiUrl`
+      # (server/dist/runtime-api.js:43) skips bindHost because 0.0.0.0 is a
+      # wildcard, and returns the FIRST entry of allowedHostnames - so putting
+      # localhost first is the fix.
+      #
+      # This env var REPLACES server.allowedHostnames from config.json wholesale
+      # (server/dist/config.js:141 - `allowedHostnamesFromEnv ?? fileConfig`); it
+      # does not merge. rainn.thenairn.com must stay in the list or the hostname
+      # guard 403s the board UI behind Caddy. Order matters only to the URL
+      # derivation - every other consumer treats the list as a set.
+      - PAPERCLIP_ALLOWED_HOSTNAMES=localhost,rainn.thenairn.com
+      #
+      # PAPERCLIP_API_URL does NOT reach agent runs (see above). It was set for
+      # exactly that on 2026-08-22 in d7e987d, and a run after the recreate read
+      # back the derived value regardless - that is how the `??` order above was
+      # found. It is kept because it still does two useful things: it is the
+      # server's own base URL for managed MCP delivery and routine webhook URLs,
+      # and it seeds PAPERCLIP_RUNTIME_API_CANDIDATES_JSON so the advertised
+      # fallback list starts with something that works.
+      #
+      # localhost is stable, not lucky: the hostname guard hardcodes
+      # localhost/127.0.0.1/::1 into its allow set regardless of config
+      # (server/dist/middleware/private-hostname-guard.js). Config drift cannot
+      # un-allow it. If the API ever moves off this container, both lines change.
       - PAPERCLIP_API_URL=http://localhost:3100
       # Docker client config. The compose plugin ships in HQ rather than the
       # image (same reasoning as gh in entrypoint.sh: one copy, no rebuild to
