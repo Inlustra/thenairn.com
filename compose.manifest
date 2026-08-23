@@ -25,6 +25,10 @@
 # Start order is the STAGE_* map in tools/up.sh — a different thing entirely.
 #
 # Counted 2026-08-22 by parsing each file's `services:` map: 12 files, 43 services.
+# docker-compose.watchdog.yml added 2026-08-23 (RAI-106): 13 files, 44 services.
+# It is NOT yet live - see the `runbook` document on RAI-106. Listed here anyway
+# because up.sh dies on an unlisted file the moment it exists on disk; recording
+# it now is what keeps `up.sh check` truthful for every other run.
 # If you add or remove a file here, `tools/up.sh check` will tell you what else
 # needs updating before anything starts.
 
@@ -40,3 +44,4 @@ docker-compose.paperbox.yml       # 1  paperbox
 docker-compose.paperclip.yml      # 2  paperclip, paperclip-postgres
 docker-compose.syncthing.yml      # 1  syncthing
 docker-compose.unifi.yml          # 2  unifi-network-application, unifi-db
+docker-compose.watchdog.yml       # 1  fleet-breaker

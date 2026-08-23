@@ -107,7 +107,7 @@ STAGE_NAMES=(core-data vpn control business media home edge)
 
 STAGE_core_data=(port-permission-module paperclip-postgres invoiceninjadb unifi-db immich-redis immich-database paperless-broker)
 STAGE_vpn=(gluetun gluetun-uk)
-STAGE_control=(paperclip orca)
+STAGE_control=(paperclip orca fleet-breaker)
 STAGE_business=(invoiceninja paperless unifi-network-application)
 STAGE_media=(plex transmission sonarr animesonarr radarr animeradarr prowlarr flaresolverr seerr get_iplayer iplayarr recyclarr plex-meta-manager suwayomi syncyomi paperbox)
 STAGE_home=(immich-server immich-machine-learning immich-kiosk go2rtc frame-cams frigate syncthing weddingphotos gallery gracewedding)

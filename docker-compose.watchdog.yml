@@ -1,0 +1,44 @@
+services:
+  # Fleet circuit breaker (RAI-106). Watches heartbeat-runs for repeated
+  # terminal provider failures and pauses/resumes agents automatically.
+  #
+  # Deliberately its own file, not a service added to docker-compose.paperclip.yml:
+  # that file defines the container this very agent runs inside. Keeping the
+  # breaker in an isolated file means writing or reconciling it can never touch
+  # the live `paperclip`/`paperclip-postgres` service definitions.
+  #
+  # NOT wired to run yet - see the `runbook` document on RAI-106. It needs a
+  # 1Password item (op://claw/paperclip-watchdog-key/credential) that does not
+  # exist until Thomas mints the API key; until then the entrypoint waits
+  # rather than crash-looping.
+  fleet-breaker:
+    container_name: fleet-breaker
+    labels:
+      plugsy.name: "Fleet Breaker"
+      plugsy.category: "Infrastructure"
+      plugsy.parents: "Paperclip"
+      plugsy.icon: "@styled-icons/feather/ShieldOff"
+    build:
+      context: ./watchdog
+    environment:
+      - PAPERCLIP_API_URL=http://paperclip:3100
+      # RainnWorks company id and RAI-106's issue id. Not secrets - board
+      # identifiers, same as every issue/company id already visible in this
+      # repo's comments. Hardcoded rather than routed through .env, which is
+      # read-only to this agent and already crowded with unrelated stack vars.
+      - PAPERCLIP_COMPANY_ID=fb15eb6f-f4ad-4935-a02e-97266b5c76d6
+      - BREAKER_ISSUE_ID=6f8d18d1-e524-43a8-b567-2acd40a1093d
+      - BREAKER_API_KEY_OP_REF=op://claw/paperclip-watchdog-key/credential
+      - BREAKER_STATE_PATH=/state/breaker-state.json
+    volumes:
+      # State survives container recreation and host reboot - same reasoning
+      # as every other stateful mount in this project.
+      - /mnt/cache/Config/fleet-breaker:/state
+      # `op` binary + service-account token, read-only. Nothing else from HQ:
+      # this container only needs to resolve one secret and talk to
+      # http://paperclip:3100 over the shared compose network.
+      - /mnt/user/HQ/tools:/mnt/user/HQ/tools:ro
+      - /mnt/user/HQ/.op:/mnt/user/HQ/.op:ro
+    restart: unless-stopped
+    # No host port binding, no depends_on: it must keep polling and stay alive
+    # independently of whether `paperclip` itself is the thing failing.
