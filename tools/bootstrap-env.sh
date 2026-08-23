@@ -36,6 +36,22 @@
 # cannot be read from this box -- only from the 1Password console. Created
 # 2026-04-03 and still valid, so it is not on a 30/60/90-day rotation.
 #
+# IF YOU EVER ROTATE THE TOKEN, RUN THIS AFTERWARDS
+# -------------------------------------------------
+# The vault item is the off-box copy. Rotating the token on disk without also
+# updating that item leaves the copy stale, and nothing tells you: everything
+# keeps working here, and recovery fails on the one day you need it. This
+# compares the two by hash and prints no secret value:
+#
+#     export OP_SERVICE_ACCOUNT_TOKEN="$(cat "$HQ/.op/service-account-token")"
+#     d=$(tr -d '\n' < "$HQ/.op/service-account-token" | sha256sum | cut -c1-16)
+#     v=$("$HQ/tools/op" read \
+#           op://claw/bmvzjdvqk5f2tizhfduqoavjoq/credential \
+#           | tr -d '\n' | sha256sum | cut -c1-16)
+#     [ "$d" = "$v" ] && echo "MATCH" || echo "STALE -- update the vault item"
+#
+# Last run 2026-08-23: MATCH (both ba46d10ef290b92c).
+#
 set -euo pipefail
 
 HQ="${HQ:-/mnt/user/HQ}"
