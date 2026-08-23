@@ -156,19 +156,12 @@ HTML
 
  # DOMAINS
 
-hq.thenairn.com {
-    import proxy_error_page
-    @internal {
-        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
-    }
-    handle @internal {
-        reverse_proxy 192.168.96.14:3777
-    }
-    handle {
-        import admin
-        reverse_proxy 192.168.96.14:3777
-    }
-}
+# hq.thenairn.com — REMOVED 2026-08-23 (RAI-6 / RAI-7 D7). The HQ control panel
+# was retired at Thomas's decision; both source trees moved to
+# _retired/hq-control-panel-2026-08-22/ in commit 800f182. Nothing has listened
+# on 192.168.96.14:3777 since the agent platform stopped in April, so this vhost
+# served only a 502. The hostname now falls through to the same
+# connection-refused an unknown subdomain gets, which is the honest answer.
 
 claw.thenairn.com {
     import proxy_error_page
@@ -386,16 +379,41 @@ prowlarr.thenairn.com {
     }
 }
 
+# Plugsy renders server-side, and its getServerSideProps calls its OWN GraphQL
+# endpoint at whatever public address it believes it is being served on. It
+# takes that address from X-Forwarded-Host, which Caddy's reverse_proxy sets
+# automatically. So plugsy tries `http://dashboard.thenairn.com/graphql`, which
+# from inside the container resolves to 192.168.96.14:80 — a hairpin back out
+# through Caddy that never completes. The fetch dies with ECONNRESET, Next.js
+# renders its own 500 page, and Caddy faithfully passes back a 500 that is
+# neither Caddy's fault nor plugsy being down.
+#
+# Overriding X-Forwarded-Host to the upstream's own address makes plugsy's
+# self-call land on itself. Isolated 2026-08-23 (RAI-6) against plugsy directly,
+# one header at a time:
+#     no headers ............................................ 200
+#     Host: dashboard.thenairn.com .......................... 500
+#     X-Forwarded-Host: dashboard.thenairn.com .............. 500
+#     Host: plugsy:3000 + X-Forwarded-Host: dashboard ....... 500
+#     Host: dashboard + X-Forwarded-Host: plugsy:3000 ....... 200
+# The last two lines are the whole finding: X-Forwarded-Host decides, Host does
+# not, so this overrides only X-Forwarded-Host. Every link on the dashboard is
+# an absolute URL out of autodash.json, so nothing depends on plugsy knowing its
+# public name.
 dashboard.thenairn.com {
     @internal {
         remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
     }
     handle @internal {
-        reverse_proxy plugsy:3000
+        reverse_proxy plugsy:3000 {
+            header_up X-Forwarded-Host {upstream_hostport}
+        }
     }
     handle {
         import admin
-        reverse_proxy plugsy:3000
+        reverse_proxy plugsy:3000 {
+            header_up X-Forwarded-Host {upstream_hostport}
+        }
     }
 }
 
@@ -519,19 +537,22 @@ multicams.thenairn.com {
     }
 }
 
-docker.thenairn.com {
-    @internal {
-        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
-    }
-    handle @internal {
-        reverse_proxy whatsupdocker:3000
-    }
-    handle {
-        import admin
-        reverse_proxy whatsupdocker:3000
-    }   
-}
+# docker.thenairn.com — REMOVED 2026-08-23 (RAI-6). Proxied to
+# `whatsupdocker:3000`. No `whatsupdocker` service exists in any of the 12
+# compose files and no such container exists in `docker ps -a`, so this vhost
+# has only ever returned 502 since the service was dropped.
+# NOTE: five WUD_* variables are still live in `.env` (lines 55-59), including a
+# GitHub token and a Slack token. Removing them needs Thomas — they must be
+# revoked at source first. Tracked on RAI-6.
 
+# pikvm.thenairn.com — 502, and the device is off the network, not misconfigured.
+# Checked 2026-08-23 (RAI-6): TCP connect to 192.168.96.95 on 443, 80 and 22 all
+# return EHOSTUNREACH ("No route to host") — the router has no ARP entry for it.
+# The control host 192.168.96.14 answers on both 80 and 443 from the same place,
+# so the LAN path is fine and the pikvm itself is powered off or gone. Left in
+# place deliberately: whether the hardware still exists is Thomas's knowledge,
+# not something the box records, and this config is correct the moment it is
+# plugged back in.
 pikvm.thenairn.com {
     @internal {
         remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
@@ -553,9 +574,10 @@ pikvm.thenairn.com {
     }
 }
 
-pdf.thenairn.com {
-    reverse_proxy stirlingpdf:8080
-}
+# pdf.thenairn.com — REMOVED 2026-08-23 (RAI-6). Proxied to `stirlingpdf:8080`.
+# No `stirlingpdf` service in any compose file, no such container in
+# `docker ps -a`. It also had no auth import at all, so it was the one orphan
+# exposed without the admin portal in front of it.
 
 manga.thenairn.com {
     @internal {
@@ -596,18 +618,10 @@ syncmanga.thenairn.com {
     }
 }
 
-metube.thenairn.com {
-    @internal {
-        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
-    }
-    handle @internal {
-        reverse_proxy metube:8081
-    }
-    handle {
-        import family
-        reverse_proxy metube:8081
-    }
-}
+# metube.thenairn.com — REMOVED 2026-08-23 (RAI-6). Proxied to `metube:8081`.
+# No `metube` service in any compose file, no such container in `docker ps -a`.
+# This one carried `import family`, so it was reachable by the family role and
+# returned a 502 to them.
 
 iplayer.thenairn.com {
     tls {
@@ -707,19 +721,30 @@ rainn.thenairn.com {
 
 # Illustrated-book review + build UI for the Grace & Quentin wedding book.
 # Runs inside the orca container (project: /mnt/cache/HQ/nairn-book), started by
-# nairn-book/bin/serve.sh. 172.18.0.14 is orca on thenairncom_default; "orca:7790"
-# resolves to the same place if the address ever drifts.
+# nairn-book/bin/serve.sh.
+#
+# The address was `172.18.0.14:7790` until 2026-08-23; changed to `orca:7790`
+# under RAI-6, per media/CLAUDE.md's "NEVER use container IPs — always use
+# container names". Read the change for what it is: the IP had NOT drifted
+# (orca was still 172.18.0.14 when this was edited) so this is hygiene against a
+# future drift, not the fix for the 502.
+#
+# THE 502 IS NOT A ROUTING FAULT. Nothing listens on 7790 inside orca — checked
+# 2026-08-23 via /proc/net/tcp in the container: it holds 6768, 35229 and 38949
+# and no 7790, and a connect from caddy is refused, not timed out. The serve.sh
+# process is simply not running. This vhost starts working again the moment it
+# is started; there is nothing to fix here.
 grace-wedding.thenairn.com {
     import proxy_error_page
     @internal {
         remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
     }
     handle @internal {
-        reverse_proxy 172.18.0.14:7790
+        reverse_proxy orca:7790
     }
     handle {
         import admin
-        reverse_proxy 172.18.0.14:7790
+        reverse_proxy orca:7790
     }
 }
 
