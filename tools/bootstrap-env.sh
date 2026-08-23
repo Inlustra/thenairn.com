@@ -12,15 +12,29 @@
 # This is the ssh path (RAI-15). It is deliberately dependency-light: it needs
 # the `op` binary, a service account token, and network. Nothing else.
 #
-# THE ONE THING THAT CAN STRAND YOU
-# ---------------------------------
+# WHERE THE TOKEN IS WHEN TOWER IS GONE  (RAI-24, settled 2026-08-23)
+# -------------------------------------------------------------------
 # The service account token is what unlocks everything, and by default it lives
 # at /mnt/user/HQ/.op/service-account-token -- on the same NVMe as the .env this
-# migration exists to protect. If that disk dies you have the vault and no key
-# to it. Keep a copy of the token somewhere you can reach from a phone, and pass
-# it in when recovering onto a fresh box:
+# migration exists to protect. So that file is NOT the copy you recover from.
+#
+# The copy that survives the disk is the 1Password item
+#   "Service Account Auth Token: Claw"  (vault claw, id bmvzjdvqk5f2tizhfduqoavjoq)
+# verified on 2026-08-23 to be byte-identical to the on-disk file.
+#
+# Read it as a HUMAN, not with op. The service account cannot fetch its own
+# token when it has no token -- that is the circle. Thomas signs in to
+# 1Password on his phone (account password + secret key, no service account
+# involved), opens that item, copies the credential field, and then:
 #
 #     OP_SERVICE_ACCOUNT_TOKEN=ops_... tools/bootstrap-env.sh
+#
+# Rehearsed 2026-08-23 with nothing in the environment but that one variable:
+# rebuilt all 73 variables, every value identical to the live .env, mode 600.
+#
+# Expiry: none recorded on the item and none carried in the token itself, so it
+# cannot be read from this box -- only from the 1Password console. Created
+# 2026-04-03 and still valid, so it is not on a 30/60/90-day rotation.
 #
 set -euo pipefail
 
