@@ -975,39 +975,3 @@ playground.thenairn.com {
         file_server browse
     }
 }
-
-memory.thenairn.com {
-    import proxy_error_page
-    @internal {
-        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
-    }
-    handle @internal {
-        reverse_proxy 192.168.96.14:9999
-    }
-    handle {
-        import admin
-        reverse_proxy 192.168.96.14:9999
-    }
-}
-
-memory-api.thenairn.com {
-    import proxy_error_page
-    @internal {
-        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
-    }
-    # Bearer token for off-LAN clients (Claude Code hooks cannot complete the
-    # Google SSO flow). 256-bit random; HINDSIGHT_API_TOKEN in .env.
-    @token {
-        header Authorization "Bearer a5abcee9a972a9cfc90b8b46b5eab53eda147c6172d0ec65b9f2dee112c954e3"
-    }
-    handle @internal {
-        reverse_proxy 192.168.96.14:8890
-    }
-    handle @token {
-        reverse_proxy 192.168.96.14:8890
-    }
-    handle {
-        import admin
-        reverse_proxy 192.168.96.14:8890
-    }
-}
