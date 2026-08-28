@@ -11,6 +11,7 @@ import { syncRoutes } from "./routes/sync";
 import { graphqlRoutes } from "./routes/graphql";
 import { scan } from "./scanner";
 import { pullScripts, scanScripts } from "./lua/scripts";
+import { initReadState } from "./readstate";
 
 const PORT = process.env.PORT || 3000;
 
@@ -48,6 +49,11 @@ const app = new Elysia()
 
 // Initial setup
 async function init() {
+  // Opened before the scan: read state is the one thing here that cannot be
+  // rebuilt by rescanning, so a failure to open it should be visible in the
+  // log above everything else, not buried after a minute of scanning.
+  initReadState();
+
   await scan();
 
   // Pull scripts if not already present, otherwise just scan

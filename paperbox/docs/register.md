@@ -37,10 +37,14 @@ the entry is wrong. Spike the wide ones before building on them, not after.
 Ordered by blast radius, not by effort. Each is an untested bet that other work is
 already resting on.
 
-1. **R-11** — that a phone can hold a useful subset without a read-state model.
-2. **R-09** — that saliency cropping produces usable spines on real artwork — and,
+1. **R-09** — that saliency cropping produces usable spines on real artwork — and,
    separately, that extraction is affordable (R-22).
-3. **R-23** — that the FMD2 module feed is a dependency we can carry.
+2. **R-23** — that the FMD2 module feed is a dependency we can carry.
+
+**R-11 came off this list on 2026-08-28**, half-measured. The half that was a
+question about a query is answered and moved to Measured below. The half that is a
+question about a person — whether the subset it selects is *useful* — is not, and
+the entry says so rather than letting the measured half stand in for both.
 
 **R-02 came off this list on 2026-08-28**, measured rather than argued, and
 **disproved** — see R-29 for the curve and R-30 for what it takes with it. The
@@ -116,19 +120,57 @@ R-12 target, not a distant one. *Evidence:* `bench/`, empty page files (the quic
 tier never opens a page; it does one readdir and one stat per chapter).
 *Blast radius:* wide — see R-30.
 
+**R-11 · A rolling-window rule is computable, and it is cheap**
+Measured 2026-08-28 with `bench/read-window.ts`, against `src/readstate/` — a SQLite
+store keyed `(reader, series, chapter)` and a resolver for one rule, "keep the N most
+recent unread chapters of series X". Until it existed the rule could not be computed
+at all: read state was accepted and discarded.
+
+| catalogue | read-state rows | one rule p50 | p95 | 40 rules in one pass |
+|---|---:|---:|---:|---:|
+| real library — 12 series / 1,706 chapters | 1,706 | 0.174 ms | 0.391 ms | 2.73 ms (all 12 rules) |
+| R-12 target — 5,000 series / 710,000 chapters | 710,000 | 0.150 ms | 0.258 ms | 5.60 ms |
+
+A second run reproduced every figure within about 10% (0.181 / 0.442, 0.153 / 0.273,
+6.08 ms), which is the resolution this measurement has — quote it to two significant
+figures, not three.
+
+A 416× larger catalogue does not make one rule slower, because the rule reads one
+indexed range and sorts one series. `src/readstate/scale.test.ts` holds it to that by
+asserting the query plan is a `SEARCH` and not a table scan, so a later index change
+cannot quietly turn a per-series cost into a per-catalogue one. Enumerating a
+series' chapters is separate and is R-06's problem, not the rule's: 2.17 ms/series
+from `paperbox.json` over FUSE on the real library, against 0.024 ms to hand the
+resolver a list it already holds.
+
+**What this does not measure — and the distinction is the whole point of the
+entry.** It measures that the rule is *computable and cheap*. It says nothing about
+whether the subset it picks is *useful*. Whether ten unread is the right shape for a
+real reader — whether the window keeps up with how fast they read, whether the
+part-read carve-out matters in practice, whether anybody would rather express this a
+different way entirely — is unobserved, and cannot be settled by a benchmark. It
+needs a person reading on a phone for a month. Do not let the numbers above be
+quoted as evidence that selective sync works; they are evidence that the arithmetic
+is affordable, which is a smaller claim.
+
+*Evidence:* `bench/read-window.ts`, run on this box. Real library read-only, from
+`paperbox.json`; synthetic catalogue in SQLite with one row per chapter, which is
+the pessimistic case for index selectivity. *Blast radius:* wide — the rules and
+eviction design rests on it, and the eviction contradiction in `rules.md` is still
+open, so the resolver deliberately returns `evictCandidates` as a list rather than
+acting on it.
+
+**Separately flagged, and not a measurement:** the store has nowhere to live. See
+`decisions.md`, "Where `readstate.db` lives, and whether that path is backed up".
+
 
 ---
 
 ## Projected
 
-Arithmetic from a measurement, at a scale nothing has run at. Treat as assumption.
-
-**R-11 · A phone holds a useful subset**
-The selective-sync design assumes a device can express what it wants and keep it
-current. Never tested against a real reading pattern, and currently unevaluable —
-read state is accepted and discarded, so a rule like "keep 10 unread" cannot be
-computed at all. *Settles it:* persist read state for one series and evaluate one
-rule against it. *Blast radius:* wide — the entire rules and eviction design.
+Nothing sits here at present. R-11 was the only entry and moved to Measured on
+2026-08-28. The tier stays because the next projection will want it, and because a
+projection filed as a measurement is how R-30 happened.
 
 ---
 

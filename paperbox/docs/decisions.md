@@ -170,11 +170,57 @@ means thousands of FUSE reads before a single gate can be evaluated. Identity sh
 probably stay in the tree even after the cache moves, because it travels with a
 renamed folder.
 
-### Read state
+### Where `readstate.db` lives, and whether that path is backed up
 
-Accepted and discarded. Blocks rolling windows, blocks migration fidelity from
-Tachiyomi backups, blocks cross-device reading. Has surfaced as a blocker three
-separate times.
+**Flagged 2026-08-28, deliberately not decided here.** Read state is the first
+table in Paperbox that **cannot be rebuilt by rescanning**. Fingerprints, chapter
+keys and ids are all either on disk in `paperbox.json` or re-derivable from the
+library; where somebody got to in a series is not. Losing it is not a slow start,
+it is a reader opening a series they were 200 chapters into and being told they
+have read nothing.
+
+The container mounts two paths — the library at `/manga` and `/scripts` — and no
+state volume. So there is no correct default for a module to pick: anything it
+chose would sit on the container's writable layer and be deleted by the next
+`--force-recreate`. `READSTATE_DB` is therefore **required**, and unset means read
+state is not persisted, said out loud at boot. The store also refuses outright to
+open a database inside the library root.
+
+What it needs is a named host path in `docker-compose.paperbox.yml`, and somebody
+to confirm that path is actually swept — by listing the backup destination, not by
+reading the script that is supposed to write to it.
+
+### Read state — persisted 2026-08-28, for the compat API only
+
+Was: accepted and discarded, a blocker that had surfaced three separate times.
+`src/readstate/` now stores it, keyed `(reader, series, chapter)`, and the
+Paperback/Suwayomi compat API both writes and reads it — that surface is the only
+place read state exists, and it previously reported `isRead: false` and
+`unreadCount == chapterCount` unconditionally while answering `success` to every
+mutation.
+
+Settled with it, and worth not re-deriving:
+
+- **Keyed by reader from the first write**, though one reader ships and there is no
+  auth. A household's position is `max(everyone)`, which is computable from
+  per-reader rows; per-reader rows are not computable from the collapse, and the
+  compat mutations carry no identity at all, so the information needed to split it
+  later is never written down. One TEXT column now against a guess later.
+- **Three states, not two.** A part-read chapter is held *outside* the window's
+  quota, so "keep 10 unread" holds 10 or 11. Counting part-read as unread makes the
+  window churn as you open a chapter; counting it as read makes the chapter under
+  your finger an eviction candidate.
+- **Merge is furthest-wins on position**, with an `epoch` for deliberate resets, and
+  the read flag is two max-merged timestamps. No HLC. Max-merge is commutative,
+  associative and idempotent, so reconnect order cannot change the result;
+  last-write-wins fails by silently rewinding a reader's place, furthest-wins by
+  making them scroll back a few pages.
+- **The window defaults to `next`, not `latest`.** Comics are read in order, and
+  `latest` hands a reader 60 chapters behind ten they cannot open. Both are
+  implemented and they agree exactly once the reader is caught up.
+
+Still open: migration fidelity from Tachiyomi backups, and cross-device reading —
+neither has a path in or out yet.
 
 ### The provider abstraction
 
@@ -193,7 +239,8 @@ roughly one per year on a twenty-series shelf.
 | Gap | Blocks |
 |---|---|
 | No archive (CBZ) support | Every Kavita and Komga library |
-| Read state not persisted | Rolling windows, migration fidelity, cross-device |
+| No home for `readstate.db` | Read state surviving a container recreate |
+| No read-state import/export | Migration fidelity from Tachiyomi backups; cross-device |
 | No delete endpoints | Removing anything adoption brought in |
 | No scan scheduler | Deep scans for user-managed libraries |
 | `listDirs` stats every entry | ~1,700 serial FUSE round trips per scan |

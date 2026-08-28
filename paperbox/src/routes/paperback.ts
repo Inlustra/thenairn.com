@@ -2,6 +2,8 @@ import { Elysia, t } from "elysia";
 import { join } from "path";
 import { getMangaList, getManga, getMangaByApiId, getPages, getMangaDir } from "../scanner";
 import type { MangaDetail, Chapter } from "../types";
+import { chapterReadFields, recordChapterPatch, seriesProgress, unreadCount } from "../readstate";
+import type { Progress } from "../readstate";
 
 const NOW_SECS = Math.floor(Date.now() / 1000);
 
@@ -72,7 +74,9 @@ export const paperbackRoutes = new Elysia({ prefix: "/api/v1" })
   .get("/manga/:id/chapters", ({ params, set }) => {
     const manga = findManga(params.id);
     if (!manga) { set.status = 404; return { error: "Not found" }; }
-    return manga.chapters.map((ch, index) => toSuwayomiChapter(ch, index, manga));
+    // One indexed read for the whole series, not one per chapter.
+    const progress = seriesProgress(manga);
+    return manga.chapters.map((ch, index) => toSuwayomiChapter(ch, index, manga, progress));
   }, { params: t.Object({ id: t.String() }) })
 
   .get("/manga/:id/chapter/:chapterId", ({ params, set }) => {
@@ -80,11 +84,22 @@ export const paperbackRoutes = new Elysia({ prefix: "/api/v1" })
     if (!manga) { set.status = 404; return { error: "Not found" }; }
     const chapter = resolveChapter(manga, params.chapterId);
     if (!chapter) { set.status = 404; return { error: "Chapter not found" }; }
-    return toSuwayomiChapter(chapter, manga.chapters.indexOf(chapter), manga);
+    return toSuwayomiChapter(chapter, manga.chapters.indexOf(chapter), manga, seriesProgress(manga));
   }, { params: t.Object({ id: t.String(), chapterId: t.String() }) })
 
-  .patch("/manga/:id/chapter/:chapterId", () => ({ success: true }),
-    { params: t.Object({ id: t.String(), chapterId: t.String() }) })
+  // The read-state write path. This answered `{ success: true }` while
+  // discarding the patch, so a client could mark a chapter read, be told it
+  // worked, and see it unread on the next list. See readstate/compat.ts -- and
+  // note that nothing on this request says *who* read it, which is why rows
+  // carry a reader column from the first write.
+  .patch("/manga/:id/chapter/:chapterId", ({ params, body, set }) => {
+    const manga = findManga(params.id);
+    if (!manga) { set.status = 404; return { error: "Not found" }; }
+    const chapter = resolveChapter(manga, params.chapterId);
+    if (!chapter) { set.status = 404; return { error: "Chapter not found" }; }
+    recordChapterPatch(manga, chapter, body as any);
+    return { success: true };
+  }, { params: t.Object({ id: t.String(), chapterId: t.String() }), body: t.Optional(t.Any()) })
 
   .get("/manga/:id/chapter/:chapterId/page/:pageIndex", async ({ params, set }) => {
     const manga = findManga(params.id);
@@ -157,7 +172,7 @@ function toSuwayomiManga(manga: MangaDetail) {
     chaptersLastFetchedAt: NOW_SECS,
     updateStrategy: "ALWAYS_UPDATE",
     freshData: true,
-    unreadCount: manga.chapterCount,
+    unreadCount: unreadCount(manga),
     downloadCount: manga.chapterCount,
     chapterCount: manga.chapterCount,
     lastReadAt: 0,
@@ -166,7 +181,8 @@ function toSuwayomiManga(manga: MangaDetail) {
   };
 }
 
-function toSuwayomiChapter(ch: Chapter, index: number, manga: MangaDetail) {
+function toSuwayomiChapter(ch: Chapter, index: number, manga: MangaDetail, progress?: Map<string, Progress>) {
+  const state = chapterReadFields(ch, progress ?? seriesProgress(manga));
   return {
     id: ch.apiId,
     url: `/manga/${manga.apiId}/chapter/${index}`,
@@ -175,10 +191,10 @@ function toSuwayomiChapter(ch: Chapter, index: number, manga: MangaDetail) {
     chapterNumber: ch.number,
     scanlator: ch.provenance?.group || "",
     mangaId: manga.apiId,
-    read: false,
+    read: state.read,
     bookmarked: false,
-    lastPageRead: 0,
-    lastReadAt: 0,
+    lastPageRead: state.lastPageRead,
+    lastReadAt: state.lastReadAt,
     index,
     fetchedAt: NOW_SECS,
     realUrl: ch.provenance?.chapterUrl || "",

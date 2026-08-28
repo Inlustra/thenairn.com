@@ -3,6 +3,8 @@ import { buildSchema, graphql } from "graphql";
 import { appendFile } from "fs/promises";
 import { getMangaList, getManga, getMangaByApiId, getChapterByApiId, getPages } from "../scanner";
 import type { Manga, MangaDetail } from "../types";
+import { chapterReadFields, recordChapterPatch, seriesProgress, unreadCount } from "../readstate";
+import type { Progress } from "../readstate";
 
 // -------------------------------------------------------------------------
 // Suwayomi/Tachidesk-compatible GraphQL API.
@@ -71,7 +73,7 @@ function buildManga(m: Manga) {
     realUrl: m.meta.link || "",
     meta: [] as Array<{ key: string; value: string }>,
     source: () => SOURCE,
-    unreadCount: m.chapterCount,
+    unreadCount: unreadCount(m),
     downloadCount: m.chapterCount,
     bookmarkCount: 0,
     hasDuplicateChapters: false,
@@ -87,7 +89,15 @@ function buildManga(m: Manga) {
   };
 }
 
-function buildChapter(ch: MangaDetail["chapters"][number], cIdx: number, m: Manga) {
+function buildChapter(
+  ch: MangaDetail["chapters"][number],
+  cIdx: number,
+  m: Manga,
+  progress?: Map<string, Progress>,
+) {
+  // `progress` is passed in when a whole list is being built, so one series
+  // costs one indexed read rather than one per chapter.
+  const state = chapterReadFields(ch, progress ?? readStateFor(m));
   return {
     id: ch.apiId,
     url: `/manga/${m.apiId}/chapter/${cIdx}`,
@@ -97,10 +107,10 @@ function buildChapter(ch: MangaDetail["chapters"][number], cIdx: number, m: Mang
     chapterNumber: ch.number,
     sourceOrder: cIdx,
     isDownloaded: true,
-    isRead: false,
+    isRead: state.read,
     isBookmarked: false,
-    lastPageRead: 0,
-    lastReadAt: 0,
+    lastPageRead: state.lastPageRead,
+    lastReadAt: state.lastReadAt,
     fetchedAt: NOW_SECS,
     uploadDate: String(NOW_SECS * 1000),
     realUrl: ch.provenance?.chapterUrl || m.meta.link || "",
@@ -124,11 +134,15 @@ function buildCategory() {
 
 const emptyPageInfo = () => ({ hasNextPage: false, hasPreviousPage: false, startCursor: null, endCursor: null });
 
+/** One series' stored read state. Empty when nothing is persisting it. */
+const readStateFor = (m: { uid: string }) => seriesProgress(m);
+
 // All chapters of one manga as a ChapterNodeList.
 function buildChapterList(slug: string) {
   const detail = getManga(slug);
   if (!detail) return { nodes: [], totalCount: 0, pageInfo: emptyPageInfo() };
-  const nodes = detail.chapters.map((ch, cIdx) => buildChapter(ch, cIdx, detail));
+  const progress = readStateFor(detail);
+  const nodes = detail.chapters.map((ch, cIdx) => buildChapter(ch, cIdx, detail, progress));
   return { nodes, totalCount: nodes.length, pageInfo: emptyPageInfo() };
 }
 
@@ -137,7 +151,9 @@ function allChapters() {
   const out: ReturnType<typeof buildChapter>[] = [];
   for (const m of getMangaList()) {
     const detail = getManga(m.id);
-    (detail?.chapters || []).forEach((ch, cIdx) => out.push(buildChapter(ch, cIdx, detail!)));
+    if (!detail) continue;
+    const progress = readStateFor(detail);
+    detail.chapters.forEach((ch, cIdx) => out.push(buildChapter(ch, cIdx, detail, progress)));
   }
   return out;
 }
@@ -404,12 +420,19 @@ const root = {
   },
 
   updateChapter: ({ input }: any) => {
-    // Read state is not persisted; echo the chapter back so the client's
-    // `chapter { id isRead }` selection resolves instead of erroring.
+    // The read-state write path. This used to discard the patch and echo the
+    // chapter back unchanged -- so the response to "mark this read" was a
+    // chapter that said `isRead: false`, an answer contradicting the request it
+    // was acknowledging. The echo is built *after* the write so it reports what
+    // was actually stored, not what was asked for.
     const found = getChapterByApiId(input?.id);
-    const chapter = found
-      ? buildChapter(found.chapter, found.manga.chapters.indexOf(found.chapter), found.manga)
-      : null;
+    if (!found) return { clientMutationId: input?.clientMutationId || null, chapter: null };
+    recordChapterPatch(found.manga, found.chapter, input?.patch);
+    const chapter = buildChapter(
+      found.chapter,
+      found.manga.chapters.indexOf(found.chapter),
+      found.manga,
+    );
     return { clientMutationId: input?.clientMutationId || null, chapter };
   },
 

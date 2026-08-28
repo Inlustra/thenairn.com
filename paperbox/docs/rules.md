@@ -65,10 +65,18 @@ abstract and therefore unpredictable. *"This means 47 chapters, 1.2 GB"* is
 something a person can reason about. That is the difference between a settings
 screen and a control.
 
-**Rolling windows need read state, which we discard.** "Keep 10 unread" cannot be
-evaluated without knowing what has been read. `updateChapter` currently accepts a
-read position and throws it away. This is now a dependency of the sync model, not a
-nice-to-have — the third separate place it has surfaced as a blocker.
+**Rolling windows need read state.** *Built 2026-08-28 — `src/readstate/`.*
+`updateChapter` used to accept a read position and throw it away, which made "keep
+10 unread" not merely untested but incomputable. It is now stored, keyed
+`(reader, series, chapter)`, and one rule is implemented: keep the N most recent
+unread chapters of a series. See `decisions.md` for what that settled, and R-11 in
+`register.md` for what it costs — and, more importantly, for what measuring it did
+*not* establish: that the subset it picks is one a reader wants.
+
+A chapter is unread, part-read or read, and **a part-read chapter is held outside
+the quota** — so "keep 10 unread" holds 10 or 11. The window defaults to the *next*
+unread rather than the *latest*, because comics are read in order and a reader 60
+behind cannot open the ten most recent.
 
 **Rules conflict and need precedence.** "Keep everything of series X" against
 "delete after reading" — one must win, explicitly.
@@ -96,6 +104,12 @@ Two designs disagree and this must be settled before either is built.
 Both cannot be true. Adds-only is safer and matches the principle that files belong
 to the user; rolling windows are what people actually want on a device with finite
 storage.
+
+**Still unsettled, and the resolver is built to keep it that way.**
+`resolveWindow` returns `evictCandidates` as a **list, not an instruction** — the
+chapters that fall outside the target set, named and handed back. Adds-only,
+rolling-window, and "show the user the list and let them choose" are all
+implementable from that. Nothing in the code has quietly picked one.
 
 ## Prior art worth copying rather than deriving
 

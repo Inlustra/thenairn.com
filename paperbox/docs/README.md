@@ -13,10 +13,11 @@ comic" and ended somewhere quite different.
 | [rules.md](rules.md) | Selective sync — what a client keeps and how it says so |
 | [ui.md](ui.md) | Interface decisions — the state language, failure, the shelf, client boundaries |
 | [decisions.md](decisions.md) | What was decided, what was rejected, and what is still open |
+| [register.md](register.md) | Every load-bearing claim, with its status: measured, projected, assumed, decided, disproved |
 
 ## Status at a glance
 
-**Built, tested, deployed** — 56 tests passing.
+**Built, tested, deployed** — 159 tests passing.
 
 - Path-derived identity with a metadata override
 - The sync hash tree and a one-request diff endpoint
@@ -24,18 +25,21 @@ comic" and ended somewhere quite different.
 - Per-chapter provenance with history
 - Scoped scans with visible progress
 - A consolidated status envelope keyed on content signals
+- Read state, keyed `(reader, chapter)`, written and read by the compat API
+- One selective-sync rule: keep the N most recent unread chapters of a series
 
 **Designed but not built.**
 
-- Selective sync rules — see [rules.md](rules.md)
+- Selective sync rules beyond the one rolling window — see [rules.md](rules.md)
 - Registry binding and series matching — see [upstream.md](upstream.md)
 - Scan scheduling and the deep/verify tiers — see [sync.md](sync.md)
 
 **Known gaps that block whole groups of users.**
 
 - No archive (CBZ) support, which excludes every Kavita and Komga library
-- Read state is accepted and discarded, so a rolling window like "keep 10 unread"
-  cannot even be evaluated
+- `readstate.db` has no home in the compose file, so read state — the one thing
+  here that cannot be rebuilt by rescanning — is not persisted unless someone sets
+  `READSTATE_DB` by hand
 - No delete endpoints for a chapter or a series
 
 ## The incident these documents came from
