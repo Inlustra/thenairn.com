@@ -6,7 +6,13 @@ import { chapterFingerprint } from "../fingerprint";
 import { deriveChapterKey } from "../chapters";
 import { loadMeta, saveMeta, dirMtime, SCHEMA_VERSION, type SeriesMeta, type ChapterMeta } from "../metadata";
 
-const IMAGE_EXTS = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".avif"]);
+/**
+ * What counts as a page. Exported because `/api/images/*` must serve exactly
+ * this set and nothing else -- it used to serve any file under the library
+ * root, so `paperbox.json`, `manga.json` and `source-info.json` were all handed
+ * out with a day-long public cache header.
+ */
+export const IMAGE_EXTS = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".avif"]);
 // Read at call time, not module load: the value is env-driven, and binding it
 // once makes the module impossible to point at a different library (which also
 // made the scanner tests order-dependent when run alongside other suites).
@@ -17,6 +23,33 @@ function slugify(name: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
+}
+
+/**
+ * A slug is a display alias, never identity -- `uid` is identity.
+ *
+ * slugify collapses every run of non-alphanumerics to a single hyphen, so
+ * distinct directories legitimately normalise to the same string: `Re:Zero` and
+ * `Re Zero`; `Chapter 1`, `Chapter-1` and `Chapter_1`;
+ * `Warhammer 40,000_ Exterminatus` and `Warhammer 40,000: Exterminatus`.
+ *
+ * Unchecked, the second series silently overwrote the first in the slug-keyed
+ * cache -- one series simply disappeared from the library -- and
+ * `getChapterByApiId`, which resolves its chapter with
+ * `find(c => c.id === chapterId)`, returned whichever colliding chapter came
+ * first, so one chapter's pages could be served under another chapter's id.
+ *
+ * Duplicates get `-2`, `-3`, ... in scan order. That order is deterministic
+ * (the directory listing is naturalSort-ed), so the suffix a given directory
+ * receives is stable for as long as the directories either side of it are.
+ */
+function uniqueSlug(base: string, taken: Set<string>): string {
+  // A directory of pure punctuation slugifies to "", which is not addressable.
+  const root = base || "untitled";
+  let slug = root;
+  for (let n = 2; taken.has(slug); n++) slug = `${root}-${n}`;
+  taken.add(slug);
+  return slug;
 }
 
 function naturalSort(a: string, b: string): number {
@@ -137,6 +170,7 @@ let scanGeneration = 0;
 interface Pending {
   dir: string;
   path: string;
+  /** Assigned after the carry-over pass, so it can be de-duplicated against it. */
   slug: string;
   /** Effective identity: pinned in the sidecar, else derived from the path. */
   uid: string;
@@ -232,7 +266,7 @@ async function runScan(opts: { series?: string } = {}): Promise<void> {
     const { meta, existed } = await loadMeta(path);
     const listing0 = await listDirs(path);
     pending.push({
-      dir, path, slug: slugify(dir),
+      dir, path, slug: "", // filled by the de-duplicating pass below
       uid: meta.uid ?? pathUid(dir),
       meta, existed,
       ...(() => {
@@ -286,9 +320,12 @@ async function runScan(opts: { series?: string } = {}): Promise<void> {
   // Carry over everything outside the scope, and reserve its ids so the series
   // being rescanned cannot be allocated an id another series already holds.
   if (scopedDir) {
-    const scopedSlug = slugify(scopedDir);
+    // Matched on `dir`, not on a re-slugified name: once slugs are
+    // de-duplicated the scoped series' slug is not necessarily
+    // slugify(scopedDir), and comparing the two would carry the series over
+    // *and* rescan it, leaving two cache entries for one directory.
     for (const [slug, m] of mangaCache) {
-      if (slug === scopedSlug) continue;
+      if (m.dir === scopedDir) continue;
       mangaIds.claim(m.apiId, m.uid);
       newCache.set(slug, m);
       newMangaByApiId.set(m.apiId, slug);
@@ -299,10 +336,17 @@ async function runScan(opts: { series?: string } = {}): Promise<void> {
     }
   }
 
+  // Now that every carried-over slug is known, allocate a unique slug per
+  // series, in scan order.
+  const takenSlugs = new Set(newCache.keys());
+  for (const p of pending) p.slug = uniqueSlug(slugify(p.dir), takenSlugs);
+
   for (const p of pending) {
     progress.currentSeries = p.dir;
     const { meta } = p;
     const chapters: Chapter[] = [];
+    // Chapter slugs collide inside a series for exactly the same reason.
+    const takenChapterSlugs = new Set<string>();
 
     for (const dir of p.chapterDirs) {
       const pages = await getPageFiles(join(p.path, dir));
@@ -352,7 +396,7 @@ async function runScan(opts: { series?: string } = {}): Promise<void> {
       }
 
       const chapter: Chapter = {
-        id: `${p.slug}--${slugify(dir)}`,
+        id: `${p.slug}--${uniqueSlug(slugify(dir), takenChapterSlugs)}`,
         uid: cuid,
         apiId: c.apiId,
         mangaId: p.slug,

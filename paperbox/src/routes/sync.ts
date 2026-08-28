@@ -1,5 +1,5 @@
 import { Elysia, t } from "elysia";
-import { diff, buildTree, blockSize } from "../hashes";
+import { diff, buildTree, blockSize, TREE_VERSION } from "../hashes";
 import { getScanProgress } from "../scanner";
 
 // Typed schemas are not decoration here: Eden Treaty derives the client's types
@@ -63,6 +63,11 @@ export const syncRoutes = new Elysia({ prefix: "/api/sync" })
       }),
       response: t.Object({
         root: t.String(),
+        // Node ids are versioned separately from their content. A client
+        // holding a `have` set built under a different treeVersion must throw
+        // that set away and re-diff -- it must never read `gone` as a delete
+        // instruction across a version change. See TREE_VERSION in hashes.ts.
+        treeVersion: t.Integer(),
         changed: t.Array(NodeSummary),
         images: t.Array(ImageRef),
         gone: t.Array(t.String()),
@@ -89,6 +94,10 @@ export const syncRoutes = new Elysia({ prefix: "/api/sync" })
     }
     return {
       root: root.hash,
+      // Cheap enough to send on the cheapest call there is, and this is where a
+      // client first learns its held ids are spelled a different way. Changing
+      // it means "drop your `have` set and re-diff", never "delete content".
+      treeVersion: TREE_VERSION,
       blockSize: blockSize(),
       children: root.children.map((c) => ({
         id: c.id, kind: c.kind, hash: c.hash, n: c.n, label: c.label,

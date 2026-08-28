@@ -1,6 +1,6 @@
 import { Elysia, t } from "elysia";
 import { join } from "path";
-import { readFile, writeFile, readdir } from "fs/promises";
+import { readFile, writeFile } from "fs/promises";
 import { getMangaList, getManga, scan, getLastScan, getMangaDir,
          getScanProgress } from "../scanner";
 import { runModule } from "../lua/engine";
@@ -76,17 +76,12 @@ export const mangaRoutes = new Elysia({ prefix: "/api" })
         chapters: info.chapterNames?.length || 0,
       };
 
-      // Find the original folder name on disk
+      // The directory is carried on the record, not re-derived by slugifying
+      // every entry: slugs are de-duplicated at scan time, so a series whose
+      // name collides with another's answers to `re-zero-2` and no directory
+      // slugifies to that.
       const mangaDir = getMangaDir();
-      const entries = await readdir(mangaDir);
-      const slugify = (name: string) =>
-        name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-      const folderName = entries.find((e) => slugify(e) === params.id);
-      if (!folderName) {
-        set.status = 404;
-        return { error: "Manga folder not found on disk" };
-      }
-
+      const folderName = manga.dir;
       const seriesDir = join(mangaDir, folderName);
       const saveResult = await saveMetadata(seriesDir, info, manga.title, body.url, body.sourceId);
       await scan();
@@ -112,15 +107,8 @@ export const mangaRoutes = new Elysia({ prefix: "/api" })
     }
 
     const mangaDir = getMangaDir();
-    const entries = await readdir(mangaDir);
-    const slugify = (name: string) =>
-      name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-    const folderName = entries.find((e) => slugify(e) === params.id);
-    if (!folderName) {
-      set.status = 404;
-      return { error: "Manga folder not found on disk" };
-    }
-
+    // As above: the record's own `dir`, never a slug round-trip.
+    const folderName = manga.dir;
     const metaPath = join(mangaDir, folderName, "manga.json");
     try {
       let meta: Record<string, any> = { title: folderName };

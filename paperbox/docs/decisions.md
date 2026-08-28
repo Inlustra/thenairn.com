@@ -43,7 +43,26 @@ the spin-off sequence above. Per-series overrides: an explicit pattern, or
 ordinal-within-sequence for genuinely unnumbered runs. Human override outranks all of
 it, consistent with "human flagging outranks checksums".
 
-**Blocks key on `(sequence, sortKey ÷ 25)`.**
+**Blocks key on `(sequence, sortKey ÷ 25)`**, with two corrections made 2026-08-28
+when the implementation was checked against this paragraph:
+
+- **Chapter 0 is numbered.** `sortKey` 0 means "no number derived", but `mark` is what
+  actually distinguishes the two cases: `Chapter 000` has `mark: "0"` (a number was
+  read, and it was zero), `Oneshot` has `mark: ""` (nothing numeric exists). 4 of the
+  12 live series open at chapter 0, and all four had their first chapter filed in the
+  block labelled `unnumbered`. `sortKey === 0` with a non-empty mark now keys to
+  block 1; an empty mark still keys to the unnumbered block, because a chapter with no
+  number has no position on the number line to interleave it at.
+- **A ranged directory is filed into every block it spans.** `Chapter 24-27` crosses
+  the `1-25`/`26-50` boundary. It used to file only by `sortKey`, so `keySpan()`
+  counted chapters 26 and 27 while the block labelled `26-50` did not contain them --
+  this document asserted a span with no implementation behind it. The alternative was
+  to delete `keyEnd`/`keySpan`; it was rejected because `sortKeyEnd` is derived by the
+  parser, persisted in every `paperbox.json`, carried on the `Chapter` type and
+  written by the download path, so removing its only two readers would have left the
+  field, the storage and the ambiguity exactly where they were. The cost accepted in
+  exchange: one chapter node hangs under more than one block, so `diff` visits each
+  node id once and a ranged chapter dirties every block it touches.
 
 **Rejected, with the evidence:**
 
@@ -71,7 +90,23 @@ response into ~150 bytes and makes every set-reconciliation sketch unnecessary.
 
 ### Blocks keyed by chapter number, not array position
 
-25 per block. Prevents an insertion dirtying every block after it.
+25 per block. Prevents an insertion dirtying every block after it. A directory
+covering a range belongs to every block in that range, not only the one it starts in.
+
+### Node ids are versioned; `gone` is only meaningful within one version
+
+`treeVersion`, on `/api/sync/tree` and on every `/api/sync/diff` result. It is the
+shape version of the *ids*, not of the content.
+
+Block ids changed from `b:<uid>:<start>` to `b:<uid>:<seq>:<start>` and nothing on
+disk moved -- but a client that had synced before saw every id it held appear in
+`gone` and every id we returned appear as `added`. A client reading `gone` as "the
+server deleted this" would have thrown away a correct library on the strength of a
+renaming.
+
+**The contract: a `treeVersion` different from the one your `have` set was built
+against means drop the `have` set and re-diff from empty. It never means delete
+content.** Currently 2.
 
 ### Parents hash child *identity*, not just child hashes
 
@@ -162,6 +197,7 @@ roughly one per year on a twenty-series shelf.
 | No delete endpoints | Removing anything adoption brought in |
 | No scan scheduler | Deep scans for user-managed libraries |
 | `listDirs` stats every entry | ~1,700 serial FUSE round trips per scan |
+| Slugs are de-duplicated per scan, not pinned | A colliding directory's `-2` suffix moves if the directory it collided with is removed |
 | Far and near lanes share no vocabulary | The API cannot express the distinction the UI needs |
 
 ## Mistakes worth remembering

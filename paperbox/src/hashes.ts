@@ -26,6 +26,36 @@ const IMAGE_EXTS = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".
 const BLOCK = 25;
 const MAX_IMAGES = 20_000;
 const PAGE_CACHE_MAX = 400;
+/**
+ * A range wider than this is a parse artefact, not an omnibus. The key parser
+ * accepts numbers up to 100,000, so an unlucky `2019-2024` could otherwise mint
+ * two hundred blocks holding one chapter each.
+ */
+const MAX_SPAN_BLOCKS = 40;
+
+/**
+ * The shape version of the node ids in this tree.
+ *
+ * Bumped whenever an id's *spelling* changes without the content behind it
+ * moving. v1 -> v2 (2026-08-28):
+ *
+ *   - block ids gained the sequence segment: `b:<uid>:<start>` became
+ *     `b:<uid>:<seq>:<start>`;
+ *   - chapter 0 moved out of the block labelled "unnumbered" and into `1-25`;
+ *   - a chapter directory covering a range is now filed into every block it
+ *     spans, so it can appear under more than one block id.
+ *
+ * THE CONTRACT, and the reason this field exists. A client whose `have` set was
+ * built against a different `treeVersion` must **drop that `have` set and
+ * re-diff from empty**. It must NOT delete anything. Nothing on disk moved --
+ * only the names of the nodes did -- so a v1 client diffing against v2 sees
+ * every block id it holds in `gone` and every block id we return as `added`. A
+ * client that reads `gone` as "the server deleted this, delete my copy" would
+ * throw away a correct library on the strength of a renaming.
+ *
+ * `gone` is only meaningful within a single `treeVersion`.
+ */
+export const TREE_VERSION = 2;
 
 export type NodeKind = "root" | "series" | "block" | "chapter" | "page";
 
@@ -54,6 +84,64 @@ export interface TreeNode {
 function blockStart(num: number): number {
   if (!Number.isFinite(num) || num <= 0) return 0;
   return Math.floor((Math.ceil(num) - 1) / BLOCK) * BLOCK + 1;
+}
+
+/**
+ * The block a chapter starts in.
+ *
+ * Chapter 0 is a real chapter. Four of the twelve series in the live library
+ * open at chapter 0, and the key parser gives those a `mark` of `"0"` -- it did
+ * derive a number, the number is just zero. `blockStart(0)` returns 0, which is
+ * the bucket rendered as "unnumbered", so each of those series presented its
+ * first chapter under a label asserting that no number could be read from it.
+ *
+ * An empty `mark` is the real signal for unnumbered: `Oneshot`,
+ * `Warhammer 40,000 Full`. Those stay in block 0, deliberately -- they have no
+ * position on the number line, and inventing one would interleave them with
+ * chapters they have no ordering relationship to.
+ */
+function firstBlock(sortKey: number, mark: string): number {
+  if (sortKey === 0 && mark !== "") return 1;
+  return blockStart(sortKey);
+}
+
+/**
+ * Every block a chapter directory belongs to.
+ *
+ * `Chapter 24-27` is one directory covering four chapters and it straddles the
+ * `1-25`/`26-50` boundary. Filing it by `sortKey` alone made the block labelled
+ * `26-50` a lie: `resolve: "nodes"` exists precisely so a screen can say
+ * "something in chapters 26-50 changed", and chapters 26 and 27 were not in
+ * there -- while `keySpan()` counted them at the same time. The doc asserted a
+ * span the tree did not implement.
+ *
+ * WHY THIS WAY ROUND, rather than deleting `keyEnd`/`keySpan` and the span
+ * language. `sortKeyEnd` is not just those two helpers: it is derived by the
+ * chapter-key parser, persisted into every `paperbox.json`, carried on the
+ * `Chapter` type and written by the download path. Deleting the helpers would
+ * have removed the only two readers of the field while leaving the field, the
+ * storage and the ambiguity exactly where they were -- the guarantee would
+ * still have been unimplemented, just harder to notice. Ranges are also real
+ * upstream vocabulary (`14-19`, `10a-c`), not a parsing accident, so the tree
+ * should be able to express them.
+ *
+ * The cost is that one chapter node hangs under more than one block, so `diff`
+ * visits each node id once (see `visited`) and a ranged chapter dirties every
+ * block it touches. Both are correct: it genuinely is part of each of those
+ * ranges.
+ */
+function blocksFor(ch: { sortKey: number; sortKeyEnd?: number; mark: string }): number[] {
+  const start = firstBlock(ch.sortKey, ch.mark);
+  const end = ch.sortKeyEnd;
+  if (start === 0 || end === undefined || !Number.isFinite(end) || end <= ch.sortKey) {
+    return [start];
+  }
+  const last = blockStart(end);
+  if (last <= start) return [start];
+  if ((last - start) / BLOCK >= MAX_SPAN_BLOCKS) return [start];
+  const out: number[] = [];
+  for (let s = start; s <= last; s += BLOCK) out.push(s);
+  return out;
 }
 
 /**
@@ -106,10 +194,13 @@ export function buildTree(): TreeNode {
       // Keyed by (sequence, chapter number). A series can hold several runs --
       // `Episode 001` and `Spin-off #001` are both legitimately "1" -- so the
       // sequence has to be part of the key or they collide into one block.
-      const key = `${ch.sequence}:${blockStart(ch.sortKey)}`;
-      const bucket = byBlock.get(key);
-      if (bucket) bucket.push(chapterNode);
-      else byBlock.set(key, [chapterNode]);
+      // One directory can land in several blocks; see blocksFor.
+      for (const start of blocksFor(ch)) {
+        const key = `${ch.sequence}:${start}`;
+        const bucket = byBlock.get(key);
+        if (bucket) bucket.push(chapterNode);
+        else byBlock.set(key, [chapterNode]);
+      }
     }
 
     const blockNodes: TreeNode[] = [...byBlock.entries()]
@@ -225,6 +316,11 @@ export interface NodeSummary {
 
 export interface DiffResult {
   root: string;
+  /**
+   * See TREE_VERSION. A value different from the one your `have` set was built
+   * against means drop the `have` set and re-diff -- never delete content.
+   */
+  treeVersion: number;
   changed: NodeSummary[];
   images: ImageRef[];
   gone: string[];
@@ -265,6 +361,10 @@ export async function diff(
   const start = opts.scope ? findNode(root, opts.scope) : root;
 
   const known = new Map(have.map((h) => [h.id, h.hash]));
+  // A ranged chapter hangs under every block it spans, so the walk can reach
+  // the same node twice. Visit each id once: otherwise the plan lists the same
+  // images twice and `changed` reports the same chapter twice.
+  const visited = new Set<string>();
   const changed: NodeSummary[] = [];
   const images: ImageRef[] = [];
   let truncated = false;
@@ -284,6 +384,8 @@ export async function diff(
 
   const walk = async (node: TreeNode, level: number): Promise<void> => {
     if (known.get(node.id) === node.hash) return; // subtree proven identical
+    if (visited.has(node.id)) return; // reached again via another block
+    visited.add(node.id);
     changed.push({
       id: node.id, kind: node.kind, hash: node.hash, n: node.n, label: node.label,
       state: known.has(node.id) ? "modified" : "added",
@@ -312,6 +414,7 @@ export async function diff(
 
   return {
     root: root.hash,
+    treeVersion: TREE_VERSION,
     changed,
     images,
     gone,

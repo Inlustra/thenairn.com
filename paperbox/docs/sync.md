@@ -11,6 +11,7 @@ root → series → block → chapter → page
 | Decision | Chosen | Because |
 |---|---|---|
 | Block key | chapter **number** ÷ 25 | Grouping by key, not position — an insertion dirties one block, not all after it |
+| Id shape | `treeVersion`, sent on every reply | An id rename is not a deletion, and a client cannot tell the two apart from `gone` alone |
 | Leaf value | `hash(name + byte size)` | Stat-only. Never mtime, which changes on any copy or restore |
 | Parent value | `hash(child id + child hash, …)` | Covers identity, so a membership swap cannot hash the same |
 | Truncation | 8 bytes / 16 hex | Change detection, not security |
@@ -32,6 +33,31 @@ block; inserting 71.5 dirties only `51–75`.
 Blocking by array index would shift membership on every insertion and dirty every
 block after it — the same mistake as positional identity, one layer up, and it
 would make the tree report constant false change.
+
+Two chapters are not where a first reading puts them. **Chapter 0 belongs in `1–25`**:
+`sortKey` 0 is ambiguous between "the number is zero" and "there is no number", and
+`mark` is what separates them — `Chapter 000` marks as `0`, `Oneshot` marks as empty.
+Only the second belongs in the `unnumbered` block. **A directory covering a range
+belongs to every block it spans**: `Chapter 24-27` hangs under `1–25` *and* `26–50`,
+because `resolve: "nodes"` exists so a screen can say "something in chapters 26–50
+changed" and chapters 26 and 27 are in there. The consequence is that a chapter node
+can be reached twice during a walk; `diff` visits each node id once, so the plan still
+lists each image exactly once.
+
+### `treeVersion`: an id rename is not a deletion
+
+Every `/api/sync/tree` and `/api/sync/diff` reply carries `treeVersion`, currently
+**2**. It versions the *spelling of the ids*, not the content behind them.
+
+v1 → v2 changed block ids from `b:<uid>:<start>` to `b:<uid>:<seq>:<start>`, moved
+chapter 0 out of the unnumbered block, and started filing ranged chapters into every
+block they span. No image moved. A v1 client diffing against a v2 server nonetheless
+sees every block id it holds in `gone` and every block id we return as `added`.
+
+**On a `treeVersion` it does not recognise, a client must drop its `have` set and
+re-diff from empty. It must never treat the resulting `gone` as an instruction to
+delete content.** `gone` is only meaningful between two parties on the same
+`treeVersion`.
 
 This is the **boundary-shift problem**, named in LBFS (2001). The general form:
 boundary shift is caused by grouping by *position*, and cured by grouping by any

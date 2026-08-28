@@ -142,6 +142,12 @@ function fmt(n: number): string {
   return String(n);
 }
 
+// These two are the span's arithmetic. The sync tree honours the same span --
+// `blocksFor` in hashes.ts files a ranged directory into every block it covers.
+// The two were out of step until 2026-08-28: keySpan counted chapters 26 and 27
+// of `Chapter 24-27` while the block labelled 26-50 did not contain the
+// directory at all.
+
 /** The last chapter a directory covers - its range end, or its own key. */
 export function keyEnd(k: Pick<ChapterKey, "sortKey" | "sortKeyEnd">): number {
   return k.sortKeyEnd ?? k.sortKey;
