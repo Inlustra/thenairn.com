@@ -15,10 +15,11 @@ import type {
   SeriesReadState,
   ContentFlag,
   SeriesFreshness,
+  JobsEnvelope,
 } from "../api/contract";
 import { coverArtUrl } from "../api/contract";
 import { Glyph, Line, Weather, NeedsYou, Evidence, InkBar, type GlyphState } from "../ui";
-import { store, timeAgo, clock } from "../lib";
+import { store, timeAgo, clock, derivedWorkFor } from "../lib";
 import { SpineShelf } from "./SpineShelf";
 
 /* ------------------------------------------------------------------ */
@@ -255,12 +256,14 @@ function IdentityLine({
 export function SeriesView({
   id,
   tasks,
+  jobsEnv,
   onBack,
   onRead,
   refreshTasks,
 }: {
   id: string;
   tasks: DownloadTask[];
+  jobsEnv: JobsEnvelope | null;
   onBack: () => void;
   onRead: (chapterId: string) => void;
   refreshTasks: () => void;
@@ -297,6 +300,11 @@ export function SeriesView({
 
   if (err) return <main className="series"><Line tone="quiet">{err}</Line></main>;
   if (!detail) return <main className="series" />;
+
+  // Art/cover work standing against this series. A library-wide pass
+  // (scope null) genuinely covers it, so it counts on this screen.
+  const derived = derivedWorkFor(jobsEnv, detail.uid, true);
+  const faceComing = derived?.kind === "running" || derived?.kind === "queued";
 
   const registry = binding?.state === "identified" ? binding.registry : null;
   const latest = registry?.latestChapter ?? null;
@@ -410,6 +418,31 @@ export function SeriesView({
             <Line tone="pencil">Last looked at {lookedPhrase(fresh.lastLookedAt)}.</Line>
           )}
 
+          {/* Derived work, legible where the books are. The book is ink —
+              its face is what's pencil. Failure is told apart from waiting
+              here, not only in the workbench ledger. */}
+          {derived?.kind === "red" && (
+            <NeedsYou verb="Look again" onVerb={() => api.scan.start().catch(() => {})}>
+              {derived.job.label} stopped
+              {derived.job.error ? ` — ${derived.job.error}` : ""}. Nothing already on your
+              shelf was touched.
+            </NeedsYou>
+          )}
+          {derived?.kind === "amber" && (
+            <Weather>
+              {derived.job.label} didn't finish — it will be tried again by itself.
+            </Weather>
+          )}
+          {derived?.kind === "running" && (
+            <Line tone="pencil">
+              {derived.job.label}
+              {derived.job.startedAt ? ` · started ${timeAgo(derived.job.startedAt)}` : ""}.
+            </Line>
+          )}
+          {derived?.kind === "queued" && (
+            <Line tone="pencil">Art for this series is waiting its turn.</Line>
+          )}
+
           {binding && <IdentityLine binding={binding} onChanged={load} />}
 
           {detail.meta.description && (
@@ -463,6 +496,7 @@ export function SeriesView({
           rows={shown}
           pencil={pencil}
           seasons={registry?.seasons ?? []}
+          faceComing={faceComing}
           onRead={(cid) => onRead(cid)}
           onToggleRead={(cid) => {
             const r = rows.find((x) => x.chapter.id === cid);

@@ -20,7 +20,7 @@ import type {
   TreeChild,
 } from "../api/contract";
 import { Line, Weather, NeedsYou, AsOf } from "../ui";
-import { timeAgo, clock, fmt, fmtBytes, hostOf } from "../lib";
+import { timeAgo, clock, fmt, fmtBytes, hostOf, healsItself } from "../lib";
 
 type Tab = "activity" | "sources" | "registries" | "rules" | "diagnosis";
 
@@ -40,13 +40,6 @@ type Tab = "activity" | "sources" | "registries" | "rules" | "diagnosis";
 /* (weather: it rights itself, no retry lever). Percentages appear     */
 /* only on the user-invoked scan above, because asking made it theirs. */
 /* ------------------------------------------------------------------ */
-
-/** Amber when the trouble reads as weather; red means a person is needed. */
-function healsItself(error: string | null): boolean {
-  return /rate|429|too many|block|cloudflare|timeout|timed out|temporar|busy|502|503|connection|network/i.test(
-    error ?? "",
-  );
-}
 
 const STUCK_AFTER_MS = 4 * 60_000;
 
@@ -174,14 +167,15 @@ function isWeatherTask(t: DownloadTask): boolean {
 
 function ActivityTab({
   tasks,
+  jobsEnv,
   refreshTasks,
 }: {
   tasks: DownloadTask[];
+  jobsEnv: JobsEnvelope | null;
   refreshTasks: () => void;
 }) {
   const [scan, setScan] = useState<ScanProgress | null>(null);
   const [scanAsked, setScanAsked] = useState(false);
-  const [jobsEnv, setJobsEnv] = useState<JobsEnvelope | null>(null);
   const [stopNote, setStopNote] = useState("");
   const movedAt = useJobMovement(jobsEnv);
 
@@ -196,15 +190,6 @@ function ActivityTab({
     }, 800);
     return () => clearInterval(t);
   }, [scanAsked]);
-
-  // Poll the jobs envelope on its ETag — a 304 costs nothing to serve.
-  useEffect(() => {
-    let live = true;
-    const tick = () => api.jobs.list().then((e) => { if (live) setJobsEnv(e); }).catch(() => {});
-    tick();
-    const t = setInterval(tick, 2500);
-    return () => { live = false; clearInterval(t); };
-  }, []);
 
   const lookNow = () => {
     setScanAsked(true);
@@ -667,12 +652,14 @@ function DiagnosisTab({ status }: { status: ServerStatus | null }) {
 export function WorkbenchView({
   tasks,
   status,
+  jobsEnv,
   refreshTasks,
   onOpenSeries,
   initialTab,
 }: {
   tasks: DownloadTask[];
   status: ServerStatus | null;
+  jobsEnv: JobsEnvelope | null;
   refreshTasks: () => void;
   onOpenSeries: (id: string) => void;
   initialTab?: string;
@@ -702,7 +689,7 @@ export function WorkbenchView({
         ))}
       </nav>
 
-      {tab === "activity" && <ActivityTab tasks={tasks} refreshTasks={refreshTasks} />}
+      {tab === "activity" && <ActivityTab tasks={tasks} jobsEnv={jobsEnv} refreshTasks={refreshTasks} />}
       {tab === "sources" && <SourcesTab refreshTasks={refreshTasks} />}
       {tab === "registries" && <RegistriesTab onOpenSeries={onOpenSeries} />}
       {tab === "rules" && <RulesTab />}

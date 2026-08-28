@@ -10,7 +10,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "./api";
-import type { DownloadTask, ServerStatus } from "./api/contract";
+import type { DownloadTask, JobsEnvelope, ServerStatus } from "./api/contract";
 import { LibraryView } from "./views/Library";
 import { SeriesView } from "./views/Series";
 import { ReaderView } from "./views/Reader";
@@ -90,12 +90,21 @@ export function App() {
   const [route, go] = useRoute();
   const [tasks, setTasks] = useState<DownloadTask[]>([]);
   const [status, setStatus] = useState<ServerStatus | null>(null);
+  const [jobsEnv, setJobsEnv] = useState<JobsEnvelope | null>(null);
   const [reachable, setReachable] = useState(true);
   const [lastTry, setLastTry] = useState(Date.now());
   const [asOf, setAsOf] = useState<number | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Jobs ride the same cadence as tasks; the ETag makes an unchanged
+  // envelope cost only the header exchange. The views that render derived
+  // work in place (library cards, series, shelf) all read this one state.
+  const refreshJobs = useCallback(() => {
+    api.jobs.list().then(setJobsEnv).catch(() => {});
+  }, []);
+
   const refreshTasks = useCallback(() => {
+    refreshJobs();
     api.downloads.list()
       .then((d) => {
         setTasks(d);
@@ -104,7 +113,7 @@ export function App() {
       })
       .catch(() => setReachable(false))
       .finally(() => setLastTry(Date.now()));
-  }, []);
+  }, [refreshJobs]);
 
   const refreshStatus = useCallback(() => {
     api.status.get()
@@ -196,6 +205,7 @@ export function App() {
       {route.view === "library" && (
         <LibraryView
           tasks={tasks}
+          jobsEnv={jobsEnv}
           onOpen={openSeries}
           onRead={(seriesId, chapterId) => go({ view: "series", id: seriesId, read: chapterId })}
         />
@@ -204,6 +214,7 @@ export function App() {
         <SeriesView
           id={route.id}
           tasks={tasks}
+          jobsEnv={jobsEnv}
           onBack={() => go({ view: "library" })}
           onRead={(chapterId) => go({ view: "series", id: route.id, read: chapterId })}
           refreshTasks={refreshTasks}
@@ -213,6 +224,7 @@ export function App() {
         <WorkbenchView
           tasks={tasks}
           status={status}
+          jobsEnv={jobsEnv}
           refreshTasks={refreshTasks}
           onOpenSeries={openSeries}
           initialTab={route.tab}

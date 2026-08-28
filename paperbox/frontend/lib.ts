@@ -2,6 +2,8 @@
  * Shared helpers for the web client. No React in here.
  */
 
+import type { Job, JobsEnvelope } from "./api/contract";
+
 export const API = "/api";
 
 /** A non-2xx answer, with the status kept so callers can tell 404 apart. */
@@ -141,4 +143,56 @@ export function hostOf(url?: string): string {
 /** Spine width from page count: 12px + 2.2√pages, floored 21, capped 44. */
 export function spineWidth(pages: number): number {
   return Math.min(44, Math.max(21, Math.round(12 + 2.2 * Math.sqrt(Math.max(1, pages)))));
+}
+
+/* ------------------------------------------------------------------ */
+/* Derived work — matching jobs to the book they belong to             */
+/* ------------------------------------------------------------------ */
+
+/** Amber when the trouble reads as weather; red means a person is needed. */
+export function healsItself(error: string | null): boolean {
+  return /rate|429|too many|block|cloudflare|timeout|timed out|temporar|busy|502|503|connection|network/i.test(
+    error ?? "",
+  );
+}
+
+export type DerivedWork =
+  | { kind: "red"; job: Job }
+  | { kind: "amber"; job: Job }
+  | { kind: "running"; job: Job }
+  | { kind: "queued"; n: number }
+  | null;
+
+/**
+ * What derived work (art, covers — never the scan, which is freshness and
+ * has its own stamp) stands against one series. Failure outranks progress:
+ * a person-needed failure first, then self-healing weather, then running,
+ * then queued. Null is the resting state and renders as silence.
+ *
+ * `includeLibraryWide` folds in scope-null jobs — a library-wide art pass
+ * genuinely covers this series, so the series screen and the shelf count
+ * it. Library *cards* do not: attributing one library-wide row to every
+ * card would caption the whole shelf at once, and a library at rest (or
+ * mid-housekeeping) must not look busy.
+ */
+export function derivedWorkFor(
+  env: JobsEnvelope | null,
+  seriesUid: string,
+  includeLibraryWide: boolean,
+): DerivedWork {
+  if (!env) return null;
+  const mine = env.jobs.filter(
+    (jb) =>
+      jb.kind !== "scan" &&
+      (jb.scope === seriesUid || (includeLibraryWide && jb.scope === null)),
+  );
+  const failed = mine.filter((jb) => jb.state === "failed");
+  const person = failed.find((jb) => !healsItself(jb.error));
+  if (person) return { kind: "red", job: person };
+  if (failed.length > 0) return { kind: "amber", job: failed[0]! };
+  const running = mine.find((jb) => jb.state === "running");
+  if (running) return { kind: "running", job: running };
+  const queued = mine.filter((jb) => jb.state === "queued").length;
+  if (queued > 0) return { kind: "queued", n: queued };
+  return null;
 }

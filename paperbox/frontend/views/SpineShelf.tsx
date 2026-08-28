@@ -26,6 +26,16 @@ import type { ChapterRow, PencilRow } from "./Series";
  * renders nothing at all. No placeholder, no shimmer — pencil states
  * carry no artwork, and theatre is worse than absence.
  *
+ * When the server is actually working on this series' art (`coming`),
+ * an uncut face carries a pencil-dashed head line: the same mark ui.md
+ * already uses for art absence ("art below, pencil-dashed absence
+ * above"), applied to the face. Note the collision this deliberately
+ * avoids: a *pencil spine* on this shelf means the chapter is not yours
+ * yet (possession), and these books are held facts — so the book stays
+ * ink and only its face is pencil. With no work outstanding, flat ink
+ * stays unmarked: "nothing announces this" is the design's own resting
+ * state, and a library at rest must not look busy.
+ *
  * Failed URLs are remembered briefly so re-renders don't re-ask the
  * server for art it just said it hasn't cut; the short TTL means art
  * that lands is picked up on the next visit without any wiring.
@@ -33,14 +43,16 @@ import type { ChapterRow, PencilRow } from "./Series";
 const faceMisses = new Map<string, number>();
 const FACE_MISS_TTL = 60_000;
 
-function SpineFace({ uid }: { uid: string }) {
+function SpineFace({ uid, coming }: { uid: string; coming: boolean }) {
   const url = spineArtUrl(uid);
   const [loaded, setLoaded] = useState(false);
   const [dead, setDead] = useState(() => {
     const at = faceMisses.get(url);
     return at != null && Date.now() - at < FACE_MISS_TTL;
   });
-  if (dead) return null;
+  if (dead) {
+    return coming ? <span className="sp-await" aria-hidden /> : null;
+  }
   return (
     <img
       className={`sp-face${loaded ? " is-loaded" : ""}`}
@@ -130,12 +142,15 @@ export function SpineShelf({
   rows,
   pencil,
   seasons,
+  faceComing = false,
   onRead,
   onToggleRead,
 }: {
   rows: ChapterRow[];
   pencil: PencilRow[];
   seasons: { name: string; endAfterSortKey: number }[];
+  /** Art/cover work is standing against this series right now. */
+  faceComing?: boolean;
   onRead: (chapterId: string) => void;
   onToggleRead: (chapterId: string) => void;
 }) {
@@ -209,7 +224,10 @@ export function SpineShelf({
                         }
                       >
                         {(r.glyph === "server" || r.glyph === "flagged") && (
-                          <SpineFace uid={r.chapter.uid} />
+                          <SpineFace
+                            uid={r.chapter.uid}
+                            coming={faceComing && r.glyph === "server"}
+                          />
                         )}
                         {(r.readingNow || r.glyph === "needs-you" || r.glyph === "flagged") && (
                           <span

@@ -12,8 +12,10 @@ import type {
   IdentityBinding,
   DownloadTask,
   ContinuePoint,
+  JobsEnvelope,
 } from "../api/contract";
 import { coverArtUrl } from "../api/contract";
+import { derivedWorkFor, timeAgo, type DerivedWork } from "../lib";
 import { InkBar, PlainBinding } from "../ui";
 
 interface SeriesCardData {
@@ -24,19 +26,33 @@ interface SeriesCardData {
   queued: number;
   inking: { name: string; done: number; total: number } | null;
   failed: boolean;
+  /** Art/cover work standing against this series (scoped jobs only —
+      library-wide passes stay in the workbench, or every card at once
+      would caption itself and the shelf would look busy). */
+  derived: DerivedWork;
 }
 
 /** The one caption under the title — the fact that decides the next tap. */
 function caption(d: SeriesCardData): { text: string; tone: "quiet" | "pencil" | "amber" | "red" } {
-  const { series, identity, queued, inking, failed } = d;
+  const { series, identity, queued, inking, failed, derived } = d;
   if (failed) return { text: "A fetch needs you — see the workbench", tone: "red" };
   if (identity?.state === "contradicted")
     return { text: "Identity needs a look", tone: "red" };
+  if (derived?.kind === "red")
+    return { text: "Art stopped — needs a look", tone: "red" };
   if (identity?.state === "guess")
     return { text: "Best guess ready · confirm", tone: "pencil" };
   if (inking)
     return { text: `Inking ${inking.name} · ${inking.done} of ${inking.total} pages`, tone: "pencil" };
   if (queued > 0) return { text: `Queued · ${queued} chapters`, tone: "pencil" };
+  if (derived?.kind === "amber")
+    return { text: "Art didn't cut · tries again itself", tone: "amber" };
+  if (derived?.kind === "running")
+    return {
+      text: `Cutting art${derived.job.startedAt ? ` · started ${timeAgo(derived.job.startedAt)}` : ""}`,
+      tone: "pencil",
+    };
+  if (derived?.kind === "queued") return { text: "Art waiting its turn", tone: "pencil" };
   const latest = identity?.registry?.latestChapter ?? null;
   if (latest && latest > series.chapterCount)
     return { text: `${series.chapterCount} of ${latest} published`, tone: "quiet" };
@@ -74,10 +90,12 @@ function Cover({ series }: { series: SeriesSummary }) {
 
 export function LibraryView({
   tasks,
+  jobsEnv,
   onOpen,
   onRead,
 }: {
   tasks: DownloadTask[];
+  jobsEnv: JobsEnvelope | null;
   onOpen: (id: string) => void;
   onRead: (seriesId: string, chapterId: string) => void;
 }) {
@@ -113,9 +131,10 @@ export function LibraryView({
           queued: mine.flatMap((t) => t.chapters).filter((c) => c.status === "queued").length,
           inking: dl ? { name: dl.name, done: dl.pagesDownloaded, total: dl.pagesTotal } : null,
           failed: mine.some((t) => t.status === "failed"),
+          derived: derivedWorkFor(jobsEnv, series.uid, false),
         };
       });
-  }, [items, identities, unread, tasks, search]);
+  }, [items, identities, unread, tasks, search, jobsEnv]);
 
   // Attention sorts first only where a person is actually needed; the shelf
   // itself is never an error surface.
@@ -123,7 +142,7 @@ export function LibraryView({
     () =>
       [...cards].sort((a, b) => {
         const rank = (c: SeriesCardData) =>
-          c.failed || c.identity?.state === "contradicted" ? 0
+          c.failed || c.identity?.state === "contradicted" || c.derived?.kind === "red" ? 0
           : c.identity?.state === "guess" ? 1
           : c.inking || c.queued ? 2
           : 3;

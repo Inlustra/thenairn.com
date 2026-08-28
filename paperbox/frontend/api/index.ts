@@ -21,14 +21,21 @@ import * as pending from "./pending";
  * tab can state it instead of letting adapter data pass as server fact.
  */
 export let jobsAdapterActive = false;
+/** After a 404, don't re-ask the real route on every poll — once per 30 s. */
+let jobsMissingAt = 0;
 const jobs: JobsApi = {
   async list() {
+    if (Date.now() - jobsMissingAt < 30_000) {
+      jobsAdapterActive = true;
+      return pending.jobsFallback.list();
+    }
     try {
       const env = await real.jobs.list();
       jobsAdapterActive = false;
       return env;
     } catch (e) {
       if (e instanceof HttpError && e.status === 404) {
+        jobsMissingAt = Date.now();
         jobsAdapterActive = true;
         return pending.jobsFallback.list();
       }

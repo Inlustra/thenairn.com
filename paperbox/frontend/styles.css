@@ -557,6 +557,20 @@ h1, h2, h3 { font-family: var(--f-display); line-height: 1.1; margin: 0; }
   opacity: 0;
 }
 .sp-face.is-loaded { opacity: 1; }
+.sp-await {
+  /* Pencil-dashed absence at the head of a held book whose face the
+     server is currently cutting. Geometry, not hue: a short dashed head
+     line — distinct from the queued spine's full dashed outline and the
+     amber hatch — so it survives greyscale. Absent at rest. */
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  right: 3px;
+  height: 0;
+  border-top: 2px dashed var(--pencil);
+  opacity: 0.55;
+  pointer-events: none;
+}
 .sp-band {
   position: absolute;
   left: 1px;

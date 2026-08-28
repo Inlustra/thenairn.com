@@ -209,6 +209,25 @@ client-side by tracking when each job's shape last changed across polls
 (4 min without movement → amber weather, no retry lever). Percentages
 and Stop belong only to the scan the user invoked.
 
+The state is also legible **in place**, not only in the workbench
+ledger, matched to a series through `Job.scope`:
+
+- **Library card** — the caption carries scoped art/cover work: red
+  ("Art stopped — needs a look"), amber ("tries again itself"), pencil
+  ("Cutting art · started 5 min ago" / "Art waiting its turn").
+  Library-wide (scope-null) jobs deliberately do *not* caption cards —
+  one pass would light every card at once and a library at rest must
+  not look busy.
+- **Series view** — one line under the freshness stamp, same triage;
+  scope-null passes count here, since this is one series' screen. Red
+  keeps its one verb (Look again).
+- **Spine** — a held book whose face is uncut while art work is
+  outstanding carries a pencil-dashed head line (`.sp-await`) — the
+  ui.md absence mark applied to the face. The *book* stays ink: a
+  pencil spine already means "not yours yet" on this shelf, and
+  overloading it was refused (the five-meanings defect). With no work
+  outstanding, flat ink stays unmarked — the design's own resting state.
+
 Known hole, recorded on purpose: **there is no retry route for a failed
 job.** The red treatment's one verb is "Look again" (`POST /api/scan`),
 on the reading that a fresh look re-queues whatever work was missed. If
