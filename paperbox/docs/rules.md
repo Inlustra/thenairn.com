@@ -1,6 +1,7 @@
 # Selective sync — rules
 
-**Designed, not built.** Nothing in this document exists in code yet.
+**Designed, not built.** Nothing in this document exists in code yet — and
+when it is built, it is built in the client. See "Where rules run" below.
 
 ## The premise
 
@@ -13,6 +14,36 @@ holding a small fraction, the interesting question is not "what changed" but:
 That is a set difference against a **computed target set**, which is exactly what
 the hash tree answers. Rules produce the target; the tree answers whether you have
 it.
+
+## Where rules run — *settled 2026-08-28*
+
+**Rules are a client concern. The server has no rules engine and does not need
+one.**
+
+The two halves of "upstream" and "downstream" are not symmetric, and treating
+them as one system was the mistake:
+
+| | Decides what to hold | How |
+|---|---|---|
+| **Server ← source** | nothing to decide | **always grab.** If a chapter exists upstream and the series is in the library, fetch it. There is no selectivity worth expressing here. |
+| **Client ← server** | everything | rules, evaluated locally against the sync API |
+
+The server's job is to have it all. The client's job is to decide what it can
+carry, using the sync API plus what only it knows — reading position, free
+space, whether it is on data, what its owner actually wants.
+
+**This is why read state is not a server concern** (see `decisions.md`). A rule
+phrased in terms of *unread* runs where the reading happens; the server is not
+missing information it should have, it is being asked a question that was never
+its own.
+
+It also closes the eviction contradiction that sat open here: **adds-only versus
+rolling windows is a client policy question**, and different clients may answer
+it differently. A phone with 8 GB free and a laptop with 2 TB have no reason to
+agree, and nothing needs them to.
+
+What the server owes the client is therefore small and already built: a truthful
+account of what exists, cheap enough to ask often. That is the hash tree.
 
 ## The unification
 

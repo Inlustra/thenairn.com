@@ -228,12 +228,13 @@ is affordable, which is a smaller claim.
 *Evidence:* `bench/read-window.ts`, run on this box. Real library read-only, from
 `paperbox.json`; synthetic catalogue in SQLite with one row per chapter, which is
 the pessimistic case for index selectivity. *Blast radius:* wide — the rules and
-eviction design rests on it, and the eviction contradiction in `rules.md` is still
-open, so the resolver deliberately returns `evictCandidates` as a list rather than
-acting on it.
+eviction design rested on it. *Superseded 2026-08-28: rules are a client concern
+(see `decisions.md`), so this measured a cost the server will never pay. The
+eviction contradiction it deferred to is closed for the same reason — it is client
+policy, and clients may differ.*
 
-**Separately flagged, and not a measurement:** the store has nowhere to live. See
-`decisions.md`, "Where `readstate.db` lives, and whether that path is backed up".
+**The store it measured no longer exists**, and neither does the question of where
+it should live.
 
 
 ---

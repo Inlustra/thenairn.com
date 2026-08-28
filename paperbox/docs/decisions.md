@@ -276,10 +276,37 @@ confidence and were wrong.
 
 ## Open
 
-### The eviction contradiction
+### Rules belong to the client; the server always grabs — *settled 2026-08-28*
 
-Adds-only eviction and rolling unread windows cannot both be true. Blocks the rule
-system. See [rules.md](rules.md).
+Upstream and downstream were being treated as one selective-sync system, and they
+are not symmetric.
+
+**Server ← source: there is nothing to decide.** If a chapter exists upstream and
+the series is in the library, fetch it. Selectivity here buys nothing — the box
+has the disk, and a chapter the server skipped is one no client can ever ask for.
+
+**Client ← server: everything is a decision**, and only the client can make it.
+Free space, reading position, whether it is on data, what its owner actually
+wants — none of that is the server's to know, and a phone with 8 GB free and a
+laptop with 2 TB have no reason to agree.
+
+So there is no rules engine on the server. What the server owes a client is a
+truthful account of what exists, cheap enough to ask often, which is the hash
+tree, and it is already built.
+
+**This settles three things that were open:**
+
+- **The eviction contradiction** — adds-only versus rolling unread windows. It was
+  never one question with one answer; it is client policy, and clients may differ.
+  Removed from this file's open list.
+- **Read state on the server** — a rule phrased in terms of *unread* runs where the
+  reading happens. The server is not missing information it should have.
+- **Reading recency as a scan-priority signal.** The hot lane assumed the server
+  chooses what to acquire, so knowing what you were reading would predict where the
+  next chapter lands. It does not: the server already takes everything, so the only
+  question is what upstream has published, and that has nothing to do with what
+  anyone is reading. The lane keeps its change-based signal; `readRecency` stays
+  declared and defaulted to null, unused.
 
 ### Where the index lives
 
@@ -287,26 +314,6 @@ Should be SQLite off the FUSE layer. Currently in the sidecars, which at 5,000 s
 means thousands of FUSE reads before a single gate can be evaluated. Identity should
 probably stay in the tree even after the cache moves, because it travels with a
 renamed folder.
-
-### Where `readstate.db` lives, and whether that path is backed up
-
-**Flagged 2026-08-28, deliberately not decided here.** Read state is the first
-table in Paperbox that **cannot be rebuilt by rescanning**. Fingerprints, chapter
-keys and ids are all either on disk in `paperbox.json` or re-derivable from the
-library; where somebody got to in a series is not. Losing it is not a slow start,
-it is a reader opening a series they were 200 chapters into and being told they
-have read nothing.
-
-The container mounts two paths — the library at `/manga` and `/scripts` — and no
-state volume. So there is no correct default for a module to pick: anything it
-chose would sit on the container's writable layer and be deleted by the next
-`--force-recreate`. `READSTATE_DB` is therefore **required**, and unset means read
-state is not persisted, said out loud at boot. The store also refuses outright to
-open a database inside the library root.
-
-What it needs is a named host path in `docker-compose.paperbox.yml`, and somebody
-to confirm that path is actually swept — by listing the backup destination, not by
-reading the script that is supposed to write to it.
 
 ### Read state — built, then removed, same day
 
@@ -340,7 +347,6 @@ roughly one per year on a twenty-series shelf.
 | Gap | Blocks |
 |---|---|
 | No archive (CBZ) support | Every Kavita and Komga library |
-| No home for `readstate.db` | Read state surviving a container recreate |
 | No read-state import/export | Migration fidelity from Tachiyomi backups; cross-device |
 | No delete endpoints | Removing anything adoption brought in |
 | Nothing detects a page that is not an image | 19 `.jpg` files in this library are HTML error pages (R-38); page count is not proof of a good download |

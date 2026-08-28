@@ -136,10 +136,39 @@ export function startJobs(opts: StartOptions = {}): JobQueue | null {
         queue?.enqueue({ kind: "art", scope: uid, label: title });
         runner?.wake();
       },
-      // readRecency is gone with server-side read state (removed 2026-08-28).
-      // The hot lane now leans on recent *change* rather than recent reading,
-      // which is a weaker signal for "what will change next" -- worth revisiting
-      // if the rotation starts missing new chapters in series being read.
+      // -------------------------------------------------------------------
+      // Hot lane by reading recency -- PARKED, not abandoned.
+      //
+      // "What is this person reading right now" is the best available predictor
+      // of where the next chapter lands, and it is a genuinely good signal: a
+      // series you are 3 chapters from the end of is far likelier to gain one
+      // than a completed series you finished in 2023. The rotation currently
+      // leans on recent *change* instead, which is weaker -- it can only notice
+      // a series after it has already moved, never before.
+      //
+      // It is parked because the signal needs a server-side reading position,
+      // and that was removed on 2026-08-28 (see docs/decisions.md: read state
+      // needs a user model, which needs auth). Nothing else about the lane was
+      // wrong, so the scheduler still declares `readRecency`, still defaults it
+      // to `() => null`, and still weighs it in `laneFor()`.
+      //
+      // To bring it back: give the block below a source of "when did anyone
+      // last read this series" and uncomment it. Any store with a per-series
+      // timestamp will do -- it does not have to be per-person, and it does not
+      // have to be ours. A client that syncs its own progress could report a
+      // last-read timestamp per series without the server knowing who read it,
+      // which would restore the signal without reopening the auth question.
+      //
+      // readRecency: (uid) => {
+      //   const store = getReadState();
+      //   if (!store) return null;
+      //   try {
+      //     return store.lastReadAt?.(uid) ?? null;
+      //   } catch {
+      //     return null;
+      //   }
+      // },
+      // -------------------------------------------------------------------
     });
     scheduler.start();
     console.log(
