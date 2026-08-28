@@ -68,10 +68,12 @@ export function ReaderView({
   const [near, setNear] = useState<Set<number>>(() => new Set([0, 1, 2]));
   const [cur, setCur] = useState(0);
   const [chrome, setChrome] = useState(true);
-  const [resume, setResume] = useState<number | null>(null);
+  /** Page to land on silently — where the reader left off. */
+  const [pin, setPin] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const pageRefs = useRef<(HTMLDivElement | null)[]>([]);
   const rafRef = useRef(0);
+  const userMovedRef = useRef(false);
 
   const chapters = useMemo(() => (detail ? sortChapters(detail.chapters) : []), [detail]);
   const idx = chapters.findIndex((c) => c.id === chapterId);
@@ -88,15 +90,20 @@ export function ReaderView({
     setErr("");
     setNear(new Set([0, 1, 2]));
     setCur(0);
-    setResume(null);
+    setPin(null);
+    userMovedRef.current = false;
     pageRefs.current = [];
     scrollRef.current?.scrollTo?.(0, 0);
     Promise.all([api.library.pages(seriesId, chapterId), api.readState.series(seriesId)])
       .then(([pp, rs]) => {
         setPages(pp);
         const saved = rs.chapters[chapterId];
-        if (saved && !saved.read && saved.page > 1 && saved.page < pp.length - 1)
-          setResume(saved.page);
+        if (saved && !saved.read && saved.page > 0 && pp.length > 1) {
+          const target = Math.min(saved.page, pp.length - 1);
+          setNear(new Set([0, 1, 2, target, target + 1, target + 2]));
+          setCur(target);
+          setPin(target);
+        }
       })
       .catch(() => setErr("Could not load this chapter's pages."));
   }, [seriesId, chapterId]);
@@ -178,19 +185,41 @@ export function ReaderView({
     return () => window.removeEventListener("keydown", onKey);
   }, [prev, next, onClose, onNavigate]);
 
-  const doResume = () => {
-    if (resume == null) return;
-    setNear((s) => {
-      const n = new Set(s);
-      for (let i = 0; i <= resume + 1; i++) n.add(i);
-      return n;
-    });
-    setResume(null);
-    requestAnimationFrame(() => {
-      const el = pageRefs.current[resume];
-      if (el && scrollRef.current) scrollRef.current.scrollTo?.({ top: el.offsetTop });
-    });
-  };
+  // Land where the reader left off — silently. Pages above the target are
+  // unmounted fixed-height placeholders, so its offsetTop is exact before
+  // any image loads; the scroll is a single instant jump, never animated.
+  // A few follow-up corrections absorb late layout settling (fonts, the
+  // target page's own image), and the first real input from the reader
+  // ends the pin so it can never fight them.
+  useEffect(() => {
+    if (pin == null || !pages || pages.length === 0) return;
+    const land = () => {
+      if (userMovedRef.current) return;
+      const el = pageRefs.current[pin];
+      const sc = scrollRef.current;
+      if (!el || !sc) return;
+      if (Math.abs(sc.scrollTop - el.offsetTop) > 1) sc.scrollTo?.({ top: el.offsetTop });
+    };
+    const raf = requestAnimationFrame(land);
+    const timers = [250, 600, 1200].map((ms) => setTimeout(land, ms));
+    const moved = () => {
+      userMovedRef.current = true;
+    };
+    const sc = scrollRef.current;
+    const opts = { passive: true } as const;
+    sc?.addEventListener("wheel", moved, opts);
+    sc?.addEventListener("touchstart", moved, opts);
+    sc?.addEventListener("pointerdown", moved, opts);
+    window.addEventListener("keydown", moved);
+    return () => {
+      cancelAnimationFrame(raf);
+      for (const t of timers) clearTimeout(t);
+      sc?.removeEventListener("wheel", moved);
+      sc?.removeEventListener("touchstart", moved);
+      sc?.removeEventListener("pointerdown", moved);
+      window.removeEventListener("keydown", moved);
+    };
+  }, [pin, pages]);
 
   const flagIt = async () => {
     await api.flags.flag(seriesId, chapterId);
@@ -214,17 +243,6 @@ export function ReaderView({
 
       <div className="rd-scroll" ref={scrollRef} onScroll={onScroll} onClick={() => setChrome((c) => !c)}>
         {err && <Line tone="quiet">{err}</Line>}
-        {resume != null && (
-          <button
-            className="rd-resume"
-            onClick={(e) => {
-              e.stopPropagation();
-              doResume();
-            }}
-          >
-            Resume at p. {resume + 1}
-          </button>
-        )}
         {pages?.map((p, i) => (
           <div
             key={p.index}
