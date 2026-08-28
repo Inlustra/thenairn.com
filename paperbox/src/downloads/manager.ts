@@ -3,7 +3,7 @@ import { join, basename } from "path";
 import { runModule, type MangaInfo } from "../lua/engine";
 import { getScript, getScriptByName } from "../lua/scripts";
 import { getMangaDir, scan } from "../scanner";
-import { loadMeta, saveMeta, recordProvenance, type ChapterMeta } from "../metadata";
+import { loadMeta, saveMeta, recordProvenance, withSeriesLock, type ChapterMeta } from "../metadata";
 import { safeSegment, assertDirectChild } from "../safepath";
 import { deriveChapterKey } from "../chapters";
 
@@ -381,6 +381,11 @@ async function writeProvenance(
   provenance: { module: string; seriesUrl?: string; chapterUrl?: string; fetchedAt: string },
 ): Promise<void> {
   try {
+    // Serialised against the scanner and against other chapters of the same
+    // series: three concurrent provenance writes previously left one chapter
+    // recorded out of three, silently, because each one saved a whole sidecar
+    // it had read before the others wrote.
+    await withSeriesLock(seriesDir, async () => {
     const { meta } = await loadMeta(seriesDir);
     let entry: ChapterMeta | undefined = meta.chapters[chapterDirName];
     if (!entry) {
@@ -408,6 +413,7 @@ async function writeProvenance(
       (meta.sources ||= []).push(provenance.module);
     }
     await saveMeta(seriesDir, meta);
+    });
   } catch (e) {
     console.error(`[download]   Could not record provenance for ${chapterDirName}`, e);
   }

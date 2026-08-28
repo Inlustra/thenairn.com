@@ -6,7 +6,8 @@
 // from several sources can answer "where did this chapter come from" without
 // anyone having to look at the artwork to guess.
 
-import { readFile, writeFile, rename, stat } from "fs/promises";
+import { readFile, rename, stat, open, unlink } from "fs/promises";
+import { randomUUID } from "node:crypto";
 import { join } from "path";
 import { newUid } from "./ids";
 
@@ -105,14 +106,40 @@ function emptyMeta(): SeriesMeta {
 }
 
 /** Read paperbox.json, else adopt the legacy manga.json, else start fresh. */
+export class CorruptMetaError extends Error {
+  constructor(path: string, cause: unknown) {
+    super(`${path} is unreadable and was set aside: ${String(cause)}`);
+    this.name = "CorruptMetaError";
+  }
+}
+
 export async function loadMeta(mangaPath: string): Promise<{ meta: SeriesMeta; existed: boolean }> {
+  const target = join(mangaPath, METADATA_FILE);
+  let raw: string | undefined;
   try {
-    const raw = await readFile(join(mangaPath, METADATA_FILE), "utf-8");
-    const meta = JSON.parse(raw) as SeriesMeta;
-    if (!meta.chapters) meta.chapters = {};
-    if (!meta.schemaVersion) meta.schemaVersion = SCHEMA_VERSION;
-    return { meta, existed: true };
-  } catch {}
+    raw = await readFile(target, "utf-8");
+  } catch (e: any) {
+    // Only "the file is not there" may fall through to a fresh manifest.
+    if (e?.code !== "ENOENT") throw e;
+  }
+
+  if (raw !== undefined) {
+    try {
+      const meta = JSON.parse(raw) as SeriesMeta;
+      if (!meta.chapters) meta.chapters = {};
+      if (!meta.schemaVersion) meta.schemaVersion = SCHEMA_VERSION;
+      return { meta, existed: true };
+    } catch (e) {
+      // A damaged sidecar used to be indistinguishable from an absent one, so
+      // the scan treated the series as new, re-derived every uid and apiId, and
+      // saved over the only copy. Set it aside and refuse to continue instead:
+      // a series skipped this scan is recoverable, an overwritten manifest is
+      // not.
+      const aside = `${target}.corrupt-${new Date().toISOString().replace(/[:.]/g, "-")}`;
+      await rename(target, aside).catch(() => {});
+      throw new CorruptMetaError(target, e);
+    }
+  }
 
   const meta = emptyMeta();
   try {
@@ -136,9 +163,49 @@ export async function loadMeta(mangaPath: string): Promise<{ meta: SeriesMeta; e
 /** Write atomically -- a torn metadata file would orphan every id in it. */
 export async function saveMeta(mangaPath: string, meta: SeriesMeta): Promise<void> {
   const target = join(mangaPath, METADATA_FILE);
-  const tmp = `${target}.tmp`;
-  await writeFile(tmp, JSON.stringify(meta, null, 2) + "\n", "utf-8");
-  await rename(tmp, target);
+  // Unique per writer: a fixed `${target}.tmp` meant two concurrent saves raced
+  // on one path, and the loser's rename failed with ENOENT after the winner had
+  // already moved it -- reported as success by callers that swallow the error.
+  const tmp = `${target}.${process.pid}.${randomUUID()}.tmp`;
+  const body = JSON.stringify(meta, null, 2) + "\n";
+  try {
+    const fh = await open(tmp, "w");
+    try {
+      await fh.writeFile(body, "utf-8");
+      // rename() alone is atomic with respect to *readers*, not to a crash. With
+      // delayed allocation, write+rename without fsync is the classic route to a
+      // zero-length file after power loss -- and this file is the only copy of
+      // every pinned id in the series.
+      await fh.sync();
+    } finally {
+      await fh.close();
+    }
+    await rename(tmp, target);
+  } catch (e) {
+    await unlink(tmp).catch(() => {});
+    throw e;
+  }
+}
+
+/**
+ * Serialise load -> mutate -> save for one series.
+ *
+ * The scanner and the download path both read-modify-write the whole sidecar.
+ * Unserialised, the loser's changes are lost wholesale: three concurrent
+ * provenance writes left one chapter recorded out of three.
+ */
+const seriesLocks = new Map<string, Promise<unknown>>();
+
+export function withSeriesLock<T>(mangaPath: string, fn: () => Promise<T>): Promise<T> {
+  const prev = seriesLocks.get(mangaPath) ?? Promise.resolve();
+  const next = prev.then(fn, fn);
+  seriesLocks.set(
+    mangaPath,
+    next.catch(() => {}).finally(() => {
+      if (seriesLocks.get(mangaPath) === next) seriesLocks.delete(mangaPath);
+    }),
+  );
+  return next;
 }
 
 export async function dirMtime(path: string): Promise<string | undefined> {

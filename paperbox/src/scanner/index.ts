@@ -47,20 +47,45 @@ async function isDirectory(path: string): Promise<boolean> {
  * were handed. DT_UNKNOWN still falls back to a stat, since some filesystems
  * do not populate it.
  */
-async function listDirs(path: string): Promise<string[]> {
+interface Listing {
+  dirs: string[];
+  /**
+   * Chapter names currently mid-commit: `.replaced-<dir>` or `.staging-<dir>`.
+   * Hidden, so they never appear as content, but their presence is proof that a
+   * missing directory is in flight rather than deleted.
+   */
+  inFlight: Set<string>;
+}
+
+/**
+ * Returns null when the directory could not be read.
+ *
+ * This used to swallow every error and return an empty array, which made a
+ * transient FUSE failure indistinguishable from "the user deleted everything" --
+ * and the caller then deleted the metadata to match. On a library that lives on
+ * shfs, one EIO would have permanently destroyed a series' identity manifest.
+ */
+async function listDirs(path: string): Promise<Listing | null> {
   try {
     const entries = await readdir(path, { withFileTypes: true });
-    const out: string[] = [];
+    const dirs: string[] = [];
+    const inFlight = new Set<string>();
     for (const e of entries) {
+      const flight = e.name.match(/^\.(?:replaced|staging)-(.+)$/);
+      if (flight?.[1]) {
+        inFlight.add(flight[1]);
+        continue;
+      }
       if (isHidden(e.name)) continue;
-      if (e.isDirectory()) out.push(e.name);
+      if (e.isDirectory()) dirs.push(e.name);
       else if (!e.isFile() && !e.isSymbolicLink() && (await isDirectory(join(path, e.name)))) {
-        out.push(e.name); // d_type was unknown
+        dirs.push(e.name); // d_type was unknown
       }
     }
-    return out.sort(naturalSort);
-  } catch {
-    return [];
+    return { dirs: dirs.sort(naturalSort), inFlight };
+  } catch (e) {
+    console.error(`[scan] could not read ${path}; leaving its metadata untouched`, e);
+    return null;
   }
 }
 
@@ -118,6 +143,9 @@ interface Pending {
   meta: SeriesMeta;
   existed: boolean;
   chapterDirs: string[];
+  inFlight: Set<string>;
+  /** The directory could not be read; nothing about this series may be deleted. */
+  readFailed: boolean;
   dirty: boolean;
 }
 
@@ -154,7 +182,24 @@ export function getScanProgress(): ScanProgress {
  * can simply decline to pay. Everything not in scope is carried over from the
  * existing cache, ids included.
  */
-export async function scan(opts: { series?: string } = {}): Promise<void> {
+/**
+ * Serialises every scan. Two scans interleaving read-modify-write on the same
+ * sidecar lose one side's changes wholesale, and `POST /api/scan` is reachable
+ * by any client while processQueue is also scanning after each download.
+ */
+let scanChain: Promise<void> = Promise.resolve();
+
+export function scan(opts: { series?: string } = {}): Promise<void> {
+  const next = scanChain.then(
+    () => runScan(opts),
+    () => runScan(opts),
+  );
+  // Keep the chain alive past a failure, but let the caller still see it.
+  scanChain = next.catch(() => {});
+  return next;
+}
+
+async function runScan(opts: { series?: string } = {}): Promise<void> {
   const startedAt = Date.now();
   const scopedDir = opts.series && mangaCache.size > 0 ? opts.series : undefined;
   progress = {
@@ -162,10 +207,21 @@ export async function scan(opts: { series?: string } = {}): Promise<void> {
     active: true, phase: "listing", scope: scopedDir ?? null, startedAt,
   };
 
-  const allDirs = scopedDir ? [scopedDir] : await listDirs(mangaDir());
-  const seriesDirs = scopedDir
-    ? allDirs.filter((d) => !isHidden(d))
-    : allDirs;
+  let seriesDirs: string[];
+  if (scopedDir) {
+    seriesDirs = [scopedDir].filter((d) => !isHidden(d));
+  } else {
+    const rootListing = await listDirs(mangaDir());
+    if (rootListing === null) {
+      // The library root itself is unreadable -- an unmounted share, an array
+      // stop, an shfs hiccup. Publishing this as a scan would replace the whole
+      // cache with nothing and tell every syncing client its entire library is
+      // gone. Abort and keep serving the last good state.
+      progress = idleProgress();
+      throw new Error(`library root ${mangaDir()} is unreadable; scan aborted`);
+    }
+    seriesDirs = rootListing.dirs;
+  }
   progress.seriesTotal = seriesDirs.length;
   progress.phase = "scanning";
 
@@ -174,11 +230,21 @@ export async function scan(opts: { series?: string } = {}): Promise<void> {
   for (const dir of seriesDirs) {
     const path = join(mangaDir(), dir);
     const { meta, existed } = await loadMeta(path);
+    const listing0 = await listDirs(path);
     pending.push({
       dir, path, slug: slugify(dir),
       uid: meta.uid ?? pathUid(dir),
       meta, existed,
-      chapterDirs: await listDirs(path),
+      ...(() => {
+        const listing = listing0;
+        return {
+          // On a read failure, fall back to what the sidecar already knows, so
+          // the series keeps its shape instead of appearing to have emptied.
+          chapterDirs: listing?.dirs ?? Object.keys(meta.chapters),
+          inFlight: listing?.inFlight ?? new Set<string>(),
+          readFailed: listing === null,
+        };
+      })(),
       dirty: !existed,
     });
   }
@@ -321,10 +387,21 @@ export async function scan(opts: { series?: string } = {}): Promise<void> {
 
     // Drop metadata for chapters whose directories are gone, so the file does
     // not accumulate ghosts -- but keep ids stable for everything still present.
-    for (const key of Object.keys(meta.chapters)) {
-      if (!p.chapterDirs.includes(key)) {
-        delete meta.chapters[key];
-        p.dirty = true;
+    //
+    // Corroboration matters here. commitChapter deliberately makes the live
+    // directory vanish for the span of two renames (it becomes `.replaced-<dir>`,
+    // which is dot-prefixed and so invisible to listDirs). A scan landing inside
+    // that window used to delete the entry outright, destroying the chapter's
+    // uid, apiId, sortKey and provenance -- the exact silent re-key this schema
+    // exists to prevent, on the path processQueue drives after every download.
+    // The same applies to any transient readdir failure, which listDirs reports
+    // as an empty directory.
+    if (!p.readFailed) {
+      for (const key of Object.keys(meta.chapters)) {
+        if (!p.chapterDirs.includes(key) && !p.inFlight.has(key)) {
+          delete meta.chapters[key];
+          p.dirty = true;
+        }
       }
     }
 
