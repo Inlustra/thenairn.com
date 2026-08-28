@@ -14,6 +14,14 @@ interface ScriptInfo {
 
 let scriptCache: ScriptInfo[] = [];
 
+/** Derived from the loaded set, so an added or removed module moves it and a
+ *  reload that changed nothing does not. */
+export function getScriptsSignature(): string {
+  const hasher = new Bun.CryptoHasher("sha256");
+  for (const s of scriptCache) hasher.update(`${s.id} `);
+  return hasher.digest("hex").slice(0, 16);
+}
+
 /**
  * Pull Lua scripts from the FMD2 GitHub repo
  */

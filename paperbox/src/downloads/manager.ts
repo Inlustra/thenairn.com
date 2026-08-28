@@ -1,8 +1,11 @@
-import { mkdir, writeFile } from "fs/promises";
+import { mkdir, writeFile, rm, rename, readdir } from "fs/promises";
 import { join } from "path";
 import { runModule, type MangaInfo } from "../lua/engine";
 import { getScript, getScriptByName } from "../lua/scripts";
 import { getMangaDir, scan } from "../scanner";
+import { loadMeta, saveMeta, recordProvenance, type ChapterMeta } from "../metadata";
+import { newUid } from "../ids";
+import { safeSegment, assertDirectChild } from "../safepath";
 
 export type DownloadStatus = "queued" | "downloading" | "completed" | "failed" | "cancelled";
 
@@ -43,6 +46,40 @@ const defaultConfig: DownloadConfig = {
 };
 
 let config: DownloadConfig = { ...defaultConfig };
+
+function touch(task: DownloadTask): void {
+  task.updatedAt = Date.now();
+}
+
+/**
+ * Summary for the status envelope, without shipping the whole task list.
+ *
+ * `sig` is derived from the task state itself, never from a counter. Counts
+ * alone are not enough -- a download moving from 40% to 60% changes no count --
+ * but page progress is data the UI wants anyway, so including it earns its
+ * place twice: it is what a client displays, and it is what tells the client
+ * the payload moved.
+ */
+export function summariseDownloads() {
+  const tasks = listTasks();
+  const chapters = tasks.flatMap((t) => t.chapters);
+  const hasher = new Bun.CryptoHasher("sha256");
+  for (const t of tasks) {
+    hasher.update(`${t.id}:${t.status}:${t.chapters.length} `);
+    for (const c of t.chapters) hasher.update(`${c.status}:${c.pagesDownloaded ?? 0} `);
+  }
+  return {
+    sig: hasher.digest("hex").slice(0, 16),
+    tasks: tasks.length,
+    active: tasks.filter((t) => t.status === "downloading").length,
+    queued: tasks.filter((t) => t.status === "queued").length,
+    failed: tasks.filter((t) => t.status === "failed").length,
+    completed: tasks.filter((t) => t.status === "completed").length,
+    chaptersFailed: chapters.filter((c) => c.status === "failed").length,
+    pagesDone: chapters.reduce((n, c) => n + (c.pagesDownloaded || 0), 0),
+    pagesTotal: chapters.reduce((n, c) => n + (c.pagesTotal || 0), 0),
+  };
+}
 
 export function getConfig(): DownloadConfig {
   return { ...config };
@@ -111,7 +148,7 @@ export function cancelTask(id: string): boolean {
   const task = tasks.get(id);
   if (!task || task.status === "completed" || task.status === "cancelled") return false;
   task.status = "cancelled";
-  task.updatedAt = Date.now();
+  touch(task);
   for (const ch of task.chapters) {
     if (ch.status === "queued" || ch.status === "downloading") {
       ch.status = "cancelled";
@@ -125,7 +162,7 @@ export function retryTask(id: string): boolean {
   if (!task) return false;
   task.status = "queued";
   task.error = undefined;
-  task.updatedAt = Date.now();
+  touch(task);
   for (const ch of task.chapters) {
     if (ch.status === "failed") {
       ch.status = "queued";
@@ -152,7 +189,7 @@ async function processQueue(): Promise<void> {
       if (!task) break;
 
       task.status = "downloading";
-      task.updatedAt = Date.now();
+      touch(task);
       console.log(`[download] Starting: ${task.mangaTitle}`);
 
       try {
@@ -162,14 +199,15 @@ async function processQueue(): Promise<void> {
         );
         const anyFailed = task.chapters.some((ch) => ch.status === "failed");
         task.status = anyFailed ? "failed" : allDone ? "completed" : "failed";
-        // Rescan manga directory so new downloads appear in the library
-        await scan();
+        // We wrote these files, so we know exactly what moved. Rescanning the
+        // whole library after every download is a tax we can decline to pay.
+        await scan({ series: sanitizePath(task.mangaTitle) });
       } catch (e: any) {
         task.status = "failed";
         task.error = e?.message || String(e);
         console.error(`[download] Task failed: ${task.mangaTitle}`, e);
       }
-      task.updatedAt = Date.now();
+      touch(task);
     }
   } finally {
     isProcessing = false;
@@ -220,7 +258,7 @@ async function downloadChapter(
   if ((task.status as DownloadStatus) === "cancelled") return;
 
   chapter.status = "downloading";
-  task.updatedAt = Date.now();
+  touch(task);
   console.log(`[download]   Chapter: ${chapter.name}`);
 
   try {
@@ -232,15 +270,23 @@ async function downloadChapter(
 
     const pageUrls = result.pages.pageLinks;
     chapter.pagesTotal = pageUrls.length;
-    task.updatedAt = Date.now();
+    touch(task);
 
     if (pageUrls.length === 0) {
       throw new Error("No pages found");
     }
 
-    // Create chapter directory
-    const chapterDir = join(seriesDir, sanitizePath(chapter.name));
-    await mkdir(chapterDir, { recursive: true });
+    // Stage into a hidden sibling directory. Pages used to be written straight
+    // into the live chapter, so a download that failed half way left the
+    // chapter as a mix of old and new pages -- and a re-pull from a source with
+    // different filenames left BOTH sets side by side. Nothing touches the live
+    // directory now until every page has arrived and validated.
+    // The staging name is dot-prefixed so the scanner cannot read it as content.
+    const chapterName = sanitizePath(chapter.name);
+    const chapterDir = join(seriesDir, chapterName);
+    const stagingDir = join(seriesDir, `.staging-${chapterName}`);
+    await rm(stagingDir, { recursive: true, force: true });
+    await mkdir(stagingDir, { recursive: true });
 
     // Download pages with configurable parallelism
     const { parallelPages } = config;
@@ -252,7 +298,7 @@ async function downloadChapter(
       const pageBatch = pageUrls.slice(i, i + parallelPages);
       const results = await Promise.all(
         pageBatch.map((pageUrl, batchIdx) =>
-          downloadPageWithRetry(pageUrl, chapter.url, chapterDir, i + batchIdx)
+          downloadPageWithRetry(pageUrl, chapter.url, stagingDir, i + batchIdx)
         )
       );
 
@@ -260,19 +306,95 @@ async function downloadChapter(
         if (ok) downloaded++;
       }
       chapter.pagesDownloaded = downloaded;
-      task.updatedAt = Date.now();
+      touch(task);
     }
 
     chapter.status = downloaded === chapter.pagesTotal ? "completed" : "failed";
     if (chapter.status === "failed") {
-      chapter.error = `Downloaded ${downloaded}/${chapter.pagesTotal} pages`;
+      // Throw the partial away. Whatever was on disk before is still there.
+      await rm(stagingDir, { recursive: true, force: true });
+      chapter.error = `Downloaded ${downloaded}/${chapter.pagesTotal} pages - existing copy kept`;
+    } else {
+      await commitChapter(seriesDir, chapterName, stagingDir, chapterDir);
+      // Record where these pages came from. A library assembled from several
+      // sources otherwise gives no way to tell which chapters came from a
+      // source that later turns out to be wrong.
+      await writeProvenance(seriesDir, sanitizePath(chapter.name), {
+        module: task.sourceId,
+        seriesUrl: task.mangaUrl,
+        chapterUrl: chapter.url,
+        fetchedAt: new Date().toISOString(),
+      });
     }
   } catch (e: any) {
     chapter.status = "failed";
     chapter.error = e?.message || String(e);
     console.error(`[download]   Chapter failed: ${chapter.name}`, e);
+    try {
+      await rm(join(seriesDir, `.staging-${sanitizePath(chapter.name)}`), { recursive: true, force: true });
+    } catch {}
   }
-  task.updatedAt = Date.now();
+  touch(task);
+}
+
+/**
+ * Swap a fully-downloaded chapter into place with a rename, so the live
+ * directory is either the old chapter or the new one and never a blend of the
+ * two. The outgoing copy is moved aside first and deleted only once the new
+ * one is in place.
+ */
+export async function commitChapter(
+  seriesDir: string,
+  chapterName: string,
+  stagingDir: string,
+  chapterDir: string,
+): Promise<void> {
+  const outgoing = join(seriesDir, `.replaced-${chapterName}`);
+
+  // Last line of defence before rename() and rm -rf. Every one of these must
+  // sit directly inside the series directory; if a name ever derives a path
+  // that climbs out, fail here rather than deleting whatever it landed on.
+  assertDirectChild(seriesDir, chapterDir, "chapter directory");
+  assertDirectChild(seriesDir, stagingDir, "staging directory");
+  assertDirectChild(seriesDir, outgoing, "outgoing directory");
+
+  await rm(outgoing, { recursive: true, force: true });
+  let hadExisting = false;
+  try {
+    await readdir(chapterDir);
+    await rename(chapterDir, outgoing);
+    hadExisting = true;
+  } catch {}
+  try {
+    await rename(stagingDir, chapterDir);
+  } catch (e) {
+    if (hadExisting) await rename(outgoing, chapterDir); // put the old one back
+    throw e;
+  }
+  await rm(outgoing, { recursive: true, force: true });
+}
+
+/** Merge one chapter's provenance into the series metadata file. */
+async function writeProvenance(
+  seriesDir: string,
+  chapterDirName: string,
+  provenance: { module: string; seriesUrl?: string; chapterUrl?: string; fetchedAt: string },
+): Promise<void> {
+  try {
+    const { meta } = await loadMeta(seriesDir);
+    let entry: ChapterMeta | undefined = meta.chapters[chapterDirName];
+    if (!entry) {
+      entry = { uid: newUid(), dir: chapterDirName, number: 0, pages: 0 };
+      meta.chapters[chapterDirName] = entry;
+    }
+    recordProvenance(entry, provenance);
+    if (provenance.module && !(meta.sources || []).includes(provenance.module)) {
+      (meta.sources ||= []).push(provenance.module);
+    }
+    await saveMeta(seriesDir, meta);
+  } catch (e) {
+    console.error(`[download]   Could not record provenance for ${chapterDirName}`, e);
+  }
 }
 
 // Detect real image bytes by magic number (JPEG/PNG/GIF/WebP/AVIF/BMP), so we
@@ -420,7 +542,10 @@ export async function saveMetadata(
 }
 
 function sanitizePath(name: string): string {
-  return name.replace(/[<>:"/\\|?*]/g, "_").trim();
+  // Delegates to the shared guard, which rejects rather than returns the
+  // pathological cases. `..` used to survive this function untouched and was
+  // then joined onto the library root and passed to rename() and rm -rf.
+  return safeSegment(name);
 }
 
 function getExtFromUrl(url: string): string {

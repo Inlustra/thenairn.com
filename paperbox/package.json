@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@elysiajs/cors": "^1.4.1",
+    "@elysiajs/eden": "^1.4.9",
     "@elysiajs/html": "^1.4.0",
     "@elysiajs/static": "^1.4.7",
     "@types/jsdom": "^28.0.0",
@@ -26,6 +27,7 @@
     "jsdom": "^28.1.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
+    "sharp": "^0.35.4",
     "wasmoon": "^1.16.0"
   }
 }

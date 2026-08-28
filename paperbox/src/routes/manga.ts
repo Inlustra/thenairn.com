@@ -1,10 +1,12 @@
 import { Elysia, t } from "elysia";
 import { join } from "path";
 import { readFile, writeFile, readdir } from "fs/promises";
-import { getMangaList, getManga, scan, getLastScan, getMangaDir } from "../scanner";
+import { getMangaList, getManga, scan, getLastScan, getMangaDir,
+         getScanProgress } from "../scanner";
 import { runModule } from "../lua/engine";
-import { getScript } from "../lua/scripts";
-import { saveMetadata } from "../downloads/manager";
+import { getScript, listScripts, getScriptsSignature } from "../lua/scripts";
+import { saveMetadata, summariseDownloads } from "../downloads/manager";
+import { buildTree } from "../hashes";
 
 export const mangaRoutes = new Elysia({ prefix: "/api" })
   .get("/manga", ({ query }) => {
@@ -146,8 +148,56 @@ export const mangaRoutes = new Elysia({ prefix: "/api" })
     await scan();
     return { ok: true, count: getMangaList().length, lastScan: getLastScan() };
   })
-  .get("/status", () => ({
-    mangaDir: getMangaDir(),
-    mangaCount: getMangaList().length,
-    lastScan: getLastScan(),
-  }));
+  /**
+   * One envelope for the whole system.
+   *
+   * A client should never have to poll a dozen endpoints to learn whether
+   * anything happened. Each subsystem reports a monotonic `rev`: poll this,
+   * compare, and fetch detail only for what moved. Same idea as the sync tree,
+   * one layer up -- cheap discrimination first, detail on demand.
+   *
+   * ETag'd, so an unchanged poll costs a 304 and no body at all.
+   */
+  .get("/status", ({ headers, set }) => {
+    const list = getMangaList();
+    const scan = getScanProgress();
+    const downloads = summariseDownloads();
+    const scripts = listScripts();
+
+    const body = {
+      server: {
+        name: "Paperbox",
+        startedAt: STARTED_AT,
+        uptimeMs: Date.now() - STARTED_AT,
+      },
+      library: {
+        // Every signal in this envelope is derived from the thing it describes,
+        // never from a counter. A counter answers "did we do work"; a content
+        // signal answers "did anything change", and only the second is what a
+        // polling client is asking. A scan loop every 30s would make the first
+        // churn forever and this endpoint would never return 304.
+        sig: buildTree().hash,
+        dir: getMangaDir(),
+        series: list.length,
+        chapters: list.reduce((n, m) => n + m.chapterCount, 0),
+        lastScan: getLastScan(),
+      },
+      scan,
+      downloads,
+      sources: { sig: getScriptsSignature(), count: scripts.length },
+    };
+
+    // The revs are the whole state as far as a poller is concerned.
+    // Weak, and deliberately semantic: it answers "has anything meaningful
+    // moved", not "are these bytes identical" (uptimeMs always differs).
+    const etag = `W/"${body.library.sig}.${body.downloads.sig}.${body.sources.sig}.${scan.active ? scan.seriesDone : "i"}"`;
+    set.headers["etag"] = etag;
+    set.headers["cache-control"] = "no-cache";
+    if (headers["if-none-match"] === etag) {
+      set.status = 304;
+      return "";
+    }
+    return body;
+  });
+
+const STARTED_AT = Date.now();

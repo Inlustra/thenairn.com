@@ -1,9 +1,16 @@
-import { readdir, stat, readFile } from "fs/promises";
+import { readdir, stat } from "fs/promises";
 import { join, extname } from "path";
 import type { Manga, MangaDetail, MangaMeta, Chapter, Page } from "../types";
+import { IdAllocator, newUid, pathUid, hash31 } from "../ids";
+import { chapterFingerprint } from "../fingerprint";
+import { deriveChapterKey } from "../chapters";
+import { loadMeta, saveMeta, dirMtime, SCHEMA_VERSION, type SeriesMeta, type ChapterMeta } from "../metadata";
 
 const IMAGE_EXTS = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".avif"]);
-const MANGA_DIR = process.env.MANGA_DIR || "/manga";
+// Read at call time, not module load: the value is env-driven, and binding it
+// once makes the module impossible to point at a different library (which also
+// made the scanner tests order-dependent when run alongside other suites).
+const mangaDir = () => process.env.MANGA_DIR || "/manga";
 
 function slugify(name: string): string {
   return name
@@ -12,13 +19,17 @@ function slugify(name: string): string {
     .replace(/^-|-$/g, "");
 }
 
-function parseChapterNumber(name: string): number {
-  const match = name.match(/(\d+(?:\.\d+)?)/);
-  return match?.[1] ? parseFloat(match[1]) : 0;
-}
-
 function naturalSort(a: string, b: string): number {
   return a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
+}
+
+/**
+ * Hidden directories are never content. `.paperbox-backups` sitting in the
+ * library root was scanned as a 13th series, and backup copies of a chapter
+ * dropped beside the real ones were scanned as extra chapters.
+ */
+function isHidden(name: string): boolean {
+  return name.startsWith(".");
 }
 
 async function isDirectory(path: string): Promise<boolean> {
@@ -29,162 +40,398 @@ async function isDirectory(path: string): Promise<boolean> {
   }
 }
 
-async function readMeta(mangaPath: string): Promise<MangaMeta> {
+/**
+ * `readdir` already carries the directory-or-not answer in `d_type`, at no
+ * extra syscall. Asking again with a stat per entry cost one FUSE round trip
+ * per name -- 1,718 serial round trips on this library, for information we
+ * were handed. DT_UNKNOWN still falls back to a stat, since some filesystems
+ * do not populate it.
+ */
+async function listDirs(path: string): Promise<string[]> {
   try {
-    const raw = await readFile(join(mangaPath, "manga.json"), "utf-8");
-    return JSON.parse(raw);
+    const entries = await readdir(path, { withFileTypes: true });
+    const out: string[] = [];
+    for (const e of entries) {
+      if (isHidden(e.name)) continue;
+      if (e.isDirectory()) out.push(e.name);
+      else if (!e.isFile() && !e.isSymbolicLink() && (await isDirectory(join(path, e.name)))) {
+        out.push(e.name); // d_type was unknown
+      }
+    }
+    return out.sort(naturalSort);
   } catch {
-    return {};
+    return [];
   }
-}
-
-async function findCover(mangaPath: string, chapters: string[]): Promise<string | null> {
-  // Check for explicit cover file
-  for (const ext of IMAGE_EXTS) {
-    try {
-      await stat(join(mangaPath, `cover${ext}`));
-      return `cover${ext}`;
-    } catch {}
-  }
-  // Fall back to first page of first chapter
-  if (chapters.length > 0) {
-    const firstChapter = chapters[0]!;
-    const pages = await getPageFiles(join(mangaPath, firstChapter));
-    if (pages.length > 0) return `${firstChapter}/${pages[0]}`;
-  }
-  return null;
 }
 
 async function getPageFiles(chapterPath: string): Promise<string[]> {
   try {
     const entries = await readdir(chapterPath);
     return entries
-      .filter((f) => IMAGE_EXTS.has(extname(f).toLowerCase()))
+      .filter((f) => !isHidden(f) && IMAGE_EXTS.has(extname(f).toLowerCase()))
       .sort(naturalSort);
   } catch {
     return [];
   }
 }
 
-// In-memory cache
-let mangaCache: Map<string, MangaDetail> = new Map();
-let lastScan = 0;
-
-export async function scan(): Promise<void> {
-  const newCache = new Map<string, MangaDetail>();
-
-  let entries: string[];
+async function findCover(mangaPath: string, chapters: string[]): Promise<string | null> {
   try {
-    entries = await readdir(MANGA_DIR);
-  } catch (e) {
-    console.error(`Failed to read manga directory: ${MANGA_DIR}`, e);
-    return;
+    const names = await readdir(mangaPath);
+    const cover = names.find((n) => {
+      const e = extname(n).toLowerCase();
+      return IMAGE_EXTS.has(e) && n.slice(0, n.length - e.length).toLowerCase() === "cover";
+    });
+    if (cover) return cover;
+  } catch {}
+  if (chapters.length > 0) {
+    const first = chapters[0]!;
+    const pages = await getPageFiles(join(mangaPath, first));
+    if (pages.length > 0) return `${first}/${pages[0]}`;
+  }
+  return null;
+}
+
+function toMangaMeta(s: SeriesMeta): MangaMeta {
+  return {
+    title: s.title, author: s.author, artist: s.artist, description: s.description,
+    cover: s.cover, link: s.link, sourceId: s.sourceId, tags: s.tags, status: s.status,
+  };
+}
+
+// In-memory cache, keyed by slug, plus Int lookup tables for the Suwayomi API.
+let mangaCache = new Map<string, MangaDetail>();
+let mangaByApiId = new Map<number, string>();
+let chapterByApiId = new Map<number, { mangaId: string; chapterId: string }>();
+let lastScan = 0;
+// Monotonic scan counter. The tree cache keys on this rather than on lastScan:
+// two scans inside the same millisecond share a Date.now() value, which would
+// serve a stale tree after a download that finishes quickly.
+let scanGeneration = 0;
+
+interface Pending {
+  dir: string;
+  path: string;
+  slug: string;
+  /** Effective identity: pinned in the sidecar, else derived from the path. */
+  uid: string;
+  meta: SeriesMeta;
+  existed: boolean;
+  chapterDirs: string[];
+  dirty: boolean;
+}
+
+export interface ScanProgress {
+  active: boolean;
+  /** Series directory when this is a targeted scan, else null for the library. */
+  scope: string | null;
+  phase: "idle" | "listing" | "scanning" | "done";
+  seriesTotal: number;
+  seriesDone: number;
+  currentSeries: string | null;
+  chaptersSeen: number;
+  startedAt: number | null;
+  durationMs: number | null;
+}
+
+const idleProgress = (): ScanProgress => ({
+  active: false, scope: null, phase: "idle", seriesTotal: 0, seriesDone: 0,
+  currentSeries: null, chaptersSeen: 0, startedAt: null, durationMs: null,
+});
+
+let progress: ScanProgress = idleProgress();
+
+/** A scan can run for minutes on a large library; it must never look frozen. */
+export function getScanProgress(): ScanProgress {
+  return { ...progress };
+}
+
+/**
+ * Scan the library, or one series of it.
+ *
+ * Scoped scans exist because we are the writer: after a download we know
+ * exactly which series changed, so re-walking the whole library is a tax we
+ * can simply decline to pay. Everything not in scope is carried over from the
+ * existing cache, ids included.
+ */
+export async function scan(opts: { series?: string } = {}): Promise<void> {
+  const startedAt = Date.now();
+  const scopedDir = opts.series && mangaCache.size > 0 ? opts.series : undefined;
+  progress = {
+    ...idleProgress(),
+    active: true, phase: "listing", scope: scopedDir ?? null, startedAt,
+  };
+
+  const allDirs = scopedDir ? [scopedDir] : await listDirs(mangaDir());
+  const seriesDirs = scopedDir
+    ? allDirs.filter((d) => !isHidden(d))
+    : allDirs;
+  progress.seriesTotal = seriesDirs.length;
+  progress.phase = "scanning";
+
+  const pending: Pending[] = [];
+
+  for (const dir of seriesDirs) {
+    const path = join(mangaDir(), dir);
+    const { meta, existed } = await loadMeta(path);
+    pending.push({
+      dir, path, slug: slugify(dir),
+      uid: meta.uid ?? pathUid(dir),
+      meta, existed,
+      chapterDirs: await listDirs(path),
+      dirty: !existed,
+    });
   }
 
-  for (const entry of entries) {
-    const mangaPath = join(MANGA_DIR, entry);
-    if (!(await isDirectory(mangaPath))) continue;
+  // Two passes so a newly-seen series can never steal an id another series has
+  // already pinned: claim everything pinned first, allocate the remainder after.
+  const mangaIds = new IdAllocator();
+  const chapterIds = new IdAllocator();
 
-    const id = slugify(entry);
-    const meta = await readMeta(mangaPath);
+  for (const p of pending) {
+    if (p.meta.apiId !== undefined && !mangaIds.claim(p.meta.apiId, p.uid)) {
+      p.meta.apiId = undefined; // collided with an existing owner; reallocate below
+      p.dirty = true;
+    }
+  }
+  for (const p of pending) {
+    if (p.meta.apiId === undefined) {
+      p.meta.apiId = mangaIds.allocate(p.uid);
+      // Only worth persisting when a collision forced us off the derived slot;
+      // otherwise the id is reproducible from the path and needs no file.
+      if (p.meta.apiId !== hash31(p.uid)) p.dirty = true;
+    }
+  }
 
-    // Find chapter directories
-    const subEntries = await readdir(mangaPath);
-    const chapterDirs: string[] = [];
-    for (const sub of subEntries) {
-      if (await isDirectory(join(mangaPath, sub))) {
-        chapterDirs.push(sub);
+  for (const p of pending) {
+    for (const dir of p.chapterDirs) {
+      const c = p.meta.chapters[dir];
+      if (c?.apiId !== undefined && !chapterIds.claim(c.apiId, c.uid ?? pathUid(p.dir, dir))) {
+        c.apiId = undefined;
+        p.dirty = true;
       }
     }
-    chapterDirs.sort(naturalSort);
+  }
 
-    // Resolve cover: local file > remote URL from meta > fallback to first chapter page
+  const newCache = new Map<string, MangaDetail>();
+  const newMangaByApiId = new Map<number, string>();
+  const newChapterByApiId = new Map<number, { mangaId: string; chapterId: string }>();
+
+  // Carry over everything outside the scope, and reserve its ids so the series
+  // being rescanned cannot be allocated an id another series already holds.
+  if (scopedDir) {
+    const scopedSlug = slugify(scopedDir);
+    for (const [slug, m] of mangaCache) {
+      if (slug === scopedSlug) continue;
+      mangaIds.claim(m.apiId, m.uid);
+      newCache.set(slug, m);
+      newMangaByApiId.set(m.apiId, slug);
+      for (const c of m.chapters) {
+        chapterIds.claim(c.apiId, c.uid);
+        newChapterByApiId.set(c.apiId, { mangaId: slug, chapterId: c.id });
+      }
+    }
+  }
+
+  for (const p of pending) {
+    progress.currentSeries = p.dir;
+    const { meta } = p;
+    const chapters: Chapter[] = [];
+
+    for (const dir of p.chapterDirs) {
+      const pages = await getPageFiles(join(p.path, dir));
+      let c: ChapterMeta | undefined = meta.chapters[dir];
+      if (!c) {
+        const k = deriveChapterKey(p.dir, dir);
+        c = {
+          dir,
+          number: k.sortKey,
+          label: k.label,
+          sortKey: k.sortKey,
+          sortKeyEnd: k.sortKeyEnd,
+          sequence: k.sequence,
+          mark: k.mark,
+          pages: pages.length,
+        };
+        meta.chapters[dir] = c;
+        p.dirty = true;
+      } else if (c.sortKey === undefined) {
+        // Migration to schema v2. Derived once here and then persisted; from now
+        // on this chapter's key is whatever is on disk, not whatever the current
+        // parser would say. Improving the parser must not silently re-key it.
+        const k = deriveChapterKey(p.dir, dir);
+        c.label = k.label;
+        c.sortKey = k.sortKey;
+        c.sortKeyEnd = k.sortKeyEnd;
+        c.sequence = k.sequence;
+        c.mark = k.mark;
+        c.number = k.sortKey;
+        p.dirty = true;
+      }
+      const cuid = c.uid ?? pathUid(p.dir, dir);
+      if (c.apiId === undefined) {
+        c.apiId = chapterIds.allocate(cuid);
+        if (c.apiId !== hash31(cuid)) p.dirty = true;
+      }
+      const mtime = await dirMtime(join(p.path, dir));
+      // Recompute the sync fingerprint only when something might have moved.
+      if (c.pages !== pages.length || c.updatedAt !== mtime || !c.fingerprint) {
+        c.pages = pages.length;
+        c.updatedAt = mtime;
+        // Deliberately does NOT re-derive the chapter key. Pages moving is not a
+        // reason to re-key a chapter, and re-deriving here would reintroduce the
+        // silent re-key this schema exists to prevent.
+        c.fingerprint = await chapterFingerprint(join(p.path, dir), pages);
+        p.dirty = true;
+      }
+
+      const chapter: Chapter = {
+        id: `${p.slug}--${slugify(dir)}`,
+        uid: cuid,
+        apiId: c.apiId,
+        mangaId: p.slug,
+        dir,
+        title: dir,
+        number: c.number,
+        label: c.label ?? dir,
+        sortKey: c.sortKey ?? c.number,
+        sortKeyEnd: c.sortKeyEnd,
+        sequence: c.sequence ?? "main",
+        mark: c.mark ?? "",
+        pageCount: pages.length,
+        fingerprint: c.fingerprint,
+        provenance: c.provenance,
+      };
+      chapters.push(chapter);
+      progress.chaptersSeen++;
+      newChapterByApiId.set(c.apiId, { mangaId: p.slug, chapterId: chapter.id });
+    }
+
+    // Advance the stored schema version once every chapter carries a key.
+    // loadMeta only fills an *absent* version, so without this an existing
+    // sidecar stays on its old number forever and nothing downstream can tell a
+    // migrated file from an unmigrated one.
+    if (meta.schemaVersion !== SCHEMA_VERSION) {
+      const allKeyed = Object.values(meta.chapters).every((c) => c.sortKey !== undefined);
+      if (allKeyed) {
+        meta.schemaVersion = SCHEMA_VERSION;
+        p.dirty = true;
+      }
+    }
+
+    // Drop metadata for chapters whose directories are gone, so the file does
+    // not accumulate ghosts -- but keep ids stable for everything still present.
+    for (const key of Object.keys(meta.chapters)) {
+      if (!p.chapterDirs.includes(key)) {
+        delete meta.chapters[key];
+        p.dirty = true;
+      }
+    }
+
     let coverUrl: string | null = null;
     let localCover: string | null = null;
     if (meta.cover && !meta.cover.startsWith("http")) {
       try {
-        await stat(join(mangaPath, meta.cover));
+        await stat(join(p.path, meta.cover));
         localCover = meta.cover;
       } catch {}
     }
     if (localCover) {
-      coverUrl = `/api/images/${entry}/${localCover}`;
-    } else if (meta.cover && meta.cover.startsWith("http")) {
+      coverUrl = `/api/images/${p.dir}/${localCover}`;
+    } else if (meta.cover?.startsWith("http")) {
       coverUrl = meta.cover;
     } else {
-      const fallback = await findCover(mangaPath, chapterDirs);
-      if (fallback) coverUrl = `/api/images/${entry}/${fallback}`;
+      const fallback = await findCover(p.path, p.chapterDirs);
+      if (fallback) coverUrl = `/api/images/${p.dir}/${fallback}`;
     }
 
-    const chapters: Chapter[] = [];
-    for (const dir of chapterDirs) {
-      const pages = await getPageFiles(join(mangaPath, dir));
-      chapters.push({
-        id: `${id}--${slugify(dir)}`,
-        mangaId: id,
-        title: dir,
-        number: parseChapterNumber(dir),
-        pageCount: pages.length,
-      });
-    }
-
-    newCache.set(id, {
-      id,
-      title: meta.title || entry,
+    newCache.set(p.slug, {
+      id: p.slug,
+      uid: p.uid,
+      apiId: meta.apiId!,
+      dir: p.dir,
+      title: meta.title || p.dir,
       coverUrl,
       chapterCount: chapters.length,
-      meta,
+      meta: toMangaMeta(meta),
       chapters,
+      series: meta,
     });
+    newMangaByApiId.set(meta.apiId!, p.slug);
+    progress.seriesDone++;
+
+    if (p.dirty) {
+      try {
+        await saveMeta(p.path, meta);
+      } catch (e) {
+        console.error(`  failed to write metadata for ${p.dir}`, e);
+      }
+    }
   }
 
   mangaCache = newCache;
+  mangaByApiId = newMangaByApiId;
+  chapterByApiId = newChapterByApiId;
   lastScan = Date.now();
-  console.log(`Scanned ${mangaCache.size} manga series`);
+  scanGeneration++;
+  progress = {
+    ...progress,
+    active: false, phase: "done", currentSeries: null,
+    seriesDone: progress.seriesTotal,
+    durationMs: Date.now() - startedAt,
+  };
+  const what = scopedDir ? `"${scopedDir}"` : `${mangaCache.size} manga series`;
+  console.log(`Scanned ${what}, ${newChapterByApiId.size} chapters in ${Date.now() - startedAt}ms`);
 }
 
 export function getMangaList(): Manga[] {
-  return Array.from(mangaCache.values()).map(({ chapters, ...manga }) => manga);
+  return Array.from(mangaCache.values()).map(({ chapters, series, ...manga }) => manga);
 }
 
 export function getManga(id: string): MangaDetail | undefined {
   return mangaCache.get(id);
 }
 
+/** Resolve the Int a Suwayomi client holds. */
+export function getMangaByApiId(apiId: number): MangaDetail | undefined {
+  const slug = mangaByApiId.get(apiId);
+  return slug ? mangaCache.get(slug) : undefined;
+}
+
+export function getChapterByApiId(apiId: number): { manga: MangaDetail; chapter: Chapter } | undefined {
+  const ref = chapterByApiId.get(apiId);
+  if (!ref) return undefined;
+  const manga = mangaCache.get(ref.mangaId);
+  const chapter = manga?.chapters.find((c) => c.id === ref.chapterId);
+  return manga && chapter ? { manga, chapter } : undefined;
+}
+
 export async function getPages(mangaId: string, chapterId: string): Promise<Page[]> {
   const manga = mangaCache.get(mangaId);
   if (!manga) return [];
-
   const chapter = manga.chapters.find((c) => c.id === chapterId);
   if (!chapter) return [];
 
-  // Find original folder name from manga cache
-  const mangaEntry = await findOriginalName(mangaId);
-  if (!mangaEntry) return [];
-
-  const chapterPath = join(MANGA_DIR, mangaEntry, chapter.title);
-  const files = await getPageFiles(chapterPath);
-
+  const files = await getPageFiles(join(mangaDir(), manga.dir, chapter.dir));
   return files.map((filename, index) => ({
     index,
     filename,
-    url: `/api/images/${mangaEntry}/${chapter.title}/${filename}`,
+    // Encoded for the client; `path` stays raw for filesystem use. Deriving one
+    // from the other by string-replacing the prefix silently breaks on any
+    // series or chapter whose name contains a space.
+    url: `/api/images/${encodeURIComponent(manga.dir)}/${encodeURIComponent(chapter.dir)}/${encodeURIComponent(filename)}`,
+    path: `${manga.dir}/${chapter.dir}/${filename}`,
   }));
-}
-
-async function findOriginalName(mangaId: string): Promise<string | null> {
-  try {
-    const entries = await readdir(MANGA_DIR);
-    return entries.find((e) => slugify(e) === mangaId) || null;
-  } catch {
-    return null;
-  }
 }
 
 export function getLastScan(): number {
   return lastScan;
 }
 
+export function getScanGeneration(): number {
+  return scanGeneration;
+}
+
 export function getMangaDir(): string {
-  return MANGA_DIR;
+  return mangaDir();
 }

@@ -1,7 +1,7 @@
 import { Elysia } from "elysia";
 import { buildSchema, graphql } from "graphql";
 import { appendFile } from "fs/promises";
-import { getMangaList, getManga, getPages } from "../scanner";
+import { getMangaList, getManga, getMangaByApiId, getChapterByApiId, getPages } from "../scanner";
 import type { Manga, MangaDetail } from "../types";
 
 // -------------------------------------------------------------------------
@@ -13,17 +13,17 @@ import type { Manga, MangaDetail } from "../types";
 // library scanner the REST routes use.
 //
 // ID scheme (matches the REST routes so page/thumbnail URLs stay valid):
-//   manga id      = index into getMangaList()          (Int)
-//   chapter id    = mangaIndex * CH_BASE + chapterIndex (Int, globally unique)
-//   source id     = "paperbox"                          (LongString)
+//   manga id      = stable apiId pinned in paperbox.json (Int)
+//   chapter id    = stable apiId pinned in paperbox.json (Int, globally unique)
+//   source id     = "paperbox"                           (LongString)
+//
+// These were array positions until they weren't: a client caches the Int, the
+// library gains or loses a directory, and every cached id silently points at a
+// different series. Identity now comes from the metadata file, not scan order.
 // -------------------------------------------------------------------------
 
-const CH_BASE = 100_000;
 const NOW_SECS = Math.floor(Date.now() / 1000);
 const CAPTURE = "/scripts/gql-capture.jsonl";
-
-const encodeChapterId = (mIdx: number, cIdx: number) => mIdx * CH_BASE + cIdx;
-const decodeChapterId = (id: number) => ({ mIdx: Math.floor(id / CH_BASE), cIdx: id % CH_BASE });
 
 function mapStatus(status?: string): string {
   switch (status) {
@@ -50,7 +50,8 @@ const SOURCE = {
 // -- Object builders. Nested object/list fields are functions so they resolve
 //    lazily via graphql-js's default field resolver (only when selected). --
 
-function buildManga(m: Manga, idx: number) {
+function buildManga(m: Manga) {
+  const idx = m.apiId;
   const thumbnailUrl = `/api/v1/manga/${idx}/thumbnail`;
   return {
     id: idx,
@@ -80,19 +81,19 @@ function buildManga(m: Manga, idx: number) {
     updateStrategy: "ALWAYS_UPDATE",
     age: 0,
     chaptersAge: 0,
-    chapters: () => buildChapterList(idx),
+    chapters: () => buildChapterList(m.id),
     categories: () => ({ nodes: [], totalCount: 0, pageInfo: emptyPageInfo() }),
     trackRecords: () => ({ nodes: [], totalCount: 0 }),
   };
 }
 
-function buildChapter(ch: MangaDetail["chapters"][number], cIdx: number, mIdx: number, m: Manga) {
+function buildChapter(ch: MangaDetail["chapters"][number], cIdx: number, m: Manga) {
   return {
-    id: encodeChapterId(mIdx, cIdx),
-    url: `/manga/${mIdx}/chapter/${cIdx}`,
+    id: ch.apiId,
+    url: `/manga/${m.apiId}/chapter/${cIdx}`,
     name: ch.title,
-    mangaId: mIdx,
-    scanlator: "",
+    mangaId: m.apiId,
+    scanlator: ch.provenance?.group || "",
     chapterNumber: ch.number,
     sourceOrder: cIdx,
     isDownloaded: true,
@@ -102,34 +103,42 @@ function buildChapter(ch: MangaDetail["chapters"][number], cIdx: number, mIdx: n
     lastReadAt: 0,
     fetchedAt: NOW_SECS,
     uploadDate: String(NOW_SECS * 1000),
-    realUrl: m.meta.link || "",
+    realUrl: ch.provenance?.chapterUrl || m.meta.link || "",
     pageCount: ch.pageCount,
     meta: [] as Array<{ key: string; value: string }>,
-    manga: () => buildManga(m, mIdx),
+    manga: () => buildManga(m),
+  };
+}
+
+// The library is one implicit "Default" category, id 0.
+function buildCategory() {
+  return {
+    id: 0, order: 0, name: "Default", default: true,
+    meta: [] as Array<{ key: string; value: string }>,
+    mangas: () => {
+      const nodes = getMangaList().map((m) => buildManga(m));
+      return { nodes, totalCount: nodes.length, pageInfo: emptyPageInfo() };
+    },
   };
 }
 
 const emptyPageInfo = () => ({ hasNextPage: false, hasPreviousPage: false, startCursor: null, endCursor: null });
 
 // All chapters of one manga as a ChapterNodeList.
-function buildChapterList(mIdx: number) {
-  const list = getMangaList();
-  const m = list[mIdx];
-  if (!m) return { nodes: [], totalCount: 0, pageInfo: emptyPageInfo() };
-  const detail = getManga(m.id);
-  const chapters = detail?.chapters || [];
-  const nodes = chapters.map((ch, cIdx) => buildChapter(ch, cIdx, mIdx, m));
+function buildChapterList(slug: string) {
+  const detail = getManga(slug);
+  if (!detail) return { nodes: [], totalCount: 0, pageInfo: emptyPageInfo() };
+  const nodes = detail.chapters.map((ch, cIdx) => buildChapter(ch, cIdx, detail));
   return { nodes, totalCount: nodes.length, pageInfo: emptyPageInfo() };
 }
 
 // Flat list of every chapter across every manga (for the "recent chapters" feed).
 function allChapters() {
   const out: ReturnType<typeof buildChapter>[] = [];
-  const list = getMangaList();
-  list.forEach((m, mIdx) => {
+  for (const m of getMangaList()) {
     const detail = getManga(m.id);
-    (detail?.chapters || []).forEach((ch, cIdx) => out.push(buildChapter(ch, cIdx, mIdx, m)));
-  });
+    (detail?.chapters || []).forEach((ch, cIdx) => out.push(buildChapter(ch, cIdx, detail!)));
+  }
   return out;
 }
 
@@ -181,6 +190,7 @@ const schema = buildSchema(`
     name: String!
     default: Boolean!
     meta: [KeyValue!]!
+    mangas: MangaNodeList!
   }
   type CategoryNodeList { nodes: [CategoryType!]!, totalCount: Int! }
 
@@ -215,6 +225,12 @@ const schema = buildSchema(`
     chapters: ChapterNodeList
     categories: CategoryNodeList
     trackRecords: TrackRecordNodeList
+    lastReadChapter: ChapterType
+    firstUnreadChapter: ChapterType
+    latestUploadedChapter: ChapterType
+    latestFetchedChapter: ChapterType
+    latestReadChapter: ChapterType
+    highestNumberedChapter: ChapterType
   }
   type MangaNodeList { nodes: [MangaType!]!, totalCount: Int!, pageInfo: PageInfo! }
 
@@ -246,9 +262,16 @@ const schema = buildSchema(`
   type FetchSourceMangaPayload { hasNextPage: Boolean!, hasPreviousPage: Boolean, mangas: [MangaType!]! }
   type FetchChapterPagesPayload { pages: [String!]!, chapter: ChapterType }
   type UpdatePayload { clientMutationId: String }
+  type FetchMangaPayload { clientMutationId: String, manga: MangaType! }
+  type FetchChaptersPayload { clientMutationId: String, chapters: [ChapterType!]! }
+  type UpdateChapterPayload { clientMutationId: String, chapter: ChapterType! }
 
   input FetchSourceMangaInput { source: LongString!, type: FetchSourceMangaType!, page: Int!, query: String }
-  input FetchChapterPagesInput { chapterId: Int! }
+  input FetchChapterPagesInput { chapterId: Int!, clientMutationId: String, format: String }
+  input FetchMangaInput { clientMutationId: String, id: Int! }
+  input FetchChaptersInput { clientMutationId: String, mangaId: Int! }
+  input UpdateChapterPatchInput { isBookmarked: Boolean, isRead: Boolean, lastPageRead: Int }
+  input UpdateChapterInput { clientMutationId: String, id: Int!, patch: UpdateChapterPatchInput! }
   input ChapterConditionInput {
     id: Int
     mangaId: Int
@@ -269,7 +292,8 @@ const schema = buildSchema(`
     aboutServer: AboutServerPayload!
     sources: SourceNodeList!
     source(id: LongString!): SourceType
-    categories(orderBy: CategoryOrderBy): CategoryNodeList!
+    categories(orderBy: CategoryOrderBy, orderByType: SortOrder): CategoryNodeList!
+    category(id: Int!): CategoryType
     manga(id: Int!): MangaType
     mangas(condition: MangaConditionInput): MangaNodeList!
     chapters(
@@ -285,9 +309,11 @@ const schema = buildSchema(`
   type Mutation {
     fetchSourceManga(input: FetchSourceMangaInput!): FetchSourceMangaPayload!
     fetchChapterPages(input: FetchChapterPagesInput!): FetchChapterPagesPayload!
-    updateChapter(input: GenericMutationInput): UpdatePayload
+    updateChapter(input: UpdateChapterInput!): UpdateChapterPayload
     updateChapters(input: GenericMutationInput): UpdatePayload
     updateManga(input: GenericMutationInput): UpdatePayload
+    fetchManga(input: FetchMangaInput!): FetchMangaPayload
+    fetchChapters(input: FetchChaptersInput!): FetchChaptersPayload
   }
 `);
 
@@ -305,7 +331,7 @@ function fetchSourceMangaResolver({ input }: any) {
   return {
     hasNextPage: false,
     hasPreviousPage: false,
-    mangas: filtered.map((m, i) => buildManga(m, list.indexOf(m))),
+    mangas: filtered.map((m) => buildManga(m)),
   };
 }
 
@@ -324,20 +350,16 @@ const root = {
   sources: () => ({ nodes: [SOURCE], totalCount: 1 }),
   source: ({ id }: any) => (id === SOURCE.id ? SOURCE : null),
 
-  categories: () => ({
-    nodes: [{ id: 0, order: 0, name: "Default", default: true, meta: [] }],
-    totalCount: 1,
-  }),
+  categories: () => ({ nodes: [buildCategory()], totalCount: 1 }),
+  category: ({ id }: any) => (id === 0 ? buildCategory() : null),
 
   manga: ({ id }: any) => {
-    const list = getMangaList();
-    const m = list[id];
-    return m ? buildManga(m, id) : null;
+    const m = getMangaByApiId(id);
+    return m ? buildManga(m) : null;
   },
 
   mangas: ({ condition }: any) => {
-    const list = getMangaList();
-    let nodes = list.map((m, i) => buildManga(m, i));
+    let nodes = getMangaList().map((m) => buildManga(m));
     if (condition?.id != null) nodes = nodes.filter((n) => n.id === condition.id);
     return { nodes, totalCount: nodes.length, pageInfo: emptyPageInfo() };
   },
@@ -345,7 +367,8 @@ const root = {
   chapters: ({ condition, offset, first }: any) => {
     let nodes: ReturnType<typeof buildChapter>[];
     if (condition?.mangaId != null) {
-      nodes = buildChapterList(condition.mangaId).nodes;
+      const m = getMangaByApiId(condition.mangaId);
+      nodes = m ? buildChapterList(m.id).nodes : [];
     } else {
       nodes = allChapters();
     }
@@ -369,26 +392,44 @@ const root = {
   fetchSourceManga: fetchSourceMangaResolver,
 
   fetchChapterPages: async ({ input }: any) => {
-    const { mIdx, cIdx } = decodeChapterId(input.chapterId);
-    const list = getMangaList();
-    const m = list[mIdx];
-    if (!m) return { pages: [], chapter: null };
-    const detail = getManga(m.id);
-    const chapter = detail?.chapters[cIdx];
-    if (!chapter) return { pages: [], chapter: null };
-    const pages = await getPages(m.id, chapter.id);
+    const found = getChapterByApiId(input.chapterId);
+    if (!found) return { pages: [], chapter: null };
+    const { manga, chapter } = found;
+    const pages = await getPages(manga.id, chapter.id);
+    const cIdx = manga.chapters.indexOf(chapter);
     return {
-      pages: pages.map((_, i) => `/api/v1/manga/${mIdx}/chapter/${cIdx}/page/${i}`),
-      chapter: buildChapter(chapter, cIdx, mIdx, m),
+      pages: pages.map((_, i) => `/api/v1/manga/${manga.apiId}/chapter/${cIdx}/page/${i}`),
+      chapter: buildChapter(chapter, cIdx, manga),
     };
   },
 
-  updateChapter: ({ input }: any) => ({ clientMutationId: input?.clientMutationId || null }),
+  updateChapter: ({ input }: any) => {
+    // Read state is not persisted; echo the chapter back so the client's
+    // `chapter { id isRead }` selection resolves instead of erroring.
+    const found = getChapterByApiId(input?.id);
+    const chapter = found
+      ? buildChapter(found.chapter, found.manga.chapters.indexOf(found.chapter), found.manga)
+      : null;
+    return { clientMutationId: input?.clientMutationId || null, chapter };
+  },
+
+  fetchManga: ({ input }: any) => {
+    const m = getMangaByApiId(input?.id);
+    return { clientMutationId: input?.clientMutationId || null, manga: m ? buildManga(m) : null };
+  },
+
+  fetchChapters: ({ input }: any) => {
+    const m = getMangaByApiId(input?.mangaId);
+    return {
+      clientMutationId: input?.clientMutationId || null,
+      chapters: m ? buildChapterList(m.id).nodes : [],
+    };
+  },
   updateChapters: ({ input }: any) => ({ clientMutationId: input?.clientMutationId || null }),
   updateManga: ({ input }: any) => ({ clientMutationId: input?.clientMutationId || null }),
 };
 
-async function handle(body: any) {
+export async function handle(body: any) {
   const result = await graphql({
     schema,
     source: body?.query || "",
@@ -398,8 +439,8 @@ async function handle(body: any) {
   });
   if (result.errors?.length) {
     // Log any query we couldn't satisfy so gaps are easy to spot & fix.
-    console.error(`[gql] errors for op=${body?.operationName}:`, result.errors.map((e) => e.message).join("; "));
-    try { await appendFile(CAPTURE, JSON.stringify({ failed: body, errors: result.errors.map((e) => e.message) }) + "\n"); } catch {}
+    console.error(`[gql] errors for op=${body?.operationName}:`, result.errors.map((e: Error) => e.message).join("; "));
+    try { await appendFile(CAPTURE, JSON.stringify({ failed: body, errors: result.errors.map((e: Error) => e.message) }) + "\n"); } catch {}
   }
   return result;
 }

@@ -1,16 +1,38 @@
 import { Elysia, t } from "elysia";
 import { join } from "path";
-import { getMangaList, getManga, getPages, getMangaDir } from "../scanner";
-import type { MangaDetail } from "../types";
+import { getMangaList, getManga, getMangaByApiId, getPages, getMangaDir } from "../scanner";
+import type { MangaDetail, Chapter } from "../types";
 
 const NOW_SECS = Math.floor(Date.now() / 1000);
 
-// Suwayomi-compatible API routes for the TachiDesk Paperback extension
+/**
+ * Resolve a chapter from a path parameter.
+ *
+ * Ids are the stable apiId. The positional fallback exists only for clients
+ * that built their URLs from `index`/`sourceOrder` under the old scheme; it
+ * logs when it fires so we can tell whether anything still relies on it.
+ */
+function resolveChapter(manga: MangaDetail, raw: string): Chapter | undefined {
+  const n = parseInt(raw);
+  if (Number.isNaN(n)) return undefined;
+  const byId = manga.chapters.find((c) => c.apiId === n);
+  if (byId) return byId;
+  if (n >= 0 && n < manga.chapters.length) {
+    console.log(`  compat: chapter ${n} of ${manga.title} resolved positionally`);
+    return manga.chapters[n];
+  }
+  return undefined;
+}
+
+function findManga(raw: string): MangaDetail | undefined {
+  const n = parseInt(raw);
+  if (Number.isNaN(n)) return undefined;
+  return getMangaByApiId(n);
+}
+
 export const paperbackRoutes = new Elysia({ prefix: "/api/v1" })
-  // The extension fetches categories to list manga
   .get("/category", () => {
     const list = getMangaList();
-    // Return a single "default" category containing all manga
     return [{
       id: 0,
       name: "Default",
@@ -21,181 +43,101 @@ export const paperbackRoutes = new Elysia({ prefix: "/api/v1" })
       meta: {},
     }];
   })
-  .get("/category/:id", ({ params }) => {
-    // Return all manga in this category (we only have one)
-    const list = getMangaList();
-    return list.map((m, index) => toSuwayomiManga(getManga(m.id)!, index));
-  }, {
-    params: t.Object({ id: t.String() }),
-  })
-  // Manga details
+  .get("/category/:id", () => {
+    return getMangaList().map((m) => toSuwayomiManga(getManga(m.id)!));
+  }, { params: t.Object({ id: t.String() }) })
+
   .get("/manga/:id", ({ params, set }) => {
-    const manga = findMangaByNumericId(params.id);
-    if (!manga) {
-      set.status = 404;
-      return { error: "Not found" };
-    }
-    return toSuwayomiManga(manga, parseInt(params.id));
-  }, {
-    params: t.Object({ id: t.String() }),
-  })
+    const manga = findManga(params.id);
+    if (!manga) { set.status = 404; return { error: "Not found" }; }
+    return toSuwayomiManga(manga);
+  }, { params: t.Object({ id: t.String() }) })
+
   .get("/manga/:id/full", ({ params, set }) => {
-    const manga = findMangaByNumericId(params.id);
-    if (!manga) {
-      set.status = 404;
-      return { error: "Not found" };
-    }
-    return toSuwayomiManga(manga, parseInt(params.id));
-  }, {
-    params: t.Object({ id: t.String() }),
-  })
-  // Manga thumbnail - serves the cover image directly
+    const manga = findManga(params.id);
+    if (!manga) { set.status = 404; return { error: "Not found" }; }
+    return toSuwayomiManga(manga);
+  }, { params: t.Object({ id: t.String() }) })
+
   .get("/manga/:id/thumbnail", async ({ params, set }) => {
-    const manga = findMangaByNumericId(params.id);
-    if (!manga || !manga.coverUrl) {
-      set.status = 404;
-      return { error: "Not found" };
-    }
+    const manga = findManga(params.id);
+    if (!manga || !manga.coverUrl) { set.status = 404; return { error: "Not found" }; }
     const imgPath = join(getMangaDir(), manga.coverUrl.replace("/api/images/", ""));
     const file = Bun.file(imgPath);
-    if (!(await file.exists())) {
-      set.status = 404;
-      return { error: "Image file not found" };
-    }
+    if (!(await file.exists())) { set.status = 404; return { error: "Image file not found" }; }
     set.headers["cache-control"] = "public, max-age=86400";
     return file;
-  }, {
-    params: t.Object({ id: t.String() }),
-  })
-  // Chapter list
+  }, { params: t.Object({ id: t.String() }) })
+
   .get("/manga/:id/chapters", ({ params, set }) => {
-    const manga = findMangaByNumericId(params.id);
-    if (!manga) {
-      set.status = 404;
-      return { error: "Not found" };
-    }
-    return manga.chapters.map((ch, index) => toSuwayomiChapter(ch, index, parseInt(params.id), manga.chapterCount));
-  }, {
-    params: t.Object({ id: t.String() }),
-  })
-  // Chapter detail
+    const manga = findManga(params.id);
+    if (!manga) { set.status = 404; return { error: "Not found" }; }
+    return manga.chapters.map((ch, index) => toSuwayomiChapter(ch, index, manga));
+  }, { params: t.Object({ id: t.String() }) })
+
   .get("/manga/:id/chapter/:chapterId", ({ params, set }) => {
-    const manga = findMangaByNumericId(params.id);
-    if (!manga) {
-      set.status = 404;
-      return { error: "Not found" };
-    }
-    const chIdx = parseInt(params.chapterId);
-    const chapter = manga.chapters[chIdx];
-    if (!chapter) {
-      set.status = 404;
-      return { error: "Chapter not found" };
-    }
-    return toSuwayomiChapter(chapter, chIdx, parseInt(params.id), manga.chapterCount);
-  }, {
-    params: t.Object({ id: t.String(), chapterId: t.String() }),
-  })
-  // Chapter read marking - extension PATCHes this to mark chapters as read
-  .patch("/manga/:id/chapter/:chapterId", ({ params }) => {
-    // We don't persist read state, just acknowledge the request
-    return { success: true };
-  }, {
-    params: t.Object({ id: t.String(), chapterId: t.String() }),
-  })
-  // Page image - the extension requests /api/v1/manga/{id}/chapter/{id}/page/{pageIndex}
+    const manga = findManga(params.id);
+    if (!manga) { set.status = 404; return { error: "Not found" }; }
+    const chapter = resolveChapter(manga, params.chapterId);
+    if (!chapter) { set.status = 404; return { error: "Chapter not found" }; }
+    return toSuwayomiChapter(chapter, manga.chapters.indexOf(chapter), manga);
+  }, { params: t.Object({ id: t.String(), chapterId: t.String() }) })
+
+  .patch("/manga/:id/chapter/:chapterId", () => ({ success: true }),
+    { params: t.Object({ id: t.String(), chapterId: t.String() }) })
+
   .get("/manga/:id/chapter/:chapterId/page/:pageIndex", async ({ params, set }) => {
-    const manga = findMangaByNumericId(params.id);
+    const manga = findManga(params.id);
     if (!manga) {
       console.log(`  page: manga ${params.id} not found`);
-      set.status = 404;
-      return { error: "Not found" };
+      set.status = 404; return { error: "Not found" };
     }
-    const chIdx = parseInt(params.chapterId);
-    const chapter = manga.chapters[chIdx];
+    const chapter = resolveChapter(manga, params.chapterId);
     if (!chapter) {
-      console.log(`  page: chapter ${params.chapterId} not found in ${manga.title} (has ${manga.chapters.length} chapters)`);
-      set.status = 404;
-      return { error: "Chapter not found" };
+      console.log(`  page: chapter ${params.chapterId} not found in ${manga.title}`);
+      set.status = 404; return { error: "Chapter not found" };
     }
-
     const pages = await getPages(manga.id, chapter.id);
-    const pageIdx = parseInt(params.pageIndex);
-    const page = pages[pageIdx];
+    const page = pages[parseInt(params.pageIndex)];
     if (!page) {
-      console.log(`  page: page ${params.pageIndex} not found in ${chapter.title} (has ${pages.length} pages)`);
-      set.status = 404;
-      return { error: "Page not found" };
+      console.log(`  page: page ${params.pageIndex} not in ${chapter.title} (${pages.length} pages)`);
+      set.status = 404; return { error: "Page not found" };
     }
-
-    // Serve the image directly - Paperback doesn't follow redirects
-    const imgPath = join(getMangaDir(), page.url.replace("/api/images/", ""));
-    console.log(`  page: serving ${imgPath}`);
+    const imgPath = join(getMangaDir(), page.path);
     const file = Bun.file(imgPath);
-    if (!(await file.exists())) {
-      set.status = 404;
-      return { error: "Image file not found" };
-    }
+    if (!(await file.exists())) { set.status = 404; return { error: "Image file not found" }; }
     set.headers["cache-control"] = "public, max-age=86400";
     return file;
-  }, {
-    params: t.Object({ id: t.String(), chapterId: t.String(), pageIndex: t.String() }),
-  })
-  // Settings/about - extension uses this to test connectivity
-  .get("/settings/about", () => ({
-    name: "Paperbox",
-    version: "1.0.0",
-    revision: "1",
-  }))
-  // Source list - the Tachidesk Paperback extension queries this to discover available sources
-  .get("/source/list", () => [
-    {
-      id: "paperbox",
-      name: "Paperbox",
-      lang: "en",
-      iconUrl: "/api/v1/extension/icon/paperbox",
-      supportsLatest: false,
-      isConfigurable: false,
-      isNsfw: false,
-      displayName: "Paperbox",
-    },
-  ])
-  // Popular/latest per source
-  .get("/source/:id/popular/:page", ({ params }) => {
-    const list = getMangaList();
-    return { mangaList: list.map((m, i) => toSuwayomiManga(getManga(m.id)!, i)), hasNextPage: false };
-  }, {
-    params: t.Object({ id: t.String(), page: t.String() }),
-  })
-  .get("/source/:id/latest/:page", ({ params }) => {
-    const list = getMangaList();
-    return { mangaList: list.map((m, i) => toSuwayomiManga(getManga(m.id)!, i)), hasNextPage: false };
-  }, {
-    params: t.Object({ id: t.String(), page: t.String() }),
-  })
-  // Recently updated
-  .get("/update/recentChapters/:page", () => ({
-    page: [],
-    hasNextPage: false,
-  }));
+  }, { params: t.Object({ id: t.String(), chapterId: t.String(), pageIndex: t.String() }) })
+
+  .get("/settings/about", () => ({ name: "Paperbox", version: "1.0.0", revision: "1" }))
+
+  .get("/source/list", () => [{
+    id: "paperbox", name: "Paperbox", lang: "en",
+    iconUrl: "/api/v1/extension/icon/paperbox",
+    supportsLatest: false, isConfigurable: false, isNsfw: false, displayName: "Paperbox",
+  }])
+
+  .get("/source/:id/popular/:page", () => ({
+    mangaList: getMangaList().map((m) => toSuwayomiManga(getManga(m.id)!)), hasNextPage: false,
+  }), { params: t.Object({ id: t.String(), page: t.String() }) })
+
+  .get("/source/:id/latest/:page", () => ({
+    mangaList: getMangaList().map((m) => toSuwayomiManga(getManga(m.id)!)), hasNextPage: false,
+  }), { params: t.Object({ id: t.String(), page: t.String() }) })
+
+  .get("/update/recentChapters/:page", () => ({ page: [], hasNextPage: false }));
 
 // -- Helpers --
 
-function findMangaByNumericId(numId: string): MangaDetail | undefined {
-  const list = getMangaList();
-  const idx = parseInt(numId);
-  if (idx < 0 || idx >= list.length) return undefined;
-  const entry = list[idx];
-  if (!entry) return undefined;
-  return getManga(entry.id);
-}
-
-function toSuwayomiManga(manga: MangaDetail, numId: number) {
+function toSuwayomiManga(manga: MangaDetail) {
+  const id = manga.apiId;
   return {
-    id: numId,
+    id,
     sourceId: "paperbox",
-    url: `/manga/${numId}`,
+    url: `/manga/${id}`,
     title: manga.title,
-    thumbnailUrl: `/api/v1/manga/${numId}/thumbnail`,
+    thumbnailUrl: `/api/v1/manga/${id}/thumbnail`,
     thumbnailUrlLastFetched: NOW_SECS,
     initialized: true,
     artist: manga.meta.artist || "",
@@ -206,14 +148,8 @@ function toSuwayomiManga(manga: MangaDetail, numId: number) {
     inLibrary: true,
     inLibraryAt: NOW_SECS,
     source: {
-      id: "paperbox",
-      name: "Paperbox",
-      lang: "en",
-      iconUrl: "",
-      supportsLatest: false,
-      isConfigurable: false,
-      isNsfw: false,
-      displayName: "Paperbox",
+      id: "paperbox", name: "Paperbox", lang: "en", iconUrl: "",
+      supportsLatest: false, isConfigurable: false, isNsfw: false, displayName: "Paperbox",
     },
     meta: {},
     realUrl: manga.meta.link || "",
@@ -230,25 +166,25 @@ function toSuwayomiManga(manga: MangaDetail, numId: number) {
   };
 }
 
-function toSuwayomiChapter(ch: MangaDetail["chapters"][number], index: number, mangaId: number, chapterCount: number) {
+function toSuwayomiChapter(ch: Chapter, index: number, manga: MangaDetail) {
   return {
-    id: index,
-    url: `/manga/${mangaId}/chapter/${index}`,
+    id: ch.apiId,
+    url: `/manga/${manga.apiId}/chapter/${index}`,
     name: ch.title,
     uploadDate: NOW_SECS * 1000,
     chapterNumber: ch.number,
-    scanlator: "",
-    mangaId: mangaId,
+    scanlator: ch.provenance?.group || "",
+    mangaId: manga.apiId,
     read: false,
     bookmarked: false,
     lastPageRead: 0,
     lastReadAt: 0,
-    index: index,
+    index,
     fetchedAt: NOW_SECS,
-    realUrl: "",
+    realUrl: ch.provenance?.chapterUrl || "",
     downloaded: true,
     pageCount: ch.pageCount,
-    chapterCount: chapterCount,
+    chapterCount: manga.chapterCount,
     meta: {},
   };
 }
