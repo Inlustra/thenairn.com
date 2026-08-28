@@ -261,6 +261,25 @@ export class ReadStateStore {
     return { ...best, reader: "*", read: best.readAt > best.unreadAt };
   }
 
+  /**
+   * When this series was last touched by a reader, or null if never.
+   *
+   * The scan scheduler's hot and warm lanes are defined in terms of "read
+   * within 24 h" and "read within 30 d" (`docs/scheduler.md`), and this store
+   * is the only place in Paperbox that knows. Keyed on `(reader, series_uid)`
+   * so it rides the existing index -- a `MAX(updated_at) WHERE series_uid = ?`
+   * across every reader would be a full scan of the catalogue for one lane
+   * decision, which is precisely what `scale.test.ts` exists to prevent.
+   */
+  lastReadAt(seriesUid: string, reader = DEFAULT_READER): number | null {
+    const r = this.db
+      .query<{ at: number | null }, [string, string]>(
+        "SELECT MAX(updated_at) AS at FROM read_state WHERE reader = ? AND series_uid = ?",
+      )
+      .get(reader, seriesUid);
+    return r?.at ?? null;
+  }
+
   /** Escape hatch for the scale test and the bench; not part of the API. */
   raw(): Database {
     return this.db;

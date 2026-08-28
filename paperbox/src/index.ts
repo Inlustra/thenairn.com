@@ -9,15 +9,22 @@ import { scriptRoutes } from "./routes/scripts";
 import { downloadRoutes } from "./routes/downloads";
 import { syncRoutes } from "./routes/sync";
 import { graphqlRoutes } from "./routes/graphql";
+import { artRoutes } from "./routes/art";
+import { jobRoutes } from "./routes/jobs";
 import { scan } from "./scanner";
 import { pullScripts, scanScripts } from "./lua/scripts";
 import { initReadState } from "./readstate";
+import { startJobs, getBudget } from "./jobs";
 
 const PORT = process.env.PORT || 3000;
 
 const app = new Elysia()
   .use(cors())
   .onRequest(({ request }) => {
+    // The idle detector's only input. It is an accelerator, never a gate
+    // (docs/scheduler.md section 2c): a request never stops background work,
+    // it only drops it back from the idle duty to the at-rest one.
+    getBudget()?.noteRequest();
     const url = new URL(request.url);
     console.log(`→ ${request.method} ${url.pathname}${url.search}`);
   })
@@ -41,6 +48,8 @@ const app = new Elysia()
   .use(scriptRoutes)
   .use(downloadRoutes)
   .use(syncRoutes)
+  .use(artRoutes)
+  .use(jobRoutes)
   .use(graphqlRoutes)
   .use(staticPlugin({ assets: "frontend/dist", prefix: "/" }))
   .get("/", () => Bun.file("frontend/dist/index.html"))
@@ -55,6 +64,11 @@ async function init() {
   initReadState();
 
   await scan();
+
+  // After the first scan, not before: the scheduler's rotation and the art
+  // workers both address series by uid, and nothing has a uid until something
+  // has been scanned.
+  startJobs();
 
   // Pull scripts if not already present, otherwise just scan
   try {

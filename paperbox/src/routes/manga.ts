@@ -7,6 +7,7 @@ import { runModule } from "../lua/engine";
 import { getScript, listScripts, getScriptsSignature } from "../lua/scripts";
 import { saveMetadata, summariseDownloads } from "../downloads/manager";
 import { buildTree } from "../hashes";
+import { getJobs, getScheduler } from "../jobs";
 
 export const mangaRoutes = new Elysia({ prefix: "/api" })
   .get("/manga", ({ query }) => {
@@ -151,6 +152,8 @@ export const mangaRoutes = new Elysia({ prefix: "/api" })
     const scan = getScanProgress();
     const downloads = summariseDownloads();
     const scripts = listScripts();
+    const jobs = getJobs();
+    const scheduler = getScheduler();
 
     const body = {
       server: {
@@ -173,12 +176,28 @@ export const mangaRoutes = new Elysia({ prefix: "/api" })
       scan,
       downloads,
       sources: { sig: getScriptsSignature(), count: scripts.length },
+      // Background work, summarised. Detail is on /api/jobs; this is here so a
+      // client polling one endpoint learns that it is worth asking.
+      jobs: jobs
+        ? { sig: jobs.signature(), ...jobs.counts() }
+        : { sig: "off", running: 0, queued: 0 },
+      // Freshness, not progress. docs/scheduler.md section 3: a background scan
+      // nobody asked for gets no count and no spinner -- what the interface
+      // shows is when a series was last looked at, and whether the rotation is
+      // keeping up. `behind` is the amber condition and carries no retry.
+      freshness: scheduler
+        ? {
+            floorRotationMs: scheduler.status().floorRotationMs,
+            floorDeadlineMs: scheduler.floorDeadlineMs,
+            behind: scheduler.status().behind,
+          }
+        : null,
     };
 
     // The revs are the whole state as far as a poller is concerned.
     // Weak, and deliberately semantic: it answers "has anything meaningful
     // moved", not "are these bytes identical" (uptimeMs always differs).
-    const etag = `W/"${body.library.sig}.${body.downloads.sig}.${body.sources.sig}.${scan.active ? scan.seriesDone : "i"}"`;
+    const etag = `W/"${body.library.sig}.${body.downloads.sig}.${body.sources.sig}.${body.jobs.sig}.${scan.active ? scan.seriesDone : "i"}"`;
     set.headers["etag"] = etag;
     set.headers["cache-control"] = "no-cache";
     if (headers["if-none-match"] === etag) {

@@ -77,6 +77,91 @@ denominator in "you hold 313 of 327". Season structure exists too, but only as
 markdown prose in a free-text `status` field (`**S1** : 142 Chapters (1~142)`), so it
 is evidence for a person to confirm, never an automatic import.
 
+### Derived artefacts live outside the library — *settled 2026-08-28*
+
+The only derived artefact Paperbox had was a cover, and it was written into the
+user's library as `cover<ext>` next to their pages. That contradicts the ownership
+promise in [ui.md](ui.md) — *never moved, never renamed, never rewritten* — and it
+was two bugs rather than one, because the filename came from the **remote** url's
+extension: fetching a `.png` cover for a series where the user had already put their
+own `cover.png` overwrote their file in place, with no backup and no record. A test
+asserting byte equality was seen to fail against that behaviour before it was fixed.
+
+Everything derived now lives in `$DERIVED_DIR` (default `/data/derived`), outside
+the library, with two properties that carry the design:
+
+**It is safe to delete entirely.** `rm -rf $DERIVED_DIR` costs CPU and never data.
+That is also why it may have a default path when `READSTATE_DB` may not, and why it
+is mounted on `${LARGE_TEMP_DIR}` rather than under `${CONFIG_DIR}`: the weekly
+rclone sweep covers Config, so a store there would replicate ~8 GB of regenerable
+WebP to Google Drive every Sunday. Backing up a cache is cost with no recovery
+value.
+
+**A stale artefact cannot be served, because it cannot be addressed.** The key is
+`sha256(ART_VERSION, kind, uid, fingerprint)`, so if the chapter's fingerprint moves
+the key moves and the reader looks in a place nothing has been written to. There is
+no "check whether this is out of date" step to forget. The obvious alternative — a
+path per chapter plus a stored fingerprint to compare — fails in the one direction
+that matters: skip the compare, or write the record before the picture, and the
+server serves the wrong artwork with nothing anywhere saying so. `ART_VERSION` is in
+the key for the same reason, so changing the extraction algorithm invalidates
+everything at once with no purge step.
+
+### Existing `cover.webp` files are adopted, never removed — *settled; whether to clean them up one day is open*
+
+Covers already sitting in series directories are read, normalised into the store,
+and **left exactly where they are**. Deleting them is not the pipeline's call:
+some were put there by the user, some by Komga or Kavita, some by an earlier version
+of Paperbox, and nothing on disk distinguishes the three. Removing them would be
+the pipeline deleting files it did not create, which is the thing this change exists
+to stop. **Whether they should eventually be cleaned up is the owner's decision**,
+and it needs a rule for telling ours from theirs that does not currently exist.
+
+### Artwork is derived per series, never swept — *settled 2026-08-28*
+
+R-22 measured the settled extraction method at 740 ms per chapter. That is 21 minutes
+of one core for the real library and **146 core-hours at the R-12 target** — 76 days
+of wall clock under the 8% duty budget. So there is no library-wide artwork backfill
+and there is not going to be one. Artwork is derived for one series at a time: when
+the user asks, and when the rolling scan finds that series has changed.
+
+The content-addressed key is what makes this cheap to repeat: re-running a series
+after one chapter moved costs one extraction and N `stat`s, so the worker needs no
+"what changed" bookkeeping of its own and cannot get it wrong.
+
+### Background work is a persistent queue — *settled 2026-08-28*
+
+`src/jobs/` — SQLite, in the same shape as `src/readstate/`. Jobs survive a restart;
+one that was *running* comes back `queued`, keeping its progress, because the only
+thing we know for certain is that nothing is running it now. This is the failure the
+download queue still has: an in-memory `Map`, so a restart loses every task with no
+record it was ever asked for.
+
+Deduplication is a partial unique index on `(kind, scope)` over unfinished jobs
+rather than a check-then-insert, so two callers racing cannot both pass the check.
+The list's ETag signature is derived from what a client renders, never a counter,
+consistent with "every status signal is content-derived".
+
+### The background scan is not a job — *settled 2026-08-28*
+
+[scheduler.md](scheduler.md) §3 is explicit: *"Scan running, nobody asked →
+Nothing. No spinner, no ambient seam, no count."* A rotation that appeared in
+`GET /api/jobs` would be permanently `running` and every client would draw a
+permanent scan, which is how a background process becomes anxiety. So the rolling
+scan reports **freshness** — when each series was last looked at, whether the
+rotation is keeping up — and freshness is the pencil layer applied to time.
+
+A scan the *user* asked for is a job, runs as a foreground errand with no duty cap,
+and earns a percentage, because asking made it theirs.
+
+### The floor deadline is 6 hours — *proposed; the row is the owner's*
+
+`scheduler.md` §1 gives the whole table and says plainly that every row is
+defensible. 6 h is implemented as the default (`SCAN_FLOOR_DEADLINE_MS`), and the
+honest copy in §4 names that number out loud — so changing it means changing that
+sentence in the same edit. Likewise §2's 50% idle duty: it is one worker, so the
+ceiling is one core plus its share of the FUSE queue, but nobody has watched it.
+
 ### The hash tree, not a journal
 
 See [sync.md](sync.md). Decided on scoping: a journal cannot be selective, and
@@ -242,7 +327,8 @@ roughly one per year on a twenty-series shelf.
 | No home for `readstate.db` | Read state surviving a container recreate |
 | No read-state import/export | Migration fidelity from Tachiyomi backups; cross-device |
 | No delete endpoints | Removing anything adoption brought in |
-| No scan scheduler | Deep scans for user-managed libraries |
+| Nothing detects a page that is not an image | 19 `.jpg` files in this library are HTML error pages (R-38); page count is not proof of a good download |
+| Deep and verify tiers are still manual | The rolling scan runs the quick tier only (R-36) |
 | `listDirs` stats every entry | ~1,700 serial FUSE round trips per scan |
 | Slugs are de-duplicated per scan, not pinned | A colliding directory's `-2` suffix moves if the directory it collided with is removed |
 | Far and near lanes share no vocabulary | The API cannot express the distinction the UI needs |

@@ -161,6 +161,13 @@ function toMangaMeta(s: SeriesMeta): MangaMeta {
 let mangaCache = new Map<string, MangaDetail>();
 let mangaByApiId = new Map<number, string>();
 let chapterByApiId = new Map<number, { mangaId: string; chapterId: string }>();
+// Keyed by *uid*, not apiId. The derived store keys artwork on a chapter's uid
+// and fingerprint (see src/art/store.ts), so serving a spine means resolving a
+// uid, and the Int-keyed tables above cannot answer that. Built in the same
+// pass rather than derived on demand: at the R-12 target a linear walk of the
+// cache per image request is a full-library scan per spine on a shelf.
+let mangaByUid = new Map<string, string>();
+let chapterByUid = new Map<string, { mangaId: string; chapterId: string }>();
 let lastScan = 0;
 // Monotonic scan counter. The tree cache keys on this rather than on lastScan:
 // two scans inside the same millisecond share a Date.now() value, which would
@@ -316,6 +323,8 @@ async function runScan(opts: { series?: string } = {}): Promise<void> {
   const newCache = new Map<string, MangaDetail>();
   const newMangaByApiId = new Map<number, string>();
   const newChapterByApiId = new Map<number, { mangaId: string; chapterId: string }>();
+  const newMangaByUid = new Map<string, string>();
+  const newChapterByUid = new Map<string, { mangaId: string; chapterId: string }>();
 
   // Carry over everything outside the scope, and reserve its ids so the series
   // being rescanned cannot be allocated an id another series already holds.
@@ -329,9 +338,11 @@ async function runScan(opts: { series?: string } = {}): Promise<void> {
       mangaIds.claim(m.apiId, m.uid);
       newCache.set(slug, m);
       newMangaByApiId.set(m.apiId, slug);
+      newMangaByUid.set(m.uid, slug);
       for (const c of m.chapters) {
         chapterIds.claim(c.apiId, c.uid);
         newChapterByApiId.set(c.apiId, { mangaId: slug, chapterId: c.id });
+        newChapterByUid.set(c.uid, { mangaId: slug, chapterId: c.id });
       }
     }
   }
@@ -415,6 +426,7 @@ async function runScan(opts: { series?: string } = {}): Promise<void> {
       chapters.push(chapter);
       progress.chaptersSeen++;
       newChapterByApiId.set(c.apiId, { mangaId: p.slug, chapterId: chapter.id });
+      newChapterByUid.set(cuid, { mangaId: p.slug, chapterId: chapter.id });
     }
 
     // Advance the stored schema version once every chapter carries a key.
@@ -479,6 +491,7 @@ async function runScan(opts: { series?: string } = {}): Promise<void> {
       series: meta,
     });
     newMangaByApiId.set(meta.apiId!, p.slug);
+    newMangaByUid.set(p.uid, p.slug);
     progress.seriesDone++;
 
     if (p.dirty) {
@@ -493,6 +506,8 @@ async function runScan(opts: { series?: string } = {}): Promise<void> {
   mangaCache = newCache;
   mangaByApiId = newMangaByApiId;
   chapterByApiId = newChapterByApiId;
+  mangaByUid = newMangaByUid;
+  chapterByUid = newChapterByUid;
   lastScan = Date.now();
   scanGeneration++;
   progress = {
@@ -525,6 +540,33 @@ export function getChapterByApiId(apiId: number): { manga: MangaDetail; chapter:
   const manga = mangaCache.get(ref.mangaId);
   const chapter = manga?.chapters.find((c) => c.id === ref.chapterId);
   return manga && chapter ? { manga, chapter } : undefined;
+}
+
+/**
+ * Resolve the identity of record, not the display alias.
+ *
+ * `uid` survives a rename (it is pinned in `paperbox.json`) whereas the slug is
+ * a display alias that moves when a colliding directory is added or removed.
+ * Anything that stores a key derived from a series or chapter -- the derived
+ * art store, a job's `scope` -- must key on the uid for that reason.
+ */
+export function getMangaByUid(uid: string): MangaDetail | undefined {
+  const slug = mangaByUid.get(uid);
+  return slug ? mangaCache.get(slug) : undefined;
+}
+
+export function getChapterByUid(uid: string): { manga: MangaDetail; chapter: Chapter } | undefined {
+  const ref = chapterByUid.get(uid);
+  if (!ref) return undefined;
+  const manga = mangaCache.get(ref.mangaId);
+  const chapter = manga?.chapters.find((c) => c.id === ref.chapterId);
+  return manga && chapter ? { manga, chapter } : undefined;
+}
+
+/** Absolute paths of a chapter's pages, in reading order. */
+export async function getChapterPagePaths(manga: MangaDetail, chapter: Chapter): Promise<string[]> {
+  const dir = join(mangaDir(), manga.dir, chapter.dir);
+  return (await getPageFiles(dir)).map((f) => join(dir, f));
 }
 
 export async function getPages(mangaId: string, chapterId: string): Promise<Page[]> {

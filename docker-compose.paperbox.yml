@@ -7,9 +7,26 @@ services:
       - TZ=Europe/Paris
       - MANGA_DIR=/manga
       - SCRIPTS_DIR=/scripts
+      # Derived artefacts -- covers, spine art, dominant colour -- and the job
+      # queue that produces them. Everything under it is regenerable from the
+      # library, so it is safe to delete entirely; see paperbox/src/art/store.ts.
+      - DERIVED_DIR=/data/derived
     volumes:
       - ${MEDIA_DIR}/Manga-new:/manga
       - ${CONFIG_DIR}/paperbox/scripts:/scripts
+      # On Temp, deliberately, and not under CONFIG_DIR. The weekly rclone sweep
+      # covers Config, Paperless, Nextcloud, PersonalMedia and HQ, so anything
+      # under ${CONFIG_DIR} is replicated to Google Drive every Sunday. This
+      # store projects to ~8 GB of regenerable WebP at the design's target
+      # scale, and backing up a cache is cost with no recovery value: the
+      # correct restore for a lost derived store is to derive it again.
+      #
+      # Contrast the read-state database, which is the one thing in Paperbox
+      # that cannot be rebuilt by rescanning and therefore must NOT live here.
+      # It has no volume yet on purpose: paperbox/docs/decisions.md flags that
+      # its path needs somebody to confirm the destination is actually swept,
+      # by listing it rather than by reading the script meant to write to it.
+      - ${LARGE_TEMP_DIR}/paperbox/derived:/data/derived
     labels:
       plugsy.name: "Paperbox"
       plugsy.category: "Media"

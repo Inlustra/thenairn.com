@@ -13,11 +13,12 @@ comic" and ended somewhere quite different.
 | [rules.md](rules.md) | Selective sync — what a client keeps and how it says so |
 | [ui.md](ui.md) | Interface decisions — the state language, failure, the shelf, client boundaries |
 | [decisions.md](decisions.md) | What was decided, what was rejected, and what is still open |
+| [scheduler.md](scheduler.md) | The rolling partial scan — lanes, budget, and what the user is told |
 | [register.md](register.md) | Every load-bearing claim, with its status: measured, projected, assumed, decided, disproved |
 
 ## Status at a glance
 
-**Built, tested, deployed** — 159 tests passing.
+**Built, tested, deployed** — 267 tests passing.
 
 - Path-derived identity with a metadata override
 - The sync hash tree and a one-request diff endpoint
@@ -27,12 +28,18 @@ comic" and ended somewhere quite different.
 - A consolidated status envelope keyed on content signals
 - Read state, keyed `(reader, chapter)`, written and read by the compat API
 - One selective-sync rule: keep the N most recent unread chapters of a series
+- A derived-artefact store outside the library: covers, spine art and per-chapter
+  dominant colour, content-addressed so a stale artefact cannot be addressed
+- A persistent job queue with progress, cancellation and an ETag'd `/api/jobs`
+- The rolling partial scan from [scheduler.md](scheduler.md), under one
+  concurrency and duty budget shared with the artwork workers
 
 **Designed but not built.**
 
 - Selective sync rules beyond the one rolling window — see [rules.md](rules.md)
 - Registry binding and series matching — see [upstream.md](upstream.md)
-- Scan scheduling and the deep/verify tiers — see [sync.md](sync.md)
+- The deep and verify scan tiers — the rolling scan runs the quick tier only,
+  see [scheduler.md](scheduler.md)
 
 **Known gaps that block whole groups of users.**
 
@@ -41,6 +48,9 @@ comic" and ended somewhere quite different.
   here that cannot be rebuilt by rescanning — is not persisted unless someone sets
   `READSTATE_DB` by hand
 - No delete endpoints for a chapter or a series
+- Nothing detects a page file that is not an image. 19 `.jpg` files in this library
+  are HTML error pages a download wrote as artwork (R-38), and page count does not
+  reveal it
 
 ## The incident these documents came from
 

@@ -4,6 +4,8 @@ import { runModule, type MangaInfo } from "../lua/engine";
 import { getScript, getScriptByName } from "../lua/scripts";
 import { getMangaDir, scan } from "../scanner";
 import { loadMeta, saveMeta, recordProvenance, withSeriesLock, type ChapterMeta } from "../metadata";
+import { adoptCoverBytes } from "../art";
+import { pathUid } from "../ids";
 import { safeSegment, assertDirectChild } from "../safepath";
 import { deriveChapterKey } from "../chapters";
 
@@ -488,6 +490,21 @@ async function downloadPageWithRetry(
 
 /**
  * Save full FMD2 metadata for a manga series: cover image, manga.json, and source-info.json.
+ *
+ * The cover no longer lands in the user's library. It used to be written as
+ * `cover<ext>` inside `seriesDir`, and the extension came from the *remote*
+ * url -- so fetching a `.png` cover for a series where the user had already put
+ * their own `cover.png` overwrote their file, in place, with no backup and no
+ * record that it had happened. That is the opposite of `ui.md`'s ownership
+ * promise, and it was two bugs rather than one: a generated file inside a
+ * curated directory, and a silent overwrite of a file we did not create.
+ *
+ * It now goes to the derived store, keyed on the series uid and the source url
+ * (`src/art/cover.ts`), and is served from `/api/art/cover/:seriesUid`.
+ *
+ * Covers already on disk are left exactly where they are and adopted as input.
+ * Whether they should eventually be removed is the owner's call and is recorded
+ * as open in `docs/decisions.md`.
  */
 export interface SaveMetadataResult {
   coverSaved: boolean;
@@ -503,8 +520,6 @@ export async function saveMetadata(
 ): Promise<SaveMetadataResult> {
   const result: SaveMetadataResult = { coverSaved: false };
 
-  // Download cover image
-  let coverFilename = "";
   if (info.coverLink) {
     try {
       const coverResp = await fetch(info.coverLink, {
@@ -514,12 +529,20 @@ export async function saveMetadata(
         },
       });
       if (coverResp.ok) {
-        const ext = getExtFromUrl(info.coverLink);
-        coverFilename = `cover${ext}`;
-        const buffer = await coverResp.arrayBuffer();
-        await Bun.write(join(seriesDir, coverFilename), buffer);
-        console.log(`[metadata]   Saved cover: ${coverFilename}`);
-        result.coverSaved = true;
+        const buffer = new Uint8Array(await coverResp.arrayBuffer());
+        // The uid of record, not a name: the sidecar pins it when it must
+        // survive a rename, and falls back to the same path derivation the
+        // scanner uses. Deriving it here from `basename` alone would give the
+        // store a different key from the one the serving route computes.
+        const { meta } = await loadMeta(seriesDir).catch(() => ({ meta: { uid: undefined } as any }));
+        const uid: string = meta?.uid ?? pathUid(basename(seriesDir));
+        const stored = await adoptCoverBytes(uid, info.coverLink, buffer);
+        if (stored.key) {
+          console.log(`[metadata]   Cover -> derived store ${stored.key}${stored.cached ? " (already held)" : ""}`);
+          result.coverSaved = true;
+        } else {
+          result.coverError = "cover could not be decoded";
+        }
       } else {
         result.coverError = `HTTP ${coverResp.status}`;
       }
@@ -539,7 +562,11 @@ export async function saveMetadata(
     sourceId: sourceId || "",
     tags: info.genres ? info.genres.split(",").map((g: string) => g.trim()).filter(Boolean) : [],
     status: info.status || "",
-    cover: coverFilename || info.coverLink || "",
+    // The remote url, never a filename: nothing writes a cover file into the
+    // series directory any more, so naming one here would point the scanner at
+    // a path that does not exist. A `cover.*` the user already has is still
+    // found by the scanner's own directory search, which is unchanged.
+    cover: info.coverLink || "",
   };
   await writeFile(join(seriesDir, "manga.json"), JSON.stringify(meta, null, 2));
   console.log(`[metadata]   Saved metadata for: ${meta.title}`);

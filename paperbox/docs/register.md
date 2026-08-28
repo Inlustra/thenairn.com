@@ -37,9 +37,14 @@ the entry is wrong. Spike the wide ones before building on them, not after.
 Ordered by blast radius, not by effort. Each is an untested bet that other work is
 already resting on.
 
-1. **R-09** — that saliency cropping produces usable spines on real artwork — and,
-   separately, that extraction is affordable (R-22).
+1. **R-09** — that saliency cropping produces usable spines on real artwork. The
+   colour half is measured and fixed; the "does it look right" half needs a person
+   and one command (see the entry).
 2. **R-23** — that the FMD2 module feed is a dependency we can carry.
+
+**R-22 came off this list on 2026-08-28**, measured against the settled extraction
+method rather than a cheaper stand-in. The answer is a number and a boundary: 740 ms
+per chapter, fine per series, too much as a library-wide sweep. See Measured below.
 
 **R-11 came off this list on 2026-08-28**, half-measured. The half that was a
 question about a query is answered and moved to Measured below. The half that is a
@@ -120,6 +125,70 @@ R-12 target, not a distant one. *Evidence:* `bench/`, empty page files (the quic
 tier never opens a page; it does one readdir and one stat per chapter).
 *Blast radius:* wide — see R-30.
 
+**R-22 · Spine extraction costs 740 ms per chapter — cheap for a real library,
+unaffordable as an eager backfill at target**
+Measured 2026-08-28 with `bench/spine-cost.ts`, which benches `src/art/spine.ts`
+itself rather than a proxy for it, over 59 real chapters spread across all 12 series.
+The settled method is priced, not a cheaper substitute: saliency scored on a
+downscaled proxy of three candidate pages from inside the chapter, balloons reranked
+against, then the sliver cut from the original at native resolution.
+
+| | mean | p50 | p90 | p99 | max |
+|---|---:|---:|---:|---:|---:|
+| per chapter | **740 ms** | 623 | 1,669 | 1,857 | 1,857 |
+
+Split: **153.6 ms** per proxy decode × 3 candidates, plus **107.6 ms** for the
+native-resolution cut. Cost is therefore linear in the candidate count, and that
+count is the lever if anyone wants to trade quality of choice for time.
+
+| Scale | Work |
+|---|---|
+| Real library, 1,706 chapters | **21 minutes** of one core |
+| R-12 target, 710,000 chapters | **146 core-hours** |
+| Store at target | 10.7 KB/spine → **7.8 GB** |
+
+**The premise it was built on was wrong, but not by enough.** `architecture.md`
+recorded that shrink-on-load is unavailable — true of the container's *ImageMagick*,
+and not of `sharp`, which is libvips. But the saving is modest and not uniform:
+
+| format | proxy decode | native decode | saving |
+|---|---:|---:|---|
+| jpg (tall, 690×34,300) | 144 ms | 179 ms | 1.2× |
+| jpg (short) | 45 ms | 111 ms | 2.4× |
+| webp | 66 ms | 153 ms | 2.3× |
+| png | 208 ms | 130 ms | **0.6× — slower** |
+
+libvips has no shrink-on-load for PNG at all, so the proxy costs a full decode plus
+a reduction. It is kept regardless, because it also bounds memory: a 1080×15,122
+page is 49 MB of raw pixels and there are eight workers.
+
+**The tall pages are not the problem.** The tallest page found (690 × 34,300, 8.6 MB)
+costs 144 ms to proxy and 179 ms to decode natively — roughly 2× the median page, not
+10×. R-04's 46,564 px is a real constraint on *format policy*; it is not what makes
+extraction expensive. The expense is ordinary pages, in quantity.
+
+*Verdict:* **affordable per chapter, and per library; not affordable as an eager
+sweep at the R-12 target.** 146 core-hours under the 8% duty budget in
+`scheduler.md` is 76 days of wall clock. The degradation is therefore built in
+rather than proposed: artwork is derived lazily and by series, on demand and after
+a change, never as a library-wide backfill. See `decisions.md`, "Artwork is derived
+per series, never swept".
+
+*Evidence:* `bench/spine-cost.ts`, on this box, against `/mnt/user/Media/Manga-new`.
+*Blast radius:* medium — it sets whether the spine shelf can be the default view for
+a large library on first run. It cannot; it can be the default view for a library
+you are reading.
+
+**R-38 · 19 pages in this library are HTML error pages saved as `.jpg`**
+Found while measuring R-22: `Warhammer 40,000_ Exterminatus` and
+`Warhammer 40,000_ Marneus Calgar` contain `.jpg` files whose first bytes are
+`<!DOCTYPE ht`, 106 KB each, written 2023-07-19. A download saved a rate-limit or
+error page as artwork and reported success. *Evidence:* magic-byte check across the
+sampled pages, 2026-08-28. *Blast radius:* narrow for the artwork pipeline, which
+treats an undecodable page as "no spine" and moves on — but it is a live instance of
+`decisions.md`'s "work that reports success while producing nothing", and it means
+**page count is not proof of a good download**. Nothing currently detects it.
+
 **R-11 · A rolling-window rule is computable, and it is cheap**
 Measured 2026-08-28 with `bench/read-window.ts`, against `src/readstate/` — a SQLite
 store keyed `(reader, series, chapter)` and a resolver for one rule, "keep the N most
@@ -192,11 +261,45 @@ register's job is to make that visible rather than let both sit in prose.
 behind wherever the index lands.
 
 **R-09 · Saliency cropping yields usable spines**
-The spine shelf assumes a narrow vertical sliver chosen by saliency, with balloons
-penalised, reads well across real artwork. Early crops came back noticeably
-desaturated and were never resolved. *Settles it:* generate spines for 100 chapters
-across 5 series and look at them. *Blast radius:* medium — it is one view, but the
-shelf is currently proposed as the default.
+Still assumed, and deliberately still here: the half that needs a person has not been
+done. The half that is a colour bug has been measured and is no longer a mystery.
+
+**The desaturation defect is located.** `bench/spine-colour.ts` eliminates two
+mechanisms and finds the third:
+
+| Candidate mechanism | Measured 2026-08-28 | Verdict |
+|---|---|---|
+| Colour profile / colourspace on decode | **0 of 60** sampled pages carry an embedded ICC profile (48 srgb/uchar, 12 rgb16/ushort); decoding with and without an explicit `toColourspace("srgb")` agrees to four decimal places of mean chroma on every one | not the cause |
+| Cutting from a downscaled raster, where the reduction averages pixels | sliver chroma 0.0628 native vs 0.0628 from a 200 px proxy — ratio **1.000** | not the cause |
+| **Deriving the tint as a mean colour** | mean-derived tint chroma **0.0558** vs mode-derived **0.1882** — the mean is **3.4× less chromatic** | **this is it** |
+
+A mean over comic artwork converges on mud, and a foot band painted in it is exactly
+"noticeably desaturated". `src/art/spine.ts` derives the tint by histogram mode with
+paper and ink excluded, and `extractSpine` now reports source and output chroma on
+every extraction so the defect cannot return silently — measured at **0.992** output
+over source across 59 real chapters, i.e. the encode is faithful.
+
+**The balloon penalty is partly effective, and the gap is now named.** 24 real
+chapters were dumped and the first twelve looked at:
+
+| Mask | Text-heavy crops in 12 |
+|---|---|
+| flat near-white only | **2** — white lettering on flat black caption plates, which score high on edge energy and paid no penalty at all |
+| flat near-white **or** near-black | **2** — the black-plate ones fixed; text over a mid-green panel and white text over a blue sky gradient are not |
+
+So the flat-region proxy catches text on flat grounds in either polarity and cannot
+catch text on coloured grounds. The two-sided mask ships because a flat black
+caption plate is unambiguously not artwork, but it is a partial answer, not the
+answer. Closing the rest needs real text detection (stroke-width transform, MSER),
+which is a design decision rather than a tweak.
+
+**What is still open, and cannot be closed by a benchmark:** whether the crops *look*
+right, across 100 of them, to a person. *Settles it:*
+`bun run bench/spine-cost.ts --chapters 100 --dump out/` writes 100 real spines and
+their per-crop diagnostics; somebody looks at them. That is now a one-command errand
+rather than a project, which is the only part of this entry an implementation could
+change. *Blast radius:* medium — it is one view, but the shelf is currently proposed
+as the default.
 
 **R-10 · One hiatus-return notification per year, per twenty-series shelf**
 Modelled, not observed. It is the sole justification for the only loud state in the
@@ -216,15 +319,6 @@ digest **once, at download commit, while the bytes are already in hand** - never
 scanning. That option only exists if it is decided before the download path is
 rewritten. *Blast radius:* medium, but the window closes early.
 
-**R-22 · Spine extraction is affordable at scale**
-Distinct from R-09, which is about whether spines *look* right. `architecture.md`
-records that shrink-on-load is unavailable in this container's ImageMagick, so full
-decode is the floor - and R-04 puts the tallest page at 46,564 px. At the document's
-own 710,000-chapter target that is 710k full decodes across FUSE, plus a derived
-store that no document currently names. *Settles it:* time decode + colour extraction
-over 100 real pages including the tall ones, and multiply. *Blast radius:* medium -
-falls back to dominant-colour-only, extracted lazily on first view.
-
 **R-23 · The FMD2 module feed is a dependency we can carry**
 `pullScripts()` fetches Lua modules from `dazedcat19/FMD2` on GitHub at every boot and
 executes them in-process, with no ref, tag or commit pin and no staleness signal
@@ -234,6 +328,59 @@ ComicInfo - and it is the component most likely to break weekly.
 *Settles it:* passively record, over four weeks, how many modules break and how we
 found out. *If wrong:* modules need pinning, a local override path, and a "this
 source's module is out of date" condition distinct from "source down".
+
+**R-31 · The series-directory mtime gate is sound on shfs**
+*Blast radius: very wide — it is the one measurement that could make most of
+`scheduler.md` unnecessary.* If a series directory's mtime reliably moves when a
+chapter directory is added, the floor pass collapses from 710,000 chapter probes to
+5,000 directory stats, ~400× cheaper. The doubt is structural: shfs is a union over
+several disks and it is unknown which branch's mtime it presents for a directory
+that exists on more than one — a false negative in the one direction `sync.md` says
+a gate may never be wrong in. *Settles it:* see `scheduler.md` §5. **Not used by the
+implementation**: `src/jobs/scheduler.ts` does the full per-series pass, so the gate
+can only ever be added later as an accelerator.
+
+**R-32 · A scan at concurrency 8 does not measurably degrade page-serve latency**
+*Blast radius: wide — the entire budget model.* `src/jobs/budget.ts` assumes scanner
+and reader are additive on the FUSE queue. If they contend non-linearly the budget
+must become a latency SLO with feedback control, which is a different scheduler.
+*Settles it:* `scheduler.md` §5.
+
+**R-33 · Hand-added chapters cluster in recently-read series**
+*Blast radius: medium — the sole justification for the hot and warm lanes.*
+`ScanScheduler` records `changesByLane` from day one precisely so this can be
+settled by looking rather than arguing. *If wrong:* delete the lanes and give the
+floor 100% of the budget — the worst case improves from 6.0 h to 3.0 h, which is the
+pleasant failure mode.
+
+**R-34 · Per-chapter scan cost holds at concurrency 8, not the bench's**
+*Blast radius: medium — every rotation period scales directly with it.* R-29's
+1.218 ms/chapter was measured at whatever concurrency `bench/scan-curve.ts` used;
+the scheduler runs 8. Same class of error as R-14 and R-30, flagged before being
+built on rather than after.
+
+**R-35 · Cold first scan is ~99 minutes at target**
+*Projected from R-29's cold column. Blast radius: medium — it sets the adoption
+experience.* Never run above 142,040 chapters, and cold cost is the one that could
+be superlinear.
+
+**R-36 · A weekly deep floor is affordable at 0.23% duty**
+*Projected from R-01 × 24M files. Blast radius: narrow — if wrong, deep stays
+manual, which is where it is today.* **Not implemented**: the scheduler runs the
+quick tier only.
+
+**R-37 · The scheduler can tell idle from a sleeping client**
+*Blast radius: narrow by construction — the idle detector is an accelerator, so
+being wrong costs a slower scan and never a missed deadline.* Recorded so the
+narrowness is deliberate rather than lucky; `budget.test.ts` asserts the accelerator
+property directly.
+
+**R-39 · A duty cycle measured over wall time bounds the mount as intended**
+*Assumed. Blast radius: medium.* `Budget` sleeps between units so that scanner and
+worker wall time stays under 8% of a 5-minute window. Nothing has yet watched the
+FUSE queue while it runs, so "8% of wall time" is assumed to mean "roughly 8% of the
+mount", which is the same shape of inference as R-14 and R-30 — a rate borrowed from
+one measurement and applied to another. *Settles it:* falls out of R-32.
 
 **R-24 · The rule sentence resolves fast enough to render**
 "Right now this means ch. 297-306 - 74 MB" is recomputed on every render of every rule
@@ -263,8 +410,11 @@ reason recorded here.
     the cache and the index move off FUSE.
   - **R-02 becomes mandatory, not optional.** No scan-cadence claim can be written
     until the synthetic-tree spike has run.
-  - **R-22 stops being hypothetical.** 710k full decodes needs a derived-image store
-    with an invalidation rule, and no document currently names one.
+  - **R-22 stops being hypothetical.** 710k decodes needs a derived-image store with
+    an invalidation rule. *Built 2026-08-28* — `src/art/store.ts`, content-addressed
+    on `(ART_VERSION, kind, uid, fingerprint)`, outside the library, safe to delete.
+    The measurement it forced (R-22, now Measured) is what ruled out ever deriving
+    artwork for the whole catalogue at once.
   - **Registry polling becomes a scheduler with a budget**, not a "polled nightly"
     chip: 5,000 series against rate-limited providers needs staleness tiering (a
     completed series does not need nightly polling) and a first-run backfill plan.
