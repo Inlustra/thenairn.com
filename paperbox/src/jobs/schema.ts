@@ -14,7 +14,7 @@
  * -------------------------------------------------------------------------
  * Why the file may have a default path, when readstate.db may not
  * -------------------------------------------------------------------------
- * `src/readstate/schema.ts` refuses to invent a location, because read state
+ * read state refused to invent a location, because it
  * cannot be rebuilt by rescanning and a default would be a path that
  * `--force-recreate` deletes. Every row in *this* table describes work that can
  * simply be asked for again, over artefacts that are themselves regenerable, so

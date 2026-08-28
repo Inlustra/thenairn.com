@@ -13,7 +13,6 @@ import { artRoutes } from "./routes/art";
 import { jobRoutes } from "./routes/jobs";
 import { scan } from "./scanner";
 import { pullScripts, scanScripts } from "./lua/scripts";
-import { initReadState } from "./readstate";
 import { startJobs, backfillArt, getBudget } from "./jobs";
 
 const PORT = process.env.PORT || 3000;
@@ -61,7 +60,6 @@ async function init() {
   // Opened before the scan: read state is the one thing here that cannot be
   // rebuilt by rescanning, so a failure to open it should be visible in the
   // log above everything else, not buried after a minute of scanning.
-  initReadState();
 
   await scan();
 

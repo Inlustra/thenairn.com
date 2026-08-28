@@ -29,7 +29,9 @@ never silently pretends adapter data is server fact.
 
 ## 1. Read state — `ReadStateApi`
 
-**Server work is underway in `src/readstate/`** (store, schema, resolver,
+**Not being built. Read state is a client concern — see `decisions.md`.** The shape below is kept only as a record of what a server-side version would have needed.
+
+~~Server work was underway in `src/readstate/`~~ (store, schema, resolver,
 Tachiyomi import). The routes are not mounted yet.
 
 Adapter behaviour: localStorage, furthest-wins locally. Honest for one

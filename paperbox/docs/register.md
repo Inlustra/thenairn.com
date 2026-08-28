@@ -190,7 +190,10 @@ treats an undecodable page as "no spine" and moves on — but it is a live insta
 **page count is not proof of a good download**. Nothing currently detects it.
 
 **R-11 · A rolling-window rule is computable, and it is cheap**
-Measured 2026-08-28 with `bench/read-window.ts`, against `src/readstate/` — a SQLite
+*Superseded 2026-08-28: the measurement stands, the feature was removed. Read
+state is not a server concern — see `decisions.md`. Kept because the number is
+still the answer if the question returns with an identity model behind it.*
+Measured 2026-08-28 with `bench/read-window.ts`, against `src/readstate/` (both since deleted) — a SQLite
 store keyed `(reader, series, chapter)` and a resolver for one rule, "keep the N most
 recent unread chapters of series X". Until it existed the rule could not be computed
 at all: read state was accepted and discarded.
@@ -205,7 +208,7 @@ A second run reproduced every figure within about 10% (0.181 / 0.442, 0.153 / 0.
 figures, not three.
 
 A 416× larger catalogue does not make one rule slower, because the rule reads one
-indexed range and sorts one series. `src/readstate/scale.test.ts` holds it to that by
+indexed range and sorts one series. `src/readstate/scale.test.ts` held it to that by
 asserting the query plan is a `SEARCH` and not a table scan, so a later index change
 cannot quietly turn a per-series cost into a per-catalogue one. Enumerating a
 series' chapters is separate and is R-06's problem, not the rule's: 2.17 ms/series

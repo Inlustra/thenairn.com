@@ -65,7 +65,11 @@ abstract and therefore unpredictable. *"This means 47 chapters, 1.2 GB"* is
 something a person can reason about. That is the difference between a settings
 screen and a control.
 
-**Rolling windows need read state.** *Built 2026-08-28 — `src/readstate/`.*
+**Rolling windows need read state, and the server does not have it.** Built and
+then removed on 2026-08-28 (see `decisions.md`): tracking a reading position
+server-side needs a user model, which needs auth. So a rule phrased in terms of
+*unread* cannot be evaluated here. Rules that speak of recency, count or size
+still can.
 `updateChapter` used to accept a read position and throw it away, which made "keep
 10 unread" not merely untested but incomputable. It is now stored, keyed
 `(reader, series, chapter)`, and one rule is implemented: keep the N most recent

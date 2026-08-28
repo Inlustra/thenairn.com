@@ -19,7 +19,7 @@
  * never data. Nothing here is a source of truth, nothing here is the only copy
  * of anything, and the store is rebuilt by asking for a picture that is missing.
  * That is why `DERIVED_DIR` may have a default at all, and why `READSTATE_DB`
- * (see `src/readstate/schema.ts`) may not: read state cannot be recomputed.
+ * may not: data that cannot be recomputed needs a deliberate home.
  *
  * **2. A stale artefact cannot be served, because it cannot be addressed.**
  * The key is a digest of every input that determines the pixels -- the

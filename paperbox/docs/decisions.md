@@ -131,7 +131,7 @@ after one chapter moved costs one extraction and N `stat`s, so the worker needs 
 
 ### Background work is a persistent queue — *settled 2026-08-28*
 
-`src/jobs/` — SQLite, in the same shape as `src/readstate/`. Jobs survive a restart;
+`src/jobs/` — SQLite. Jobs survive a restart;
 one that was *running* comes back `queued`, keeping its progress, because the only
 thing we know for certain is that nothing is running it now. This is the failure the
 download queue still has: an in-memory `Map`, so a restart loses every task with no
@@ -161,6 +161,39 @@ defensible. 6 h is implemented as the default (`SCAN_FLOOR_DEADLINE_MS`), and th
 honest copy in §4 names that number out loud — so changing it means changing that
 sentence in the same edit. Likewise §2's 50% idle duty: it is one worker, so the
 ceiling is one core plus its share of the FUSE queue, but nobody has watched it.
+
+### Read state is not a server concern
+
+Settled 2026-08-28, and it reverses a decision taken the same day. A SQLite
+store keyed `(reader, chapter)` was built, wired into both compat surfaces, and
+measured (a rolling-window rule resolves in ~0.15 ms at the 710,000-chapter
+target). It has been removed.
+
+**The reasoning is about the want, not the cost.** Read state was only ever
+needed so that a rule like "keep 10 unread" could be evaluated, and so that
+progress could follow a person across devices. Both of those need to know *which
+person*, which needs a user model, which needs auth. Building an accounts system
+inside a single-user server is a large, permanent tax to reach a small feature.
+
+And the want underneath was never really read state. It surfaced as "I tried to
+share my library with someone and couldn't" — an **identity** problem. AT
+Protocol was assessed as a way to get identity without operating an accounts
+system; the identity half is shipped and would fit, but the private-data half
+("Atproto Spaces", announced 2026-08-20) is explicitly alpha and unencrypted, so
+nothing there is worth building on yet. Revisit when identity is genuinely
+wanted, not as a side effect of wanting a reading position.
+
+**What the compat surfaces do now:** accept progress and ignore it. Every
+chapter reports unread. The clients that have their own sync (Paperback, Mihon,
+iCloud on iOS) keep using it, and nothing here pretends to be a source of truth
+it cannot honour.
+
+**What this costs, stated plainly:**
+
+- Selective-sync rules phrased in terms of *unread* cannot be evaluated
+  server-side. See [rules.md](rules.md).
+- The scan scheduler's hot lane loses its read-recency signal and now leans on
+  recent *change* alone — a weaker predictor of what will change next.
 
 ### The hash tree, not a journal
 
@@ -275,37 +308,20 @@ What it needs is a named host path in `docker-compose.paperbox.yml`, and somebod
 to confirm that path is actually swept — by listing the backup destination, not by
 reading the script that is supposed to write to it.
 
-### Read state — persisted 2026-08-28, for the compat API only
+### Read state — built, then removed, same day
 
-Was: accepted and discarded, a blocker that had surfaced three separate times.
-`src/readstate/` now stores it, keyed `(reader, series, chapter)`, and the
-Paperback/Suwayomi compat API both writes and reads it — that surface is the only
-place read state exists, and it previously reported `isRead: false` and
-`unreadCount == chapterCount` unconditionally while answering `success` to every
-mutation.
+Persisted on 2026-08-28 and removed on 2026-08-28. The full reasoning is under
+"Read state is not a server concern" above; this entry survives only so the
+reversal is visible rather than looking like it never happened.
 
-Settled with it, and worth not re-deriving:
-
-- **Keyed by reader from the first write**, though one reader ships and there is no
-  auth. A household's position is `max(everyone)`, which is computable from
-  per-reader rows; per-reader rows are not computable from the collapse, and the
-  compat mutations carry no identity at all, so the information needed to split it
-  later is never written down. One TEXT column now against a guess later.
-- **Three states, not two.** A part-read chapter is held *outside* the window's
-  quota, so "keep 10 unread" holds 10 or 11. Counting part-read as unread makes the
-  window churn as you open a chapter; counting it as read makes the chapter under
-  your finger an eviction candidate.
-- **Merge is furthest-wins on position**, with an `epoch` for deliberate resets, and
-  the read flag is two max-merged timestamps. No HLC. Max-merge is commutative,
-  associative and idempotent, so reconnect order cannot change the result;
-  last-write-wins fails by silently rewinding a reader's place, furthest-wins by
-  making them scroll back a few pages.
-- **The window defaults to `next`, not `latest`.** Comics are read in order, and
-  `latest` hands a reader 60 chapters behind ten they cannot open. Both are
-  implemented and they agree exactly once the reader is caught up.
-
-Still open: migration fidelity from Tachiyomi backups, and cross-device reading —
-neither has a path in or out yet.
+Four sub-decisions were made while it existed, and they are worth keeping in
+case the question returns behind a real identity model: key by reader from the
+first write (a household position is `max(everyone)`, and per-reader rows are
+not recoverable from the collapse); three states rather than two, with a
+part-read chapter held outside the quota; furthest-wins merge with an epoch for
+deliberate resets, because last-write-wins fails by silently rewinding a
+reader's place; and a window that defaults to the *next* unread rather than the
+most recent, since comics are read in order.
 
 ### The provider abstraction
 

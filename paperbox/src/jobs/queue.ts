@@ -1,7 +1,7 @@
 /**
  * The persistent job queue.
  *
- * `bun:sqlite`, in the same shape as `src/readstate/store.ts`: schema.ts holds
+ * `bun:sqlite`, with schema.ts holding
  * the reasoning, this file is the mechanism.
  */
 import { Database } from "bun:sqlite";

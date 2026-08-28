@@ -44,9 +44,8 @@ comic" and ended somewhere quite different.
 **Known gaps that block whole groups of users.**
 
 - No archive (CBZ) support, which excludes every Kavita and Komga library
-- `readstate.db` has no home in the compose file, so read state — the one thing
-  here that cannot be rebuilt by rescanning — is not persisted unless someone sets
-  `READSTATE_DB` by hand
+- Read state is deliberately absent server-side; every chapter reports unread.
+  Removed 2026-08-28 — see `decisions.md`.
 - No delete endpoints for a chapter or a series
 - Nothing detects a page file that is not an image. 19 `.jpg` files in this library
   are HTML error pages a download wrote as artwork (R-38), and page count does not

@@ -13,7 +13,6 @@ import { ScanScheduler } from "./scheduler";
 import { artWorker, coverWorker, makeScanWorker } from "./workers";
 import { derivedDir, spineKey, has as hasArt } from "../art";
 import { getScanProgress, getMangaList, getMangaByUid } from "../scanner";
-import { getReadState } from "../readstate";
 
 let queue: JobQueue | null = null;
 let budget: Budget | null = null;
@@ -137,15 +136,10 @@ export function startJobs(opts: StartOptions = {}): JobQueue | null {
         queue?.enqueue({ kind: "art", scope: uid, label: title });
         runner?.wake();
       },
-      readRecency: (uid) => {
-        const store = getReadState();
-        if (!store) return null;
-        try {
-          return store.lastReadAt?.(uid) ?? null;
-        } catch {
-          return null;
-        }
-      },
+      // readRecency is gone with server-side read state (removed 2026-08-28).
+      // The hot lane now leans on recent *change* rather than recent reading,
+      // which is a weaker signal for "what will change next" -- worth revisiting
+      // if the rotation starts missing new chapters in series being read.
     });
     scheduler.start();
     console.log(
