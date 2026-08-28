@@ -11,8 +11,8 @@ import { Budget } from "./budget";
 import { JobRunner } from "./runner";
 import { ScanScheduler } from "./scheduler";
 import { artWorker, coverWorker, makeScanWorker } from "./workers";
-import { derivedDir } from "../art";
-import { getScanProgress, getMangaList } from "../scanner";
+import { derivedDir, spineKey, has as hasArt } from "../art";
+import { getScanProgress, getMangaList, getMangaByUid } from "../scanner";
 import { getReadState } from "../readstate";
 
 let queue: JobQueue | null = null;
@@ -57,6 +57,45 @@ export interface StartOptions {
   scheduler?: boolean;
 }
 
+
+/**
+ * Audit every series for missing artwork, once, and queue what is absent.
+ *
+ * The rotation was doing this discovery, and that was wrong: `intervalMs` is
+ * `deadline / seriesCount`, so on a twelve-series library the rotation visits
+ * one series every thirty minutes and takes the full six-hour deadline just to
+ * NOTICE that twelve series have no spines. That paces discovery at
+ * extraction's cost, and the two are nothing alike -- `needsArt` is two stats
+ * per series (24 for this library, ~10k and under a second at the R-12 target),
+ * while cutting a spine is ~740 ms per chapter.
+ *
+ * So discovery runs eagerly and in full; the queue and the duty budget still
+ * pace the extraction, which is the part that is actually expensive. Once a
+ * series has its artwork this settles to two stats and no enqueue.
+ */
+export async function backfillArt(): Promise<number> {
+  const q = queue;
+  if (!q) return 0;
+  let queued = 0;
+  for (const m of getMangaList()) {
+    const uid = m.uid;
+    if (!uid) continue;
+    try {
+      if (!(await needsArt(uid))) continue;
+    } catch {
+      continue; // an unreadable series is the scan's problem, not the art pass's
+    }
+    q.enqueue({ kind: "cover", scope: uid, label: m.title });
+    q.enqueue({ kind: "art", scope: uid, label: m.title });
+    queued++;
+  }
+  if (queued > 0) {
+    console.log(`[jobs] artwork missing for ${queued} series; queued`);
+    runner?.wake();
+  }
+  return queued;
+}
+
 export function startJobs(opts: StartOptions = {}): JobQueue | null {
   try {
     queue = new JobQueue(jobsDbPath());
@@ -83,6 +122,17 @@ export function startJobs(opts: StartOptions = {}): JobQueue | null {
       // a stat per unchanged one -- there is no "what changed" bookkeeping to
       // get wrong.
       onChange: (uid, title) => {
+        queue?.enqueue({ kind: "cover", scope: uid, label: title });
+        queue?.enqueue({ kind: "art", scope: uid, label: title });
+        runner?.wake();
+      },
+      // A visit still backstops the eager pass -- a series whose artwork was
+      // deleted, or whose extraction failed, is picked up next time round
+      // without waiting for its content to change. The eager `backfillArt()` is
+      // what makes a cold library derive in minutes rather than in a deadline.
+      onVisit: async (uid, title, _lane, changed) => {
+        if (changed) return; // onChange already queued it
+        if (!(await needsArt(uid))) return;
         queue?.enqueue({ kind: "cover", scope: uid, label: title });
         queue?.enqueue({ kind: "art", scope: uid, label: title });
         runner?.wake();
@@ -115,6 +165,26 @@ export async function stopJobs(): Promise<void> {
 }
 
 /** Enqueue and wake in one call, so an API request does not wait for a poll. */
+
+/**
+ * Has this series had its artwork derived yet?
+ *
+ * Checks the first and last chapter rather than all of them: one `stat` per
+ * series on a rotation that already costs a scan, against 313 for a full audit.
+ * First catches "never derived at all"; last catches a run that died part way
+ * through. Chapters appended since are covered by the change signature instead,
+ * which is what `onChange` is for.
+ */
+async function needsArt(uid: string): Promise<boolean> {
+  const manga = getMangaByUid(uid);
+  if (!manga || manga.chapters.length === 0) return false;
+  const ends = [manga.chapters[0]!, manga.chapters[manga.chapters.length - 1]!];
+  for (const c of ends) {
+    if (!(await hasArt("spine", spineKey(c.uid, c.fingerprint)))) return true;
+  }
+  return false;
+}
+
 export function enqueueNow(opts: Parameters<JobQueue["enqueue"]>[0]) {
   const q = queue;
   if (!q) return null;

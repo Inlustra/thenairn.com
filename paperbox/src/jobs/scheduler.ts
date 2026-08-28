@@ -90,6 +90,15 @@ export interface SchedulerOptions {
   floorDeadlineMs?: number;
   /** Called with the uid and title of a series whose content moved. */
   onChange?: (uid: string, title: string, lane: Lane) => void;
+  /**
+   * Called on EVERY visit, changed or not.
+   *
+   * `onChange` alone only ever fires for content that moves, so a library that
+   * already exists never derives anything -- which is exactly what happened:
+   * 12 series, 1,706 chapters, and not one spine, because nothing had changed
+   * since the workers were built. This is the backfill path.
+   */
+  onVisit?: (uid: string, title: string, lane: Lane, changed: boolean) => void | Promise<void>;
   /** Injected for tests. */
   now?: () => number;
   readRecency?: (uid: string) => number | null;
@@ -133,6 +142,7 @@ export class ScanScheduler {
   private loop: Promise<void> | null = null;
   readonly floorDeadlineMs: number;
   private onChange?: (uid: string, title: string, lane: Lane) => void;
+  private onVisit?: (uid: string, title: string, lane: Lane, changed: boolean) => void | Promise<void>;
   private now: () => number;
   private readRecency: (uid: string) => number | null;
   changesByLane: Record<Lane, number> = { floor: 0, hot: 0, warm: 0 };
@@ -141,6 +151,7 @@ export class ScanScheduler {
     this.floorDeadlineMs =
       opts.floorDeadlineMs ?? (Number(process.env.SCAN_FLOOR_DEADLINE_MS) || DEFAULT_FLOOR_DEADLINE_MS);
     this.onChange = opts.onChange;
+    this.onVisit = opts.onVisit;
     this.now = opts.now ?? (() => Date.now());
     this.readRecency = opts.readRecency ?? (() => null);
   }
@@ -266,6 +277,7 @@ export class ScanScheduler {
       this.changesByLane[lane]++;
       this.onChange?.(target.uid, target.title, lane);
     }
+    await this.onVisit?.(target.uid, target.title, lane, changed);
     return { lane, uid: target.uid, changed };
   }
 

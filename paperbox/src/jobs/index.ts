@@ -21,6 +21,7 @@ export {
   getScheduler,
   configureJobs,
   startJobs,
+  backfillArt,
   stopJobs,
   enqueueNow,
   jobsDbPath,

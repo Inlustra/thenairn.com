@@ -14,7 +14,7 @@ import { jobRoutes } from "./routes/jobs";
 import { scan } from "./scanner";
 import { pullScripts, scanScripts } from "./lua/scripts";
 import { initReadState } from "./readstate";
-import { startJobs, getBudget } from "./jobs";
+import { startJobs, backfillArt, getBudget } from "./jobs";
 
 const PORT = process.env.PORT || 3000;
 
@@ -69,6 +69,13 @@ async function init() {
   // workers both address series by uid, and nothing has a uid until something
   // has been scanned.
   startJobs();
+
+  // Artwork for content that already exists. Deliberately not left to the
+  // rotation: that paces one series per `deadline / seriesCount`, so a cold
+  // twelve-series library would take the full six-hour deadline merely to
+  // notice it has no spines. Discovery is two stats per series; only the
+  // extraction is expensive, and the queue still paces that.
+  void backfillArt().catch((e) => console.error("[jobs] artwork backfill failed", e));
 
   // Pull scripts if not already present, otherwise just scan
   try {
