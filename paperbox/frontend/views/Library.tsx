@@ -15,7 +15,7 @@ import type {
   JobsEnvelope,
 } from "../api/contract";
 import { coverArtUrl } from "../api/contract";
-import { derivedWorkFor, timeAgo, type DerivedWork } from "../lib";
+import { derivedWorkFor, type DerivedWork } from "../lib";
 import { InkBar, PlainBinding } from "../ui";
 
 interface SeriesCardData {
@@ -32,27 +32,25 @@ interface SeriesCardData {
   derived: DerivedWork;
 }
 
-/** The one caption under the title — the fact that decides the next tap. */
+/**
+ * The one caption under the title — the fact that decides the next tap.
+ * Housekeeping (artwork, covers) never captions a card unless a person
+ * is needed: the work shows up as the art itself arriving, not as a
+ * sentence about it.
+ */
 function caption(d: SeriesCardData): { text: string; tone: "quiet" | "pencil" | "amber" | "red" } {
   const { series, identity, queued, inking, failed, derived } = d;
-  if (failed) return { text: "A fetch needs you — see the workbench", tone: "red" };
+  if (failed) return { text: "Stopped — needs you in the workbench", tone: "red" };
   if (identity?.state === "contradicted")
-    return { text: "Identity needs a look", tone: "red" };
+    return { text: "Match looks wrong — take a look", tone: "red" };
   if (derived?.kind === "red")
-    return { text: "Art stopped — needs a look", tone: "red" };
+    return { text: "Artwork stopped — see the workbench", tone: "red" };
   if (identity?.state === "guess")
     return { text: "Best guess ready · confirm", tone: "pencil" };
   if (inking)
-    return { text: `Inking ${inking.name} · ${inking.done} of ${inking.total} pages`, tone: "pencil" };
-  if (queued > 0) return { text: `Queued · ${queued} chapters`, tone: "pencil" };
-  if (derived?.kind === "amber")
-    return { text: "Art didn't cut · tries again itself", tone: "amber" };
-  if (derived?.kind === "running")
-    return {
-      text: `Cutting art${derived.job.startedAt ? ` · started ${timeAgo(derived.job.startedAt)}` : ""}`,
-      tone: "pencil",
-    };
-  if (derived?.kind === "queued") return { text: "Art waiting its turn", tone: "pencil" };
+    return { text: `Getting ${inking.name} · ${inking.done} of ${inking.total} pages`, tone: "pencil" };
+  if (queued > 0)
+    return { text: `${queued} ${queued === 1 ? "chapter" : "chapters"} on the way`, tone: "pencil" };
   const latest = identity?.registry?.latestChapter ?? null;
   if (latest && latest > series.chapterCount)
     return { text: `${series.chapterCount} of ${latest} published`, tone: "quiet" };
@@ -61,7 +59,7 @@ function caption(d: SeriesCardData): { text: string; tone: "quiet" | "pencil" | 
   if (status === "complete" || status === "completed")
     return { text: `Complete · ${series.chapterCount}`, tone: "quiet" };
   if (identity?.state === "unconfigured" || identity?.state === "files-only")
-    return { text: `Files only · ${series.chapterCount} ${series.chapterCount === 1 ? "chapter" : "issues"}`, tone: "quiet" };
+    return { text: `Files only · ${series.chapterCount} ${series.chapterCount === 1 ? "chapter" : "chapters"}`, tone: "quiet" };
   return { text: `${series.chapterCount} chapters`, tone: "quiet" };
 }
 
@@ -186,10 +184,10 @@ export function LibraryView({
 
       {items === null ? null : sorted.length === 0 ? (
         <div className="empty">
-          <h2>An empty shelf is a good problem</h2>
+          <h2>Nothing on the shelf yet</h2>
           <p className="line line-quiet">
             Paperbox reads your files where they are — it never moves, renames, or rewrites them.
-            Scan your folders from the workbench, or find a series at a source and Get it.
+            Get a series from the workbench to begin.
           </p>
         </div>
       ) : (
@@ -206,7 +204,7 @@ export function LibraryView({
                       <span className="unread" aria-label={`${d.unread} unread`}>{d.unread}</span>
                     )}
                     {d.identity?.state === "contradicted" && (
-                      <span className="idmark" aria-label="Identity needs a look">?</span>
+                      <span className="idmark" aria-label="Match looks wrong">?</span>
                     )}
                   </div>
                   <InkBar

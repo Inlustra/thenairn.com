@@ -191,13 +191,13 @@ function IdentityLine({
     case "unconfigured":
       line = (
         <Line tone="quiet">
-          No connected registry knows this — {b.suggestedProvider} likely would, and it isn't
-          connected. <button className="linkish" onClick={() => setOpen(!open)}>options</button>
+          Not identified yet.{" "}
+          <button className="linkish" onClick={() => setOpen(!open)}>options</button>
         </Line>
       );
       break;
     case "files-only":
-      line = <Line tone="quiet">Files only — your word, kept.</Line>;
+      line = <Line tone="quiet">Files only — as you chose.</Line>;
       break;
     default:
       line = (
@@ -222,7 +222,7 @@ function IdentityLine({
           )}
           {b.state === "identified" && b.registry && (
             <p className="cap">
-              Bound to {b.registry.canonicalTitle} at {b.registry.provider} · card as of {b.registry.asOf}
+              Matched to {b.registry.canonicalTitle} at {b.registry.provider} · as of {b.registry.asOf}
             </p>
           )}
           <div className="id-verbs">
@@ -240,8 +240,8 @@ function IdentityLine({
               Keep files-only
             </button>
           </div>
-          {b.state === "unconfigured" && (
-            <p className="cap">Connecting a registry takes a free key, added in the workbench once providers land.</p>
+          {b.state === "unconfigured" && b.suggestedProvider && (
+            <p className="cap">{b.suggestedProvider} would likely know it — see Identity in the workbench.</p>
           )}
         </div>
       )}
@@ -352,7 +352,7 @@ export function SeriesView({
           chapters: want,
         });
         // The timescale, said once, at the ask. Never an estimate.
-        setGetNote(`Queued ${want.length} — fetching takes a while, no need to watch.`);
+        setGetNote(`Getting ${want.length} — it takes a while, no need to watch.`);
         refreshTasks();
       }
     } catch (e: any) {
@@ -418,29 +418,16 @@ export function SeriesView({
             <Line tone="pencil">Last looked at {lookedPhrase(fresh.lastLookedAt)}.</Line>
           )}
 
-          {/* Derived work, legible where the books are. The book is ink —
-              its face is what's pencil. Failure is told apart from waiting
-              here, not only in the workbench ledger. */}
+          {/* Artwork trouble, legible where the books are. Only failure
+              speaks — running work shows up as the art itself arriving,
+              and the raw error stays in the workbench. */}
           {derived?.kind === "red" && (
-            <NeedsYou verb="Look again" onVerb={() => api.scan.start().catch(() => {})}>
-              {derived.job.label} stopped
-              {derived.job.error ? ` — ${derived.job.error}` : ""}. Nothing already on your
-              shelf was touched.
+            <NeedsYou verb="Try again" onVerb={() => api.scan.start().catch(() => {})}>
+              Artwork stopped and needs a look. Nothing on your shelf was touched.
             </NeedsYou>
           )}
           {derived?.kind === "amber" && (
-            <Weather>
-              {derived.job.label} didn't finish — it will be tried again by itself.
-            </Weather>
-          )}
-          {derived?.kind === "running" && (
-            <Line tone="pencil">
-              {derived.job.label}
-              {derived.job.startedAt ? ` · started ${timeAgo(derived.job.startedAt)}` : ""}.
-            </Line>
-          )}
-          {derived?.kind === "queued" && (
-            <Line tone="pencil">Art for this series is waiting its turn.</Line>
+            <Weather>Artwork didn't finish — it tries again by itself.</Weather>
           )}
 
           {binding && <IdentityLine binding={binding} onChanged={load} />}
@@ -563,7 +550,7 @@ export function SeriesView({
                   )}
                   {r.glyph === "needs-you" && r.taskId && (
                     <NeedsYou verb="Retry" onVerb={() => api.downloads.retry(r.taskId!).then(refreshTasks)}>
-                      Stopped partway — what landed is kept. {r.error ?? ""}
+                      Stopped partway — what landed is kept.
                     </NeedsYou>
                   )}
                 </div>
@@ -585,13 +572,13 @@ export function SeriesView({
                     {p.glyph === "inking" && p.pagesTotal > 0
                       ? `${p.pagesDone} of ${p.pagesTotal} pages`
                       : p.glyph === "queued"
-                        ? "queued"
+                        ? "on its way"
                         : ""}
                   </span>
                 </div>
                 {p.glyph === "needs-you" && (
                   <NeedsYou verb="Retry" onVerb={() => api.downloads.retry(p.taskId).then(refreshTasks)}>
-                    Stopped — nothing already on your shelf was touched. {p.error ?? ""}
+                    Stopped — nothing already on your shelf was touched.
                   </NeedsYou>
                 )}
               </div>
@@ -607,7 +594,7 @@ export function SeriesView({
       )}
       {binding?.state === "identified" && registry && (
         <p className="cap registry-stamp">
-          Counts from {registry.provider} · card as of {registry.asOf}
+          Counts from {registry.provider} · as of {registry.asOf}
         </p>
       )}
     </main>

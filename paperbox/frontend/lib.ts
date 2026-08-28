@@ -156,6 +156,19 @@ export function healsItself(error: string | null): boolean {
   );
 }
 
+/**
+ * A job as a subject the user recognises. Job labels are series titles,
+ * so a bare label reads as the series doing something — "Omniscient
+ * Reader stopped" — when it is the artwork that stopped. Say whose
+ * artwork it is instead.
+ */
+export function jobPhrase(jb: Job): string {
+  const label = (jb.label ?? "").trim();
+  if (jb.kind === "art") return label ? `Artwork for ${label}` : "Artwork";
+  if (jb.kind === "cover") return label ? `The cover for ${label}` : "A cover";
+  return label || "Looking through the library";
+}
+
 export type DerivedWork =
   | { kind: "red"; job: Job }
   | { kind: "amber"; job: Job }

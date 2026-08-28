@@ -427,7 +427,7 @@ export const survey: SurveyApi = {
         holds: `Still at ${detail.chapterCount}`,
         coversWanted: 0,
         isCurrent: true,
-        note: "kept bound for the chapters it already serves",
+        note: "keeps serving the chapters you already have",
       },
       {
         // Representative row — a real survey asks the source itself.
@@ -436,7 +436,7 @@ export const survey: SurveyApi = {
         holds: `Claims 1–${latest}`,
         coversWanted: Math.max(0, latest - detail.chapterCount),
         isCurrent: false,
-        note: "claim unverified until chapters land",
+        note: "its claim is unverified until chapters land",
       },
     ];
     return rows;
@@ -445,7 +445,7 @@ export const survey: SurveyApi = {
     // Adopting a source needs the source's series URL, which only a real
     // survey can discover. PATCH /api/manga/:id/source exists for the manual
     // path (workbench → series → manage source).
-    throw new Error("The survey cannot bind sources yet — set the source on the series instead.");
+    throw new Error("Set the source on the series in the workbench instead.");
   },
 };
 
@@ -565,6 +565,6 @@ export const jobsFallback: JobsApi = {
   },
   async cancel() {
     // No cancel route exists yet server-side; nothing honest to do here.
-    throw new Error("The server can't stop work yet — the cancel route hasn't landed.");
+    throw new Error("Could not stop it.");
   },
 };

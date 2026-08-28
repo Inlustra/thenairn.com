@@ -290,6 +290,60 @@ gone wrong; receding once there is real data on screen.
 
 Flat and factual. No exclamation marks, no encouragement.
 
+### Voice — settled 2026-08-28
+
+Added after a validation pass removed a layer of copy that narrated the interface
+to its author — "a spine wears its own art once the server has cut it", "the jobs
+route hasn't landed". Not a style problem: each of those sentences was a symptom
+of something else, and the standard that catches the whole class is judgement,
+not a word list.
+
+**Design for someone who does not care how it works.** The reader wants to read
+a comic. They did not ask for a system, will never hold our model of it in their
+head, and owe us no curiosity about it. Every sentence describing our machinery
+is a small demand that they care about our problems. They won't, and they
+shouldn't have to. "Nothing here yet" is their concern; "the extraction pass has
+not run" is ours — same fact, and only one is about them. When something must be
+named, name it the way a reader would say it aloud to a friend.
+
+**Explanatory copy is anxiety made visible.** Work made by people who trust
+their design does not explain itself; it simply is what it is, and the user
+finds it obvious afterwards. Where you find a caption, ask what the designer was
+afraid of, then fix *that*. Usually the fear is a failure of form: if a width
+that means page count needs saying, the width is not legible; if an empty state
+needs describing, it looks too much like an error. Reach for words last, after
+layout, hierarchy, contrast and motion have all failed.
+
+**Every element is a claim that this matters.** The question for each string is
+not "is this accurate?" but "does someone need this, in this moment, more than
+they need the quiet." Deleting a sentence and finding nothing broke is the
+strongest evidence the design was already working. So, in order: delete;
+redesign so the sentence is unnecessary; rewrite only what earns its place.
+
+**And know when copy genuinely earns its place** — this is judgement, not
+asceticism. First run, when there is nothing to look at and no model yet. A real
+failure, where a person must act and needs to know what and why. A destructive
+or irreversible action, and the ownership promise at the point where a scan or
+import is invoked. In those moments silence is the failure: withholding a word
+someone needs is as much a design failure as burying them in words they don't.
+
+Never narrate the absence of a feature we chose not to build — an absence should
+look like one, not caption itself. And the internal vocabulary (*cut*, *ink*,
+*pencil*, *sliver*, *registry*, *queue*, *job*, *adapter*, *sync tree*, *scope*)
+stays in the documents: the state language is drawn, never spoken. Treat a
+system noun in copy as a smell, but passing that test proves nothing — the test
+that matters is: **would a designer with taste be embarrassed that this is on
+screen?**
+
+Evidence, from the pass that settled this:
+
+| Before | After |
+|---|---|
+| "a spine wears its own art once the server has cut it; until then it stands in flat series ink. Width is the chapter's real page count." | *(deleted — the art arrives, and the tooltip already carries the page count)* |
+| "No connected registry knows this — Comic Vine likely would, and it isn't connected." | "Not identified yet." *(the provider suggestion waits behind* options*, where someone has asked)* |
+| "Art didn't cut · tries again itself" (a library card) | *(deleted — housekeeping shows as the art itself arriving; only a person-needed failure captions a card)* |
+| "The server keeps the library fresh and makes covers and spine art on its own." | *(deleted — the section's own dated sentences already show it)* |
+
 **Sync is the process, not download.** You download a TV episode — large, discrete,
 unchanged once you have it. A chapter is dozens of small files, any of which can
 change, held as a shifting subset that must stay in agreement. The word "download"

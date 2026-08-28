@@ -21,7 +21,7 @@ import type {
 } from "../api/contract";
 import { Line, Weather, NeedsYou, AsOf } from "../ui";
 import { STUCK_AFTER_MS, useJobMovement } from "../seam";
-import { timeAgo, clock, fmt, fmtBytes, hostOf, healsItself } from "../lib";
+import { timeAgo, clock, fmt, fmtBytes, healsItself, jobPhrase } from "../lib";
 
 type Tab = "activity" | "sources" | "registries" | "rules" | "diagnosis";
 
@@ -66,21 +66,16 @@ function BackgroundWork({
   return (
     <section className="wb-section">
       <h3>In the background</h3>
-      <p className="cap">
-        The server keeps the library looked-at and cuts spine art and covers on its own.
-        Nothing here needs watching, and nothing it does touches your files.
-      </p>
 
       {failed.map((jb) =>
         healsItself(jb.error) ? (
           <Weather key={jb.id}>
-            {jb.label} didn't finish — the source or the disk was busy. It will be tried
-            again by itself.
+            {jobPhrase(jb)} didn't finish — it tries again by itself.
           </Weather>
         ) : (
-          <NeedsYou key={jb.id} verb="Look again" onVerb={() => api.scan.start().catch(() => {})}>
-            {jb.label} stopped{jb.error ? ` — ${jb.error}` : ""}. Nothing already on your
-            shelf was touched.
+          <NeedsYou key={jb.id} verb="Try again" onVerb={() => api.scan.start().catch(() => {})}>
+            {jobPhrase(jb)} stopped{jb.error ? ` — ${jb.error}` : ""}. Nothing on your shelf
+            was touched.
           </NeedsYou>
         ),
       )}
@@ -91,14 +86,11 @@ function BackgroundWork({
         return (
           <div key={jb.id} className="job-row">
             <p className="job-line">
-              {jb.label}
+              {jobPhrase(jb)}
               {jb.startedAt ? ` · started ${timeAgo(jb.startedAt)}` : ""}
             </p>
             {stuck && (
-              <Weather>
-                Running behind — nothing has moved since {clock(at!)}. The library is busy;
-                it rights itself.
-              </Weather>
+              <Weather>Nothing has moved since {clock(at!)} — it rights itself.</Weather>
             )}
           </div>
         );
@@ -114,19 +106,13 @@ function BackgroundWork({
         <p className="cap">
           Nothing is running.
           {last?.finishedAt
-            ? ` Last finished: ${last.label} · ${timeAgo(last.finishedAt)}${
+            ? ` Last finished: ${jobPhrase(last)} · ${timeAgo(last.finishedAt)}${
                 last.state === "cancelled" ? " · stopped by you" : ""
               }.`
             : ""}
         </p>
       )}
 
-      {jobsAdapterActive && (
-        <p className="cap">
-          The jobs route hasn't landed on this server yet — this section shows only what the
-          scan envelope can attest.
-        </p>
-      )}
     </section>
   );
 }
@@ -135,11 +121,11 @@ function taskLine(t: DownloadTask): string {
   const done = t.chapters.filter((c) => c.status === "completed").length;
   const dl = t.chapters.find((c) => c.status === "downloading");
   if (t.status === "downloading" && dl)
-    return `Inking ${dl.name} from ${t.sourceName} · ${dl.pagesDownloaded} of ${dl.pagesTotal || "?"} pages · ${done} of ${t.chapters.length} chapters done`;
-  if (t.status === "queued") return `Queued · ${t.chapters.length} chapters from ${t.sourceName}`;
-  if (t.status === "completed") return `${t.chapters.length} chapters inked from ${t.sourceName}`;
+    return `Getting ${dl.name} from ${t.sourceName} · ${dl.pagesDownloaded} of ${dl.pagesTotal || "?"} pages · ${done} of ${t.chapters.length} chapters landed`;
+  if (t.status === "queued") return `${t.chapters.length} chapters from ${t.sourceName} · waiting their turn`;
+  if (t.status === "completed") return `Got ${t.chapters.length} chapters from ${t.sourceName}`;
   if (t.status === "cancelled") return `Stopped by you · ${done} of ${t.chapters.length} landed first`;
-  return `Stopped · ${done} of ${t.chapters.length} chapters landed and read fine`;
+  return `Stopped · ${done} of ${t.chapters.length} chapters landed safely`;
 }
 
 function isWeatherTask(t: DownloadTask): boolean {
@@ -207,8 +193,8 @@ function ActivityTab({
       <section className="wb-section">
         <h3>The library</h3>
         <p className="cap">
-          Anything Paperbox downloads appears at once. Anything you add yourself is found within
-          six hours — sooner for series you've been reading.
+          Chapters Paperbox gets appear at once. Files you add yourself are found within six
+          hours — sooner for series you've been reading.
         </p>
         <div className="wb-row">
           <button className="btn" onClick={lookNow} disabled={scanAsked}>
@@ -239,9 +225,7 @@ function ActivityTab({
 
       <section className="wb-section">
         <h3>On its way</h3>
-        {ordered.length === 0 && (
-          <p className="cap">Nothing on its way. The shelf is yours.</p>
-        )}
+        {ordered.length === 0 && <p className="cap">Nothing on its way.</p>}
         {ordered.map((t) => {
           const done = t.chapters.filter((c) => c.status === "completed").length;
           const failedCh = t.chapters.filter((c) => c.status === "failed");
@@ -253,19 +237,15 @@ function ActivityTab({
               </div>
               <p className="task-line">{taskLine(t)}</p>
               {isWeatherTask(t) && (
-                <Weather>
-                  {t.sourceName} asked us to slow down. The queue resumes itself — nothing needed
-                  from you.
-                </Weather>
+                <Weather>{t.sourceName} asked us to slow down — it resumes itself.</Weather>
               )}
               {t.status === "failed" && (
                 <NeedsYou
                   verb="Retry"
                   onVerb={() => api.downloads.retry(t.id).then(refreshTasks)}
                 >
-                  Retries used up on {failedCh.length} chapter{failedCh.length === 1 ? "" : "s"}.
-                  The {done} that landed are safe and readable. Nothing already on your shelf was
-                  touched.
+                  Stopped on {failedCh.length} chapter{failedCh.length === 1 ? "" : "s"} after
+                  several tries. The {done} that landed are safe and readable.
                 </NeedsYou>
               )}
               <div className="task-verbs">
@@ -308,7 +288,7 @@ function AddFromUrl({ refreshTasks }: { refreshTasks: () => void }) {
       const s = await api.sources.detect(url.trim());
       setSource(s);
       if (!s) {
-        setNote("No configured source answers to that address.");
+        setNote("No source knows that address.");
         return;
       }
       const r = await api.sources.info(s.id, url.trim());
@@ -337,12 +317,12 @@ function AddFromUrl({ refreshTasks }: { refreshTasks: () => void }) {
         mangaUrl: url.trim(),
         chapters: want,
       });
-      setNote(`Queued ${want.length} — fetching takes a while, no need to watch.`);
+      setNote(`Getting ${want.length} — it takes a while, no need to watch.`);
       setInfo(null);
       setUrl("");
       refreshTasks();
     } catch (e: any) {
-      setNote(e?.message || "Could not queue.");
+      setNote(e?.message || "Could not start.");
     } finally {
       setBusy(false);
     }
@@ -350,10 +330,7 @@ function AddFromUrl({ refreshTasks }: { refreshTasks: () => void }) {
 
   return (
     <div className="add-url">
-      <p className="cap">
-        Find a series at a source outside the app, then paste its address here. Paperbox fetches
-        slowly and politely, so the source doesn't mind.
-      </p>
+      <p className="cap">Find a series at a source, then paste its address here.</p>
       <div className="wb-row">
         <input
           className="search"
@@ -418,7 +395,7 @@ function SourcesTab({ refreshTasks }: { refreshTasks: () => void }) {
 
       <section className="wb-section">
         <h3>Sources in use</h3>
-        {health.length === 0 && <p className="cap">No source is bound to anything yet.</p>}
+        {health.length === 0 && <p className="cap">No source is in use yet.</p>}
         {health.map((h) => (
           <div key={h.sourceId} className="health-row">
             <strong>{h.sourceName}</strong>
@@ -431,12 +408,12 @@ function SourcesTab({ refreshTasks }: { refreshTasks: () => void }) {
           </div>
         ))}
         <p className="cap">
-          {count != null && <>{fmt(count)} source modules installed. </>}
+          {count != null && <>{fmt(count)} sources installed. </>}
           <button className="linkish" disabled={pulling} onClick={() => {
             setPulling(true);
             api.sources.pull().then(load).finally(() => setPulling(false));
           }}>
-            {pulling ? "Refreshing…" : "Refresh modules"}
+            {pulling ? "Refreshing…" : "Refresh sources"}
           </button>
         </p>
       </section>
@@ -474,10 +451,7 @@ function RegistriesTab({ onOpenSeries }: { onOpenSeries: (id: string) => void })
   return (
     <div>
       <section className="wb-section">
-        <h3>Registries</h3>
-        <p className="cap">
-          A registry says what exists — it is never fetched from. One identity binding per series.
-        </p>
+        <h3>Where identities come from</h3>
         {[...connected.entries()].map(([name, n]) => (
           <div key={name} className="health-row">
             <strong>{name}</strong>
@@ -498,17 +472,17 @@ function RegistriesTab({ onOpenSeries }: { onOpenSeries: (id: string) => void })
       </section>
 
       <section className="wb-section">
-        <h3>Identity {queue.length > 0 && `· ${queue.length} need a look`}</h3>
+        <h3>Your series {queue.length > 0 && `· ${queue.length} need a look`}</h3>
         {queue.length === 0 && <p className="cap">Every series is settled.</p>}
         {queue.map((b) => (
           <button key={b.seriesId} className="queue-row" onClick={() => onOpenSeries(b.seriesId)}>
             <strong>{titles[b.seriesId] ?? b.seriesId}</strong>
             <span className={`cap ${b.state === "contradicted" ? "cap-red" : ""}`}>
               {b.state === "contradicted"
-                ? "The evidence contradicts its match"
+                ? "Match looks wrong"
                 : b.state === "guess"
                   ? `Best guess ready · ${b.candidate?.title ?? ""}`
-                  : `Wants ${b.suggestedProvider ?? "a registry"} — not connected`}
+                  : `${b.suggestedProvider ?? "Someone"} would likely know it — not connected`}
             </span>
           </button>
         ))}
@@ -543,10 +517,7 @@ function RulesTab() {
   return (
     <section className="wb-section">
       <h3>Standing intent</h3>
-      <p className="cap">
-        Rules are authored on devices; the web reads them. An imperative Get is a rule with a
-        lifetime of one evaluation.
-      </p>
+      <p className="cap">Rules are set on your devices — this screen only reads them.</p>
       {list.map((r) => (
         <div key={r.id} className="rule-row">
           <p>{ruleSentence(r)}</p>
@@ -584,42 +555,34 @@ function DiagnosisTab({ status }: { status: ServerStatus | null }) {
             <div><dt>Library signature</dt><dd className="mono">{status.library.sig}</dd></div>
           </dl>
         ) : (
-          <p className="cap">Waiting for the status envelope.</p>
+          <p className="cap">Waiting for the server.</p>
         )}
       </section>
 
       <section className="wb-section">
-        <h3>The sync tree</h3>
+        <h3>Sync</h3>
         {tree ? (
           <dl className="facts">
             <div><dt>Root</dt><dd className="mono">{tree.root}</dd></div>
-            <div><dt>Tree version</dt><dd>{tree.treeVersion} — a version change means re-diff, never delete</dd></div>
+            <div><dt>Version</dt><dd>{tree.treeVersion}</dd></div>
             <div><dt>Block size</dt><dd>{tree.blockSize} chapters</dd></div>
             <div><dt>Series nodes</dt><dd>{tree.children.length}</dd></div>
           </dl>
         ) : (
-          <p className="cap">Waiting for the tree.</p>
+          <p className="cap">Waiting for the server.</p>
         )}
       </section>
 
       <section className="wb-section">
-        <h3>What this client is honest about</h3>
-        <p className="cap">
-          These surfaces run on the pending adapter, not the server — see{" "}
-          <span className="mono">docs/api-gaps.md</span>. Deleting the adapter entry when each
-          route lands is the whole change.
-        </p>
+        <h3>Known limits</h3>
+        <p className="cap">Parts of this client run ahead of the server. Today that means:</p>
         <ul className="gaps">
-          <li>Read state — this browser only; positions do not reach other devices yet</li>
-          <li>Identity — registry bindings are the recorded 2026-08-28 harvest, not live lookups</li>
-          <li>Source health — derived from this session's download tasks; no history, no stall detection</li>
-          <li>Look elsewhere — the survey rows are representative, not asked of sources</li>
-          <li>Rules — a sample sentence; no rule store exists</li>
-          <li>Freshness — the library-wide scan stamp, applied per series</li>
-          <li>
-            Background jobs — the real route when the server answers; until it lands, only
-            the scan envelope, so art and cover work is invisible here
-          </li>
+          <li>Read positions — this browser only; they do not reach other devices yet</li>
+          <li>Identity — matches are a saved snapshot, not live</li>
+          <li>Source health — this session only; no history</li>
+          <li>Rules — a sample; nothing is stored yet</li>
+          <li>Freshness — one library-wide stamp, shown per series</li>
+          <li>Background work — older servers show only the look-over here</li>
           <li>Flags — this browser only; the household does not see them</li>
         </ul>
       </section>
@@ -660,7 +623,7 @@ export function WorkbenchView({
           [
             ["activity", `Activity${needsYou ? ` · ${needsYou} need you` : ""}`],
             ["sources", "Sources"],
-            ["registries", "Registries"],
+            ["registries", "Identity"],
             ["rules", "Rules"],
             ["diagnosis", "Diagnosis"],
           ] as [Tab, string][]

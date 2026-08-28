@@ -705,7 +705,6 @@ h1, h2, h3 { font-family: var(--f-display); line-height: 1.1; margin: 0; }
 }
 .vc-facts { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .vc-verbs { display: flex; gap: 8px; }
-.shelf-note { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
 
 /* ------------------------------------------------------------------ */
 /* Reader — pinned to night, whatever the app theme                    */

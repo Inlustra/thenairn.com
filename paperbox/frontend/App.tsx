@@ -186,13 +186,13 @@ export function App() {
             words and appear only when there is something to say. */}
         <div className="seam" aria-live="polite">
           <SeamMark reading={reading} open={ledgerOpen} onToggle={() => setLedgerOpen((o) => !o)} />
-          {inking > 0 && <span className="chip chip-pencil">Inking {inking}</span>}
+          {inking > 0 && <span className="chip chip-pencil">{inking} on the way</span>}
           {needsYou > 0 && (
             <button
               className="chip chip-red"
               onClick={() => go({ view: "workbench", tab: "activity" })}
             >
-              {needsYou} needs you
+              {needsYou === 1 ? "1 needs you" : `${needsYou} need you`}
             </button>
           )}
           {everLoaded && !reachable && asOf && (
@@ -200,7 +200,7 @@ export function App() {
           )}
         </div>
 
-        <nav className="hdr-nav" aria-label="Rooms">
+        <nav className="hdr-nav" aria-label="Sections">
           <button
             className={route.view !== "workbench" ? "on" : ""}
             onClick={() => go({ view: "library" })}

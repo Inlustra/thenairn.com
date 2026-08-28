@@ -13,7 +13,7 @@
 import { useMemo, useState } from "react";
 import { spineWidth } from "../lib";
 import { spineArtUrl } from "../api/contract";
-import { Glyph, glyphLabel } from "../ui";
+import { glyphLabel } from "../ui";
 import type { ChapterRow, PencilRow } from "./Series";
 
 /* ------------------------------------------------------------------ */
@@ -177,7 +177,7 @@ export function SpineShelf({
                       <span
                         key={`g${ci}`}
                         className="gap-slot"
-                        title={`Missing from this run · ${cell.from}${n > 1 ? `–${cell.to}` : ""}`}
+                        title={`Missing · ${cell.from}${n > 1 ? `–${cell.to}` : ""}`}
                         aria-label={`Missing chapters ${cell.from} to ${cell.to}`}
                       />
                     );
@@ -287,10 +287,6 @@ export function SpineShelf({
         </div>
       )}
 
-      <p className="cap shelf-note">
-        <Glyph state="server" /> a spine wears its own art once the server has cut it; until
-        then it stands in flat series ink. Width is the chapter's real page count.
-      </p>
     </div>
   );
 }

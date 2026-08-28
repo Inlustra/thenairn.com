@@ -28,7 +28,7 @@
 import { useEffect, useRef } from "react";
 import type { DownloadTask, Job, JobsEnvelope, ServerStatus } from "./api/contract";
 import { Glyph, type GlyphState, Line } from "./ui";
-import { clock, healsItself, timeAgo } from "./lib";
+import { clock, healsItself, jobPhrase, timeAgo } from "./lib";
 
 /** A running job whose shape hasn't changed for this long is stuck. */
 export const STUCK_AFTER_MS = 4 * 60_000;
@@ -111,12 +111,12 @@ export function readSeam(s: SeamInputs): SeamReading {
     return { tone: "amber", line: `The server stopped answering · showing as of ${clock(s.asOf)}.` };
   const stuck = stuckJobs(s.jobsEnv, s.movedAt);
   if (stuck.length > 0)
-    return { tone: "amber", line: `${stuck[0]!.label} hasn't moved for a while · rights itself.` };
+    return { tone: "amber", line: `${jobPhrase(stuck[0]!)} hasn't moved for a while · rights itself.` };
   if (s.status?.freshness?.behind)
-    return { tone: "amber", line: "Scanning is running behind. The library is busy." };
+    return { tone: "amber", line: "Scanning is running behind — it catches up by itself." };
   const amberJob = jobs.find((jb) => jb.state === "failed" && healsItself(jb.error));
   if (amberJob)
-    return { tone: "amber", line: `${amberJob.label} didn't finish · tried again by itself.` };
+    return { tone: "amber", line: `${jobPhrase(amberJob)} didn't finish · tried again by itself.` };
   const weather = s.tasks.find(isWeatherTask);
   if (weather)
     return { tone: "amber", line: `${weather.sourceName} asked us to slow down · resumes itself.` };
@@ -127,7 +127,7 @@ export function readSeam(s: SeamInputs): SeamReading {
   if (fetching > 0)
     return {
       tone: "pencil",
-      line: fetching === 1 ? "Inking — one on its way." : `Inking — ${fetching} on their way.`,
+      line: fetching === 1 ? "One on its way." : `${fetching} on their way.`,
     };
   const derived = jobs.filter(
     (jb) => jb.kind !== "scan" && (jb.state === "running" || jb.state === "queued"),
@@ -177,9 +177,7 @@ export function SeamMark({
 /* The ledger                                                          */
 /* ------------------------------------------------------------------ */
 
-function jobVerb(jb: Job): string {
-  return jb.kind === "scan" ? "Looking over" : jb.kind === "art" ? "Cutting art" : "Cutting a cover";
-}
+
 
 function farLine(t: DownloadTask): { text: string; tone: "quiet" | "pencil" | "red" } {
   const done = t.chapters.filter((c) => c.status === "completed").length;
@@ -190,11 +188,11 @@ function farLine(t: DownloadTask): { text: string; tone: "quiet" | "pencil" | "r
     };
   if (t.status === "downloading")
     return {
-      text: `Inking ${t.mangaTitle} from ${t.sourceName} · ${done} of ${t.chapters.length} chapters landed`,
+      text: `Getting ${t.mangaTitle} from ${t.sourceName} · ${done} of ${t.chapters.length} chapters landed`,
       tone: "pencil",
     };
   return {
-    text: `${t.mangaTitle} · queued · ${t.chapters.length} chapters from ${t.sourceName}`,
+    text: `${t.mangaTitle} · ${t.chapters.length} chapters from ${t.sourceName} · waiting their turn`,
     tone: "pencil",
   };
 }
@@ -280,13 +278,13 @@ export function Ledger({
           {failedJobs.map((jb) => (
             <Line key={jb.id} tone={healsItself(jb.error) ? "amber" : "red"}>
               {healsItself(jb.error)
-                ? `${jb.label} didn't finish — it will be tried again by itself.`
-                : `${jb.label} stopped — needs a look. Nothing on your shelf was touched.`}
+                ? `${jobPhrase(jb)} didn't finish — it tries again by itself.`
+                : `${jobPhrase(jb)} stopped — needs a look. Nothing on your shelf was touched.`}
             </Line>
           ))}
           {running.map((jb) => (
             <Line key={jb.id} tone={stuckIds.has(jb.id) ? "amber" : "quiet"}>
-              {jobVerb(jb)} · {jb.label}
+              {jobPhrase(jb)}
               {jb.startedAt ? ` · started ${timeAgo(jb.startedAt)}` : ""}
               {stuckIds.has(jb.id) ? ` · nothing has moved since ${clock(movedAt.get(jb.id)!)}` : ""}
             </Line>
@@ -304,7 +302,7 @@ export function Ledger({
           <Line tone="quiet">
             Nothing is happening.
             {last?.finishedAt
-              ? ` Last finished: ${last.label} · ${timeAgo(last.finishedAt)}.`
+              ? ` Last finished: ${jobPhrase(last)} · ${timeAgo(last.finishedAt)}.`
               : ""}
           </Line>
         </section>
@@ -318,14 +316,14 @@ export function Ledger({
             chapters · last looked over {timeAgo(status.library.lastScan) || "never"}
           </Line>
           {status.freshness?.behind && (
-            <Line tone="amber">Scanning is running behind. The library is busy.</Line>
+            <Line tone="amber">Scanning is running behind — it catches up by itself.</Line>
           )}
         </section>
       )}
 
       <footer className="ledger-foot">
         <button className="linkish" onClick={onWorkbench}>
-          Levers live in the workbench
+          Open the workbench
         </button>
         {asOf && <span className="cap">as of {clock(asOf)}</span>}
       </footer>

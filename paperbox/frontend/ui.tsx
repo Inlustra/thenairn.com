@@ -109,9 +109,9 @@ export function Glyph({ state, fill = 0, title }: { state: GlyphState; fill?: nu
 export function glyphLabel(state: GlyphState): string {
   switch (state) {
     case "server": return "On the server";
-    case "inking": return "Inking — pages landing";
-    case "queued": return "Queued";
-    case "at-source": return "At the source, not fetched";
+    case "inking": return "Arriving now";
+    case "queued": return "On its way";
+    case "at-source": return "At the source";
     case "waiting": return "Waiting — resumes itself";
     case "needs-you": return "Needs you";
     case "flagged": return "Flagged by a reader";
