@@ -19,7 +19,7 @@
  */
 
 import { store } from "../lib";
-import { library, downloads, status } from "./real";
+import { library, downloads, status, scan } from "./real";
 import type {
   ReadStateApi,
   SeriesReadState,
@@ -38,6 +38,8 @@ import type {
   SeriesFreshness,
   FlagsApi,
   ContentFlag,
+  JobsApi,
+  Job,
 } from "./contract";
 
 /* ------------------------------------------------------------------ */
@@ -525,5 +527,44 @@ export const flags: FlagsApi = {
       (f) => !(f.seriesId === seriesId && f.chapterId === chapterId),
     );
     store.set(FLAGS_KEY, all);
+  },
+};
+
+/* ------------------------------------------------------------------ */
+/* Jobs — fallback                                                     */
+/*                                                                     */
+/* STANDS IN FOR: GET /api/jobs + POST /api/jobs/:id/cancel — the      */
+/* background-work envelope (scan, cover generation, spine-art          */
+/* extraction). Being built server-side alongside this client; the      */
+/* composed client (index.ts) tries the real route first and lands      */
+/* here only on a 404. DERIVED from the real scan-progress endpoint:    */
+/* an active scan shows as the one job the server can already report.   */
+/* Art and cover work is invisible from a browser until the route       */
+/* answers, so no rows are invented for it. See docs/api-gaps.md #11.   */
+/* ------------------------------------------------------------------ */
+
+export const jobsFallback: JobsApi = {
+  async list() {
+    const p = await scan.progress();
+    if (!p.active) return { jobs: [], running: 0, queued: 0 };
+    const job: Job = {
+      id: "scan",
+      kind: "scan",
+      scope: p.scope,
+      label: p.currentSeries
+        ? `Looking at ${p.currentSeries}`
+        : "Looking through the library",
+      state: "running",
+      done: p.seriesDone,
+      total: p.seriesTotal || null,
+      startedAt: p.startedAt,
+      finishedAt: null,
+      error: null,
+    };
+    return { jobs: [job], running: 1, queued: 0 };
+  },
+  async cancel() {
+    // No cancel route exists yet server-side; nothing honest to do here.
+    throw new Error("The server can't stop work yet — the cancel route hasn't landed.");
   },
 };

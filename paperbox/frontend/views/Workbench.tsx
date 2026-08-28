@@ -5,12 +5,14 @@
  * nowhere else.
  */
 
-import { useEffect, useMemo, useState } from "react";
-import { api } from "../api";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { api, jobsAdapterActive } from "../api";
 import type {
   DownloadTask,
   ServerStatus,
   ScanProgress,
+  Job,
+  JobsEnvelope,
   SourceHealth,
   SourceInfo,
   IdentityBinding,
@@ -18,13 +20,141 @@ import type {
   TreeChild,
 } from "../api/contract";
 import { Line, Weather, NeedsYou, AsOf } from "../ui";
-import { timeAgo, fmt, fmtBytes, hostOf } from "../lib";
+import { timeAgo, clock, fmt, fmtBytes, hostOf } from "../lib";
 
 type Tab = "activity" | "sources" | "registries" | "rules" | "diagnosis";
 
 /* ------------------------------------------------------------------ */
 /* Activity — the far lane, plus the scan errand                       */
 /* ------------------------------------------------------------------ */
+
+/* ------------------------------------------------------------------ */
+/* Background work — the server's own housekeeping                     */
+/*                                                                     */
+/* scheduler.md §3: background scanning, cover generation and spine-   */
+/* art extraction are not an errand — nothing arrives, nobody asked.   */
+/* So: no spinner, no ticking number, no ambient presence. Dated       */
+/* sentences answer "is anything happening?"; "is it stuck?" is        */
+/* answered the same way — each job's last movement is tracked across  */
+/* polls, and a running job that hasn't moved for a while turns amber  */
+/* (weather: it rights itself, no retry lever). Percentages appear     */
+/* only on the user-invoked scan above, because asking made it theirs. */
+/* ------------------------------------------------------------------ */
+
+/** Amber when the trouble reads as weather; red means a person is needed. */
+function healsItself(error: string | null): boolean {
+  return /rate|429|too many|block|cloudflare|timeout|timed out|temporar|busy|502|503|connection|network/i.test(
+    error ?? "",
+  );
+}
+
+const STUCK_AFTER_MS = 4 * 60_000;
+
+/** Track when each job last changed shape, across poll responses. */
+function useJobMovement(env: JobsEnvelope | null): Map<string, number> {
+  const moved = useRef<Map<string, { key: string; at: number }>>(new Map());
+  const out = new Map<string, number>();
+  if (env) {
+    const seen = new Set<string>();
+    for (const jb of env.jobs) {
+      seen.add(jb.id);
+      const key = `${jb.state}:${jb.done}:${jb.total ?? ""}`;
+      const prev = moved.current.get(jb.id);
+      if (!prev || prev.key !== key) moved.current.set(jb.id, { key, at: Date.now() });
+    }
+    for (const id of [...moved.current.keys()]) if (!seen.has(id)) moved.current.delete(id);
+  }
+  for (const [id, v] of moved.current) out.set(id, v.at);
+  return out;
+}
+
+function BackgroundWork({
+  env,
+  movedAt,
+  hideScan,
+}: {
+  env: JobsEnvelope | null;
+  movedAt: Map<string, number>;
+  hideScan: boolean;
+}) {
+  if (!env) return null;
+
+  const jobs = env.jobs.filter((jb) => !(hideScan && jb.kind === "scan"));
+  const running = jobs.filter((jb) => jb.state === "running");
+  const queuedN = jobs.filter((jb) => jb.state === "queued").length;
+  const failed = jobs.filter((jb) => jb.state === "failed");
+  const finished = jobs
+    .filter((jb) => jb.state === "done" || jb.state === "cancelled")
+    .sort((a, b) => (b.finishedAt ?? 0) - (a.finishedAt ?? 0));
+  const last = finished[0];
+
+  return (
+    <section className="wb-section">
+      <h3>In the background</h3>
+      <p className="cap">
+        The server keeps the library looked-at and cuts spine art and covers on its own.
+        Nothing here needs watching, and nothing it does touches your files.
+      </p>
+
+      {failed.map((jb) =>
+        healsItself(jb.error) ? (
+          <Weather key={jb.id}>
+            {jb.label} didn't finish — the source or the disk was busy. It will be tried
+            again by itself.
+          </Weather>
+        ) : (
+          <NeedsYou key={jb.id} verb="Look again" onVerb={() => api.scan.start().catch(() => {})}>
+            {jb.label} stopped{jb.error ? ` — ${jb.error}` : ""}. Nothing already on your
+            shelf was touched.
+          </NeedsYou>
+        ),
+      )}
+
+      {running.map((jb) => {
+        const at = movedAt.get(jb.id);
+        const stuck = at != null && Date.now() - at > STUCK_AFTER_MS;
+        return (
+          <div key={jb.id} className="job-row">
+            <p className="job-line">
+              {jb.label}
+              {jb.startedAt ? ` · started ${timeAgo(jb.startedAt)}` : ""}
+            </p>
+            {stuck && (
+              <Weather>
+                Running behind — nothing has moved since {clock(at!)}. The library is busy;
+                it rights itself.
+              </Weather>
+            )}
+          </div>
+        );
+      })}
+
+      {queuedN > 0 && (
+        <p className="cap">
+          {queuedN} more waiting {running.length > 0 ? "behind it" : "their turn"}.
+        </p>
+      )}
+
+      {running.length === 0 && queuedN === 0 && failed.length === 0 && (
+        <p className="cap">
+          Nothing is running.
+          {last?.finishedAt
+            ? ` Last finished: ${last.label} · ${timeAgo(last.finishedAt)}${
+                last.state === "cancelled" ? " · stopped by you" : ""
+              }.`
+            : ""}
+        </p>
+      )}
+
+      {jobsAdapterActive && (
+        <p className="cap">
+          The jobs route hasn't landed on this server yet — this section shows only what the
+          scan envelope can attest.
+        </p>
+      )}
+    </section>
+  );
+}
 
 function taskLine(t: DownloadTask): string {
   const done = t.chapters.filter((c) => c.status === "completed").length;
@@ -51,6 +181,9 @@ function ActivityTab({
 }) {
   const [scan, setScan] = useState<ScanProgress | null>(null);
   const [scanAsked, setScanAsked] = useState(false);
+  const [jobsEnv, setJobsEnv] = useState<JobsEnvelope | null>(null);
+  const [stopNote, setStopNote] = useState("");
+  const movedAt = useJobMovement(jobsEnv);
 
   // Poll scan progress only while a scan the user asked for is running.
   useEffect(() => {
@@ -64,9 +197,32 @@ function ActivityTab({
     return () => clearInterval(t);
   }, [scanAsked]);
 
+  // Poll the jobs envelope on its ETag — a 304 costs nothing to serve.
+  useEffect(() => {
+    let live = true;
+    const tick = () => api.jobs.list().then((e) => { if (live) setJobsEnv(e); }).catch(() => {});
+    tick();
+    const t = setInterval(tick, 2500);
+    return () => { live = false; clearInterval(t); };
+  }, []);
+
   const lookNow = () => {
     setScanAsked(true);
+    setStopNote("");
     api.scan.start().then(refreshTasks).catch(() => setScanAsked(false));
+  };
+
+  // The un-ask. Yours to stop because you started it. Only offered when a
+  // real job row exists to cancel — the fallback has no route to stop
+  // anything, and a lever that can only refuse is theatre.
+  const yourScanJob: Job | undefined = scanAsked && !jobsAdapterActive
+    ? jobsEnv?.jobs.find((jb) => jb.kind === "scan" && (jb.state === "running" || jb.state === "queued"))
+    : undefined;
+  const stopScan = () => {
+    if (!yourScanJob) return;
+    api.jobs.cancel(yourScanJob.id)
+      .then(() => setScanAsked(false))
+      .catch((e: any) => setStopNote(e?.message || "Could not stop it."));
   };
 
   const ordered = useMemo(
@@ -84,19 +240,24 @@ function ActivityTab({
       <section className="wb-section">
         <h3>The library</h3>
         <p className="cap">
-          Anything Paperbox fetches appears at once. Anything you add yourself is found when you
-          look — there is no background sweep yet.
+          Anything Paperbox downloads appears at once. Anything you add yourself is found within
+          six hours — sooner for series you've been reading.
         </p>
         <div className="wb-row">
           <button className="btn" onClick={lookNow} disabled={scanAsked}>
             {scanAsked ? "Looking…" : "Look now"}
           </button>
-          {/* You asked, so the errand is yours — it earns numbers. */}
+          {/* You asked, so the errand is yours — it earns numbers and a Stop. */}
           {scanAsked && scan?.active && (
             <span className="cap">
               {scan.seriesDone} of {scan.seriesTotal} series · {fmt(scan.chaptersSeen)} chapters seen
               {scan.currentSeries ? ` · ${scan.currentSeries}` : ""}
             </span>
+          )}
+          {yourScanJob && (
+            <button className="btn" onClick={stopScan}>
+              Stop
+            </button>
           )}
           {scanAsked === false && scan && !scan.active && scan.durationMs != null && (
             <span className="cap">
@@ -104,7 +265,10 @@ function ActivityTab({
             </span>
           )}
         </div>
+        {stopNote && <Line tone="amber">{stopNote}</Line>}
       </section>
+
+      <BackgroundWork env={jobsEnv} movedAt={movedAt} hideScan={scanAsked} />
 
       <section className="wb-section">
         <h3>On its way</h3>
@@ -485,6 +649,10 @@ function DiagnosisTab({ status }: { status: ServerStatus | null }) {
           <li>Look elsewhere — the survey rows are representative, not asked of sources</li>
           <li>Rules — a sample sentence; no rule store exists</li>
           <li>Freshness — the library-wide scan stamp, applied per series</li>
+          <li>
+            Background jobs — the real route when the server answers; until it lands, only
+            the scan envelope, so art and cover work is invisible here
+          </li>
           <li>Flags — this browser only; the household does not see them</li>
         </ul>
       </section>

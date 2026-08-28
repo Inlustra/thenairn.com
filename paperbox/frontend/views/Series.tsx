@@ -14,9 +14,11 @@ import type {
   DownloadTask,
   SeriesReadState,
   ContentFlag,
+  SeriesFreshness,
 } from "../api/contract";
+import { coverArtUrl } from "../api/contract";
 import { Glyph, Line, Weather, NeedsYou, Evidence, InkBar, type GlyphState } from "../ui";
-import { store, timeAgo } from "../lib";
+import { store, timeAgo, clock } from "../lib";
 import { SpineShelf } from "./SpineShelf";
 
 /* ------------------------------------------------------------------ */
@@ -120,6 +122,22 @@ function sortRows(rows: ChapterRow[]): ChapterRow[] {
     if (sa !== sb) return sa === "main" ? -1 : sb === "main" ? 1 : sa.localeCompare(sb);
     return a.chapter.sortKey - b.chapter.sortKey || a.chapter.label.localeCompare(b.chapter.label);
   });
+}
+
+/** "Tuesday", or a clock time today, or a date — a dated word, never a timer. */
+function lookedPhrase(t: number): string {
+  const d = new Date(t);
+  if (d.toDateString() === new Date().toDateString()) return `at ${clock(t)}`;
+  if (Date.now() - t < 7 * 86400_000) return d.toLocaleDateString(undefined, { weekday: "long" });
+  return d.toLocaleDateString();
+}
+
+/** Same candidate walk as the library cover: fetched, then generated, then nothing. */
+function HeadCover({ detail }: { detail: SeriesDetail }) {
+  const urls = [detail.coverUrl, coverArtUrl(detail.uid)].filter((u): u is string => !!u);
+  const [at, setAt] = useState(0);
+  if (at >= urls.length) return null;
+  return <img src={urls[at]} alt="" onError={() => setAt(at + 1)} />;
 }
 
 /* ------------------------------------------------------------------ */
@@ -251,6 +269,7 @@ export function SeriesView({
   const [binding, setBinding] = useState<IdentityBinding | null>(null);
   const [rs, setRs] = useState<SeriesReadState | null>(null);
   const [flagList, setFlagList] = useState<ContentFlag[]>([]);
+  const [fresh, setFresh] = useState<SeriesFreshness | null>(null);
   const [err, setErr] = useState("");
   const [view, setView] = useState<"list" | "shelf">(
     () => store.get<"list" | "shelf">(`pb:view:${id}`) ?? "list",
@@ -266,6 +285,7 @@ export function SeriesView({
     api.identity.get(id).then(setBinding).catch(() => {});
     api.readState.series(id).then(setRs).catch(() => {});
     api.flags.list().then(setFlagList).catch(() => {});
+    api.freshness.all().then((f) => setFresh(f[id] ?? null)).catch(() => {});
   };
   useEffect(load, [id]);
 
@@ -342,6 +362,7 @@ export function SeriesView({
     if (r.flagged) await api.flags.unflag(id, r.chapter.id);
     else await api.flags.flag(id, r.chapter.id);
     api.flags.list().then(setFlagList).catch(() => {});
+    api.freshness.all().then((f) => setFresh(f[id] ?? null)).catch(() => {});
   };
 
   const shown = unreadOnly ? sorted.filter((r) => !r.read) : sorted;
@@ -352,7 +373,7 @@ export function SeriesView({
 
       <header className="series-head">
         <div className="series-cover">
-          {detail.coverUrl ? <img src={detail.coverUrl} alt="" /> : null}
+          <HeadCover detail={detail} />
         </div>
         <div className="series-facts">
           <h2>{detail.title}</h2>
@@ -381,6 +402,13 @@ export function SeriesView({
             {behind > 0 && inflight > 0 && <> · {inflight} on the way</>}
             {behind > 0 && inflight === 0 && <> · {behind} published, not yet fetched</>}
           </p>
+
+          {/* scheduler.md §3: pencil is what the server has not looked at
+              recently. The stamp appears only past the deadline — a fresh
+              series is normal ink and says nothing. */}
+          {fresh?.stale && fresh.lastLookedAt != null && (
+            <Line tone="pencil">Last looked at {lookedPhrase(fresh.lastLookedAt)}.</Line>
+          )}
 
           {binding && <IdentityLine binding={binding} onChanged={load} />}
 

@@ -4,7 +4,7 @@
  * its implementation is in pending.ts and documented in docs/api-gaps.md.
  */
 
-import { API, j, post, patch, del } from "../lib";
+import { API, j, jTagged, post, patch, del } from "../lib";
 import type {
   LibraryApi,
   StatusApi,
@@ -12,6 +12,8 @@ import type {
   DownloadsApi,
   SourcesApi,
   SyncApi,
+  JobsApi,
+  JobsEnvelope,
   SeriesDetail,
   ServerStatus,
   ScanProgress,
@@ -98,4 +100,12 @@ export const sources: SourcesApi = {
 export const sync: SyncApi = {
   tree: () => j(`${API}/sync/tree`),
   diff: (body) => post(`${API}/sync/diff`, body),
+};
+
+export const jobs: JobsApi = {
+  /** Weak ETag + 304 — same pattern the status envelope is headed for. */
+  list: () => jTagged<JobsEnvelope>(`${API}/jobs`),
+  async cancel(id) {
+    await post(`${API}/jobs/${encodeURIComponent(id)}/cancel`);
+  },
 };

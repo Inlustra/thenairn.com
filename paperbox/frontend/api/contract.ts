@@ -260,6 +260,60 @@ export interface SyncApi {
   }>;
 }
 
+/* ------------------------------------------------------------------ */
+/* Jobs — background work: scanning, cover generation, spine art       */
+/* (server routes being built alongside this client; until they answer,*/
+/* the composed client falls back through pending.ts — api-gaps.md #11)*/
+/* ------------------------------------------------------------------ */
+
+export type JobKind = "scan" | "art" | "cover";
+export type JobState = "queued" | "running" | "done" | "failed" | "cancelled";
+
+export interface Job {
+  id: string;
+  kind: JobKind;
+  /** Series uid, or null for library-wide. */
+  scope: string | null;
+  /** Human, one line. Rendered verbatim. */
+  label: string;
+  state: JobState;
+  done: number;
+  /** null when not yet known. */
+  total: number | null;
+  startedAt: number | null;
+  finishedAt: number | null;
+  error: string | null;
+}
+
+export interface JobsEnvelope {
+  jobs: Job[];
+  running: number;
+  queued: number;
+}
+
+export interface JobsApi {
+  /** GET /api/jobs — weak ETag, 304 when unchanged. Poll this, never detail. */
+  list(): Promise<JobsEnvelope>;
+  /** POST /api/jobs/:id/cancel — the un-ask. */
+  cancel(id: string): Promise<void>;
+}
+
+/* ------------------------------------------------------------------ */
+/* Art — spine slivers and generated covers                            */
+/*                                                                     */
+/* GET /api/art/spine/:chapterUid and /api/art/cover/:seriesUid return  */
+/* the image, and 404 while nothing has been generated. A 404 renders   */
+/* the flat series ink the shelf already draws — never a placeholder,   */
+/* never a shimmer: pencil states carry no artwork, and theatre is      */
+/* worse than absence.                                                  */
+/* ------------------------------------------------------------------ */
+
+export const spineArtUrl = (chapterUid: string): string =>
+  `/api/art/spine/${encodeURIComponent(chapterUid)}`;
+
+export const coverArtUrl = (seriesUid: string): string =>
+  `/api/art/cover/${encodeURIComponent(seriesUid)}`;
+
 /* ================================================================== */
 /* Everything below here does NOT exist server-side yet.               */
 /* Implemented only by pending.ts. See docs/api-gaps.md.               */
@@ -501,6 +555,7 @@ export interface PaperboxApi {
   downloads: DownloadsApi;
   sources: SourcesApi;
   sync: SyncApi;
+  jobs: JobsApi;
   // Pending — served by the adapter until the server catches up:
   readState: ReadStateApi;
   identity: IdentityApi;

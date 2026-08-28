@@ -21,8 +21,9 @@ never silently pretends adapter data is server fact.
 | 6 | Per-series freshness | `FreshnessApi` | Library stamps, Workbench copy | The scan scheduler (docs/scheduler.md, designed not built) |
 | 7 | Content flags | `FlagsApi` | Reader end card, Series rows | Household visibility, source quarantine, the hunt |
 | 8 | Delete / exclude | `ManageApi` | None shipped (deliberate) | Removing anything adoption brought in |
-| 9 | Spine art + palette | *(not yet in contract)* | Series › Shelf | Spine faces and band colours; spines stand in flat series ink today |
+| 9 | Spine + cover art | `spineArtUrl` / `coverArtUrl` | Series › Shelf, Library covers | Routes in the contract, server build in flight — a 404 renders flat series ink; palette (band colours) still undesigned |
 | 10 | Lane vocabulary | *(status envelope)* | App seam, Workbench › Activity | The API cannot express far-lane vs near-lane (decisions.md, Known gaps) |
+| 11 | Background jobs | `JobsApi` | Workbench › Activity ("In the background"), user-invoked scan's Stop | Until `/api/jobs` answers, only the scan envelope is visible — art/cover work and the un-ask are dark |
 
 ---
 
@@ -151,22 +152,26 @@ distinguish fetched from adopted (provenance already records this for
 fetched chapters — 11 of 12 live series carry none, and those must be
 untouchable). `decisions.md` lists "No delete endpoints" as a known gap.
 
-## 9. Spine art + palette *(not yet in the contract)*
+## 9. Spine + cover art — `spineArtUrl` / `coverArtUrl` *(routes in flight)*
 
-The shelf design faces each spine with a sliver of the chapter's own art
-(saliency-scored, balloons penalised) and prints the foot band in the
-chapter's measured dominant colour. No extraction endpoint exists, so
-every spine stands in flat series ink — which the design names as a
-legitimate state ("a series without extracted art stands in flat series
-ink; nothing announces this"). When extraction lands:
+Now in the contract, being built server-side alongside this client:
 
 ```
-GET /api/manga/:id/chapters/:cid/spine → image sliver
-GET /api/manga/:id/palette             → per-chapter dominant colours
+GET /api/art/spine/:chapterUid → the sliver, 404 when not generated yet
+GET /api/art/cover/:seriesUid  → the image, 404 when not generated yet
 ```
 
-Add these to `contract.ts` when designed; the shelf reads them through
-the same seam.
+The client is wired (2026-08-28): a spine wears its art when the route
+answers, and a 404 renders the flat series ink the shelf already draws —
+no placeholder, no shimmer, per the design's own words ("a series
+without extracted art stands in flat series ink; nothing announces
+this"). Covers walk fetched-cover → generated cover → plain binding.
+Spine 404s are remembered for 60 s client-side so a shelf of 300 spines
+does not re-ask on every render; art that lands is picked up on the
+next visit.
+
+Still missing: the palette route (per-chapter dominant colour for the
+foot band) — undesigned, bands render in the theme's own ink.
 
 ## 10. Lane vocabulary in the status envelope
 
@@ -174,3 +179,37 @@ the same seam.
 the API cannot express the distinction the UI needs." `/api/downloads`
 is the far lane and `/api/sync` the near lane, but nothing in the status
 envelope says so. Cosmetic until a phone client exists; structural after.
+
+## 11. Background jobs — `JobsApi`
+
+The background-work envelope: scanning, cover generation, spine-art
+extraction.
+
+```
+GET  /api/jobs            → { jobs, running, queued }   weak ETag, 304 when unchanged
+POST /api/jobs/:id/cancel → { ok: true }
+```
+
+Contract and client landed 2026-08-28; the server routes are being built
+concurrently. `real.ts` polls on the ETag; the composed client
+(`index.ts`) falls through to `pending.jobsFallback` **only on a 404**,
+and the Activity section says so when that happens.
+
+Fallback behaviour: derived from the real `GET /api/sync/scan` — an
+active scan is the one job the server can already report. Art and cover
+work is invisible from a browser until the route answers, so no rows are
+invented for it. `cancel` refuses with a plain sentence: there is no
+route to stop anything yet, which also means **the user-invoked scan has
+no un-ask until `/api/jobs` lands** (the Stop button only appears once a
+real job row exists to cancel).
+
+Presentation follows `docs/scheduler.md` §3: background jobs are dated
+sentences with no spinner and no ticking number; "stuck" is detected
+client-side by tracking when each job's shape last changed across polls
+(4 min without movement → amber weather, no retry lever). Percentages
+and Stop belong only to the scan the user invoked.
+
+Known hole, recorded on purpose: **there is no retry route for a failed
+job.** The red treatment's one verb is "Look again" (`POST /api/scan`),
+on the reading that a fresh look re-queues whatever work was missed. If
+the server grows a dedicated re-run route, repoint that one verb.

@@ -8,9 +8,42 @@
  * whole change.
  */
 
-import type { PaperboxApi } from "./contract";
+import type { JobsApi, PaperboxApi } from "./contract";
+import { HttpError } from "../lib";
 import * as real from "./real";
 import * as pending from "./pending";
+
+
+/**
+ * Jobs: the real route first; a 404 means the server build hasn't landed
+ * yet, and the call falls through to the adapter's derived envelope.
+ * `jobsAdapterActive` records which half answered last, so the diagnosis
+ * tab can state it instead of letting adapter data pass as server fact.
+ */
+export let jobsAdapterActive = false;
+const jobs: JobsApi = {
+  async list() {
+    try {
+      const env = await real.jobs.list();
+      jobsAdapterActive = false;
+      return env;
+    } catch (e) {
+      if (e instanceof HttpError && e.status === 404) {
+        jobsAdapterActive = true;
+        return pending.jobsFallback.list();
+      }
+      throw e;
+    }
+  },
+  async cancel(id) {
+    try {
+      await real.jobs.cancel(id);
+    } catch (e) {
+      if (e instanceof HttpError && e.status === 404) return pending.jobsFallback.cancel(id);
+      throw e;
+    }
+  },
+};
 
 export const api: PaperboxApi = {
   // Real
@@ -20,6 +53,7 @@ export const api: PaperboxApi = {
   downloads: real.downloads,
   sources: real.sources,
   sync: real.sync,
+  jobs,
   // Pending — adapter-backed until the server catches up
   readState: pending.readState,
   identity: pending.identity,

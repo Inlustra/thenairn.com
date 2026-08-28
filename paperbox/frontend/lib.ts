@@ -4,11 +4,36 @@
 
 export const API = "/api";
 
+/** A non-2xx answer, with the status kept so callers can tell 404 apart. */
+export class HttpError extends Error {
+  constructor(message: string, public status: number) {
+    super(message);
+    this.name = "HttpError";
+  }
+}
+
 /** JSON fetch that throws on non-2xx with the server's own error line. */
 export async function j<T>(url: string, init?: RequestInit): Promise<T> {
   const r = await fetch(url, init);
   const d = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error((d as any)?.error || `HTTP ${r.status}`);
+  if (!r.ok) throw new HttpError((d as any)?.error || `HTTP ${r.status}`, r.status);
+  return d as T;
+}
+
+/**
+ * Conditional JSON fetch on a weak ETag. Sends If-None-Match with the last
+ * tag seen for this URL; a 304 hands back the cached body, so polling an
+ * unchanged envelope costs only the header exchange.
+ */
+const etagCache = new Map<string, { etag: string; body: unknown }>();
+export async function jTagged<T>(url: string): Promise<T> {
+  const prev = etagCache.get(url);
+  const r = await fetch(url, prev ? { headers: { "If-None-Match": prev.etag } } : undefined);
+  if (r.status === 304 && prev) return prev.body as T;
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new HttpError((d as any)?.error || `HTTP ${r.status}`, r.status);
+  const etag = r.headers.get("ETag");
+  if (etag) etagCache.set(url, { etag, body: d });
   return d as T;
 }
 

@@ -13,6 +13,7 @@ import type {
   DownloadTask,
   ContinuePoint,
 } from "../api/contract";
+import { coverArtUrl } from "../api/contract";
 import { InkBar, PlainBinding } from "../ui";
 
 interface SeriesCardData {
@@ -48,16 +49,25 @@ function caption(d: SeriesCardData): { text: string; tone: "quiet" | "pencil" | 
   return { text: `${series.chapterCount} chapters`, tone: "quiet" };
 }
 
+/**
+ * A cover walks its candidates in order: the source-fetched cover, then
+ * the server-generated one (GET /api/art/cover/:seriesUid — 404 until
+ * generated). When neither answers, the plain binding — flat series ink,
+ * never a placeholder or shimmer.
+ */
 function Cover({ series }: { series: SeriesSummary }) {
-  const [failed, setFailed] = useState(false);
-  if (!series.coverUrl || failed) return <PlainBinding title={series.title} />;
+  const urls = [series.coverUrl, coverArtUrl(series.uid)].filter(
+    (u): u is string => !!u,
+  );
+  const [at, setAt] = useState(0);
+  if (at >= urls.length) return <PlainBinding title={series.title} />;
   return (
     <img
       className="cover-img"
-      src={series.coverUrl}
+      src={urls[at]}
       alt=""
       loading="lazy"
-      onError={() => setFailed(true)}
+      onError={() => setAt(at + 1)}
     />
   );
 }

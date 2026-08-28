@@ -12,8 +12,55 @@
 
 import { useMemo, useState } from "react";
 import { spineWidth } from "../lib";
+import { spineArtUrl } from "../api/contract";
 import { Glyph, glyphLabel } from "../ui";
 import type { ChapterRow, PencilRow } from "./Series";
+
+/* ------------------------------------------------------------------ */
+/* The face — a chapter's own art sliver, when the server has cut it   */
+/* ------------------------------------------------------------------ */
+
+/**
+ * GET /api/art/spine/:chapterUid — 404 until extraction has run. Until
+ * the image actually arrives the spine stands in flat series ink; a 404
+ * renders nothing at all. No placeholder, no shimmer — pencil states
+ * carry no artwork, and theatre is worse than absence.
+ *
+ * Failed URLs are remembered briefly so re-renders don't re-ask the
+ * server for art it just said it hasn't cut; the short TTL means art
+ * that lands is picked up on the next visit without any wiring.
+ */
+const faceMisses = new Map<string, number>();
+const FACE_MISS_TTL = 60_000;
+
+function SpineFace({ uid }: { uid: string }) {
+  const url = spineArtUrl(uid);
+  const [loaded, setLoaded] = useState(false);
+  const [dead, setDead] = useState(() => {
+    const at = faceMisses.get(url);
+    return at != null && Date.now() - at < FACE_MISS_TTL;
+  });
+  if (dead) return null;
+  return (
+    <img
+      className={`sp-face${loaded ? " is-loaded" : ""}`}
+      src={url}
+      alt=""
+      loading="lazy"
+      decoding="async"
+      draggable={false}
+      aria-hidden
+      onLoad={() => {
+        faceMisses.delete(url);
+        setLoaded(true);
+      }}
+      onError={() => {
+        faceMisses.set(url, Date.now());
+        setDead(true);
+      }}
+    />
+  );
+}
 
 interface Board {
   sequence: string;
@@ -161,6 +208,9 @@ export function SpineShelf({
                           setPulled(pulled === r.chapter.id ? null : r.chapter.id)
                         }
                       >
+                        {(r.glyph === "server" || r.glyph === "flagged") && (
+                          <SpineFace uid={r.chapter.uid} />
+                        )}
                         {(r.readingNow || r.glyph === "needs-you" || r.glyph === "flagged") && (
                           <span
                             className={`sp-ribbon ${
@@ -220,8 +270,8 @@ export function SpineShelf({
       )}
 
       <p className="cap shelf-note">
-        <Glyph state="server" /> spines stand in flat series ink — spine art arrives when the
-        server can cut it. Width is the chapter's real page count.
+        <Glyph state="server" /> a spine wears its own art once the server has cut it; until
+        then it stands in flat series ink. Width is the chapter's real page count.
       </p>
     </div>
   );
