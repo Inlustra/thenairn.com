@@ -141,16 +141,26 @@ Four tiers. Which run on a schedule depends entirely on who writes the files.
 | Tier | Work | Today | At 24M files | Cadence |
 |---|---|---|---|---|
 | **Targeted** | one series, after a write we performed | instant | instant | every download |
-| **Quick** | readdir + dir mtime + page count | 40 ms | ~0.3 s | every 30–60 s |
+| **Quick** | readdir + dir mtime + page count | 40 ms | **~14 min** | not viable as a sweep |
 | **Deep** | stat every page, recompute fingerprint | 3.4 s | ~23 min | rolling, user-managed libraries |
 | **Verify** | read bytes, sha256 | minutes | hours | manual |
 
 **Only Targeted and Quick exist.** There is no scheduler.
 
-New content appears fast because appearing is the cheap case — adding a folder bumps
-its parent's mtime, so "is there anything new?" is 40 ms today and ~0.3 s at 5,000
-series. Run it every half minute and new chapters surface within a minute, with no
-watcher.
+**This section previously claimed ~0.3 s at 5,000 series and "new chapters surface
+within a minute". Both were wrong**, and they were arithmetic, not measurement — a
+file count multiplied by a readdir rate that had been measured on a different
+operation. Measured on the real mount (register R-29), scan cost is linear at
+~1.2 ms per chapter, so a full quick pass at the 710,000-chapter target is
+**~865 s**, not 0.3 s.
+
+A 30-second cadence is therefore impossible: the sweep does not fit inside its own
+interval. New content still appears cheaply *per series* — adding a folder bumps its
+parent's mtime — but a scheduler has to be a **rolling partial scan** with a priority
+order rather than a full sweep, and nothing here has designed one.
+
+The good case is unaffected: after a download we know exactly which series moved, so
+the targeted tier stays instant and is what covers content Paperbox fetched itself.
 
 ### The asymmetry that makes a cheap gate safe
 

@@ -107,4 +107,60 @@ describe("deriveChapterKey", () => {
   test("keySpan counts a plain chapter as one", () => {
     expect(keySpan(deriveChapterKey("X", "Chapter 7"))).toBe(1);
   });
+
+  describe("cases an adversarial review broke (2026-08-28)", () => {
+    test("a volume or season prefix does not win over the chapter number", () => {
+      // First-digit-run keyed all of these to the volume. Because keys are
+      // stored on first sight, a later parser fix cannot repair a library that
+      // adopted them -- so this had to be right before the schema shipped.
+      expect(deriveChapterKey("X", "Vol. 2 Ch. 5").sortKey).toBe(5);
+      expect(deriveChapterKey("X", "Season 2 Chapter 1").sortKey).toBe(1);
+      expect(deriveChapterKey("X", "S2 Chapter 1").sortKey).toBe(1);
+      expect(deriveChapterKey("X", "v02 c010").sortKey).toBe(10);
+    });
+
+    test("a hyphenated pair elsewhere in the name is not a range", () => {
+      // The range search used to be unanchored, so it beat the real chapter
+      // number at the front of the name.
+      const part = deriveChapterKey("X", "Chapter 1 - Part 2-3");
+      expect(part.sortKey).toBe(1);
+      expect(part.sortKeyEnd).toBeUndefined();
+
+      const year = deriveChapterKey("X", "Chapter 1 (2020-2021)");
+      expect(year.sortKey).toBe(1);
+      expect(year.sortKeyEnd).toBeUndefined();
+    });
+
+    test("an absurd number is refused rather than stored", () => {
+      const k = deriveChapterKey("X", "Chapter 999999999999999999999");
+      expect(k.sortKey).toBe(0);
+      expect(k.mark).toBe("");
+    });
+
+    test("a sequence word must be followed by a number, not just look like one", () => {
+      // "Special Delivery" and "Bonus Round 4" were being filed into separate
+      // block and ordering namespaces permanently.
+      expect(deriveChapterKey("X", "Special Delivery").sequence).toBe("main");
+      expect(deriveChapterKey("X", "Bonus Round 4").sequence).toBe("main");
+      expect(deriveChapterKey("X", "Extraction 12").sequence).toBe("main");
+      // ...while real sequences still resolve.
+      expect(deriveChapterKey("X", "Spin-off #002").sequence).toBe("spin-off");
+      expect(deriveChapterKey("X", "Extra 2").sequence).toBe("extra");
+    });
+
+    test("every key on the real library is unchanged by the hardening", () => {
+      // Verified against all 1,706 live chapters: 0 differ. Kept as a guard so a
+      // future parser change cannot silently re-key an existing library.
+      const live: Array<[string, string, number]> = [
+        ["Nano Machine", "Chapter 216", 216],
+        ["SSS-Class Suicide Hunter", "Chapter 151 -S4 END-", 151],
+        ["Omniscient Reader's Viewpoint", "Chapter 200 33. Rereading (7)", 200],
+        ["The Greatest Estate Developer", "Episode 038", 38],
+        ["Warhammer 40,000_ Exterminatus", "Warhammer 40,000_ Exterminatus Issue #3", 3],
+      ];
+      for (const [series, dir, want] of live) {
+        expect(deriveChapterKey(series, dir).sortKey).toBe(want);
+      }
+    });
+  });
 });

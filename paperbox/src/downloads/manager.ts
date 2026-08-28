@@ -1,11 +1,11 @@
 import { mkdir, writeFile, rm, rename, readdir } from "fs/promises";
-import { join } from "path";
+import { join, basename } from "path";
 import { runModule, type MangaInfo } from "../lua/engine";
 import { getScript, getScriptByName } from "../lua/scripts";
 import { getMangaDir, scan } from "../scanner";
 import { loadMeta, saveMeta, recordProvenance, type ChapterMeta } from "../metadata";
-import { newUid } from "../ids";
 import { safeSegment, assertDirectChild } from "../safepath";
+import { deriveChapterKey } from "../chapters";
 
 export type DownloadStatus = "queued" | "downloading" | "completed" | "failed" | "cancelled";
 
@@ -384,7 +384,23 @@ async function writeProvenance(
     const { meta } = await loadMeta(seriesDir);
     let entry: ChapterMeta | undefined = meta.chapters[chapterDirName];
     if (!entry) {
-      entry = { uid: newUid(), dir: chapterDirName, number: 0, pages: 0 };
+      // Derive the identity and the key rather than minting a random uid. A
+      // random uid here is what made every chapter in the live library carry a
+      // *pinned* id, which quietly falsifies the property the identity model is
+      // built on: that deleting every sidecar leaves ids unchanged. It also left
+      // the chapter keyless and at number 0 until the next full scan.
+      const seriesName = basename(seriesDir);
+      const k = deriveChapterKey(seriesName, chapterDirName);
+      entry = {
+        dir: chapterDirName,
+        number: k.sortKey,
+        label: k.label,
+        sortKey: k.sortKey,
+        sortKeyEnd: k.sortKeyEnd,
+        sequence: k.sequence,
+        mark: k.mark,
+        pages: 0,
+      };
       meta.chapters[chapterDirName] = entry;
     }
     recordProvenance(entry, provenance);

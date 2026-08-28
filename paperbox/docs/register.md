@@ -37,12 +37,15 @@ the entry is wrong. Spike the wide ones before building on them, not after.
 Ordered by blast radius, not by effort. Each is an untested bet that other work is
 already resting on.
 
-1. **R-02** — the quick-scan cost at scale. Everything about scan cadence assumes it.
-   Its synthetic-tree fixture is what most other spikes need, so build that first.
-2. **R-11** — that a phone can hold a useful subset without a read-state model.
-3. **R-09** — that saliency cropping produces usable spines on real artwork — and,
+1. **R-11** — that a phone can hold a useful subset without a read-state model.
+2. **R-09** — that saliency cropping produces usable spines on real artwork — and,
    separately, that extraction is affordable (R-22).
-4. **R-23** — that the FMD2 module feed is a dependency we can carry.
+3. **R-23** — that the FMD2 module feed is a dependency we can carry.
+
+**R-02 came off this list on 2026-08-28**, measured rather than argued, and
+**disproved** — see R-29 for the curve and R-30 for what it takes with it. The
+synthetic-tree fixture it needed now lives in `bench/` and is reusable by the
+remaining spikes.
 
 **R-18 came off this list on 2026-08-28**, decided rather than spiked — see
 `decisions.md`, "A chapter's number is a label, a sort key, and a sequence".
@@ -96,19 +99,29 @@ are legitimately number 1. *Evidence:* measured across all 1,706 chapters, 2026-
 tree-shape change. It also breaks "a gap is a missing volume" on the spine shelf: a gap
 in `main` is not a gap if the neighbour belongs to another sequence.
 
+**R-29 · Scan cost is linear in chapters, at ~1.2 ms per chapter, on FUSE**
+Measured 2026-08-28 with `bench/gen-tree.ts` + `bench/scan-curve.ts` against a
+synthetic library on the real shfs mount. Four points, growing one tree:
+
+| series | chapters | cold | warm (quick tier) | warm µs/chapter |
+|---:|---:|---:|---:|---:|
+| 100 | 14,204 | 220.7 s | 16.5 s | 1161 |
+| 250 | 35,510 | 345.8 s | 43.7 s | 1231 |
+| 500 | 71,020 | 593.0 s | 85.8 s | 1208 |
+| 1,000 | 142,040 | 1,190.0 s | 173.0 s | 1218 |
+
+Per-chapter cost is flat across a 10× range, so the curve is **linear** and the
+extrapolation is a fit rather than a guess — and the largest point is 20% of the
+R-12 target, not a distant one. *Evidence:* `bench/`, empty page files (the quick
+tier never opens a page; it does one readdir and one stat per chapter).
+*Blast radius:* wide — see R-30.
+
+
 ---
 
 ## Projected
 
 Arithmetic from a measurement, at a scale nothing has run at. Treat as assumption.
-
-**R-02 · Quick scan is ~0.3 s at 24M files**
-Derived from R-01's readdir rate. **Contested:** the scan as written also `readdir`s
-every chapter directory and stats each one, which is not what R-01 measured, so the
-true figure may be orders of magnitude higher. *Settles it:* generate a synthetic
-tree at 5,000 series on the same filesystem and time one quick pass. Until then no
-scan-cadence claim in `sync.md` is safe. *Blast radius:* wide — cadence, the "new
-chapters within a minute" promise, and whether a scheduler is even viable.
 
 **R-11 · A phone holds a useful subset**
 The selective-sync design assumes a device can express what it wants and keep it
@@ -286,3 +299,27 @@ The source-succession story is a *registry release-log* fact, not a provenance o
 Still listed as a known gap in `decisions.md`; it was fixed (`readdir` with
 `withFileTypes`, `d_type` fast path) *[verified]*. Retired here rather than left to be
 re-quoted, which is the whole point of this file.
+
+**R-30 · "Quick scan is ~0.3 s at 24M files"**
+Disproved 2026-08-28. The real figure at the R-12 target of 710,000 chapters is
+**~865 s (14.4 minutes)**, from the measured per-chapter cost in R-29 — about
+**2,900× the claim**. Cold first scan projects to roughly 99 minutes.
+
+The claim was arithmetic from R-01's flat readdir sweep, but the scanner does one
+readdir *and* one stat per chapter directory, so the dominant term is per-chapter,
+not per-file. Multiplying a file count by a readdir rate measured a different
+operation. This is the same failure as R-14 (`find -type f` as a stat benchmark):
+a rate borrowed from one operation and applied to another.
+
+What it takes with it:
+
+- **The 30–60 s quick-scan cadence is impossible.** One full quick pass takes
+  14 minutes; scheduling it every 30 s would mean ~29 overlapping scans.
+- **"New chapters surface within a minute" has no mechanism** at target scale, and
+  `sync.md` should stop saying so until one exists.
+- **A scheduler must be a rolling partial scan** with a priority order, not a full
+  sweep — which changes Activity copy and every freshness stamp.
+- **Targeted scan is unaffected** and remains the good case: after a download we
+  know which series moved, so that path stays instant.
+- **R-06 gets much stronger.** At ~1.2 ms per chapter dominated by FUSE round
+  trips, moving the index off the FUSE layer is the whole game.

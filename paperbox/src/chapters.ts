@@ -23,15 +23,37 @@
  */
 
 /** Runs that are not the main sequence, matched at the start of a stripped name. */
+// Each must be followed by a number or the end of the name. Without that,
+// ordinary titles get misfiled into a separate block and ordering namespace
+// permanently: "Special Delivery" became sequence "special", "Bonus Round 4"
+// became "bonus".
+const SEQ_TAIL = String.raw`(?=\s*[#.]?\s*\d|\s*$)`;
 const SEQUENCE_WORDS: Array<[RegExp, string]> = [
-  [/^spin[\s_-]?offs?\b/i, "spin-off"],
-  [/^side[\s_-]?stor(?:y|ies)\b/i, "side-story"],
-  [/^extras?\b/i, "extra"],
-  [/^omakes?\b/i, "omake"],
-  [/^specials?\b/i, "special"],
-  [/^bonus\b/i, "bonus"],
+  [new RegExp(String.raw`^spin[\s_-]?offs?\b` + SEQ_TAIL, "i"), "spin-off"],
+  [new RegExp(String.raw`^side[\s_-]?stor(?:y|ies)\b` + SEQ_TAIL, "i"), "side-story"],
+  [new RegExp(String.raw`^extras?\b` + SEQ_TAIL, "i"), "extra"],
+  [new RegExp(String.raw`^omakes?\b` + SEQ_TAIL, "i"), "omake"],
+  [new RegExp(String.raw`^specials?\b` + SEQ_TAIL, "i"), "special"],
+  [new RegExp(String.raw`^bonus\b` + SEQ_TAIL, "i"), "bonus"],
   [/^prologue\b/i, "main"], // a prologue is part of the main run, not a sequence
 ];
+
+/**
+ * An explicit chapter token, tried before "first digit run".
+ *
+ * Volume- and season-prefixed names are common in adopted Kavita/Komga/Tachiyomi
+ * libraries, and first-digit-run keys every one of them to the volume:
+ * `Vol. 2 Ch. 5` -> 2, `Season 2 Chapter 1` -> 2, `v02 c010` -> 2. Because keys
+ * are stored on first sight, fixing the parser afterwards cannot repair them.
+ */
+const CHAPTER_TOKEN = /(?:^|[^a-z0-9])(?:chapter|chap|ch|episode|ep|c)\s*[.#]?\s*(\d+(?:\.\d+)?)/i;
+
+/** Real chapter numbers are small; anything larger is a year, an id, or junk. */
+const MAX_SANE = 100_000;
+
+function sane(n: number): boolean {
+  return Number.isFinite(n) && n >= 0 && n <= MAX_SANE;
+}
 
 export interface ChapterKey {
   /** The directory name, verbatim. */
@@ -88,21 +110,26 @@ export function deriveChapterKey(seriesTitle: string, dir: string): ChapterKey {
     }
   }
 
-  // A range: one directory holding several chapters. Checked before the plain
-  // number, or `14-19` would read as 14 and open a false gap at 15-19.
-  const range = rest.match(/(\d+(?:\.\d+)?)\s*[-–]\s*(\d+(?:\.\d+)?)/);
-  if (range?.[1] && range[2]) {
-    const from = parseFloat(range[1]);
-    const to = parseFloat(range[2]);
-    if (to > from) {
-      return { label, sortKey: from, sortKeyEnd: to, sequence, mark: `${fmt(from)}–${fmt(to)}` };
-    }
-  }
+  // Find the chapter number's position: an explicit chapter token if there is
+  // one, else the first digit run.
+  const token = rest.match(CHAPTER_TOKEN);
+  const plain = rest.match(/\d+(?:\.\d+)?/);
+  const hit = token?.[1] !== undefined ? { text: token[1], end: token.index! + token[0].length } : plain?.[0] !== undefined ? { text: plain[0], end: plain.index! + plain[0].length } : null;
 
-  const single = rest.match(/(\d+(?:\.\d+)?)/);
-  if (single?.[1]) {
-    const n = parseFloat(single[1]);
-    return { label, sortKey: n, sequence, mark: fmt(n) };
+  if (hit && sane(parseFloat(hit.text))) {
+    const from = parseFloat(hit.text);
+
+    // A range is only a range when the second number follows THIS one directly.
+    // An unanchored search matched any hyphenated digit pair later in the name,
+    // so `Chapter 1 (2020-2021)` keyed to 2020 and `Chapter 1 - Part 2-3` to 2.
+    const after = rest.slice(hit.end).match(/^\s*[-–]\s*(\d+(?:\.\d+)?)/);
+    if (after?.[1]) {
+      const to = parseFloat(after[1]);
+      if (sane(to) && to > from) {
+        return { label, sortKey: from, sortKeyEnd: to, sequence, mark: `${fmt(from)}–${fmt(to)}` };
+      }
+    }
+    return { label, sortKey: from, sequence, mark: fmt(from) };
   }
 
   // Nothing numeric. `Warhammer 40,000 Full` and `Oneshot` land here, and get no
