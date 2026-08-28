@@ -67,6 +67,109 @@ They are separated **structurally, not just with different words**:
 A ticking percentage invites you to watch something you cannot influence. The near
 errand earns numbers because it is yours.
 
+## The seam — *settled*
+
+Built 2026-08-28, in answer to *"there's no single continuously updated status
+screen anywhere."* The need is real; a status **screen** is the wrong shape for
+it — a screen is a room you must walk to, and the workbench already is one.
+What was missing is a surface that is wherever you are.
+
+**The seam is that surface: one mark, and the ledger behind it.**
+
+### The mark
+
+A single glyph, always present, in the same corner of every screen — the header
+on the library, series and workbench; the reader's own tap-summoned chrome while
+a page is open. Its weave is the entire ambient message, in the existing state
+language and nothing else:
+
+| Weave | Answer it gives at a glance |
+|---|---|
+| Solid ink dot | nothing is happening; everything is fact |
+| Pencil dashed circle | something is moving — a fetch, or housekeeping |
+| Amber hatched circle | weather — stuck, running behind, or a server not answering; rights itself |
+| Red ring-dot | a person is needed |
+
+The three questions — is anything happening, is anything stuck, is anything
+wrong — are answered by weave and geometry, not hue, so the mark survives
+greyscale like every other mark.
+
+The mark exists at rest **on purpose**. An element that appears only in trouble
+cannot say "no" — absence reads as *off*, not *fine*. The resting ink dot is the
+"no": still, small, one register quieter than text. A library at rest looks like
+a library at rest, with a full stop after it.
+
+**It never animates and never carries a number.** The seam's animation is
+reserved for the near lane (see the table above); the web client holds nothing,
+so on the web the seam never animates at all — the animation stays reserved for
+the phone. A ticking anything in the mark would invite watching, which is the
+failure this whole vocabulary exists to refuse.
+
+### What tints the mark, and what does not
+
+- Far-lane fetching, and art/cover housekeeping → **pencil**. Finite work,
+  honestly present, asking nothing.
+- **A background scan → nothing.** scheduler.md §3 is binding: freshness is not
+  an errand and gets no ambient presence. The mark stays ink while the scanner
+  rotates. (A scan that is stuck or running behind is *weather*, and weather
+  tints.)
+- A running job that hasn't changed shape for minutes, a failure that heals
+  itself, the scheduler reporting itself behind, a server that stopped
+  answering → **amber**.
+- A fetch out of retries, art stopped for a reason no retry fixes → **red**.
+
+Person outranks weather outranks work outranks rest — the one triage, applied
+once, for every screen at the same time. One surface, one reading; the library,
+the series screen, the workbench and the reader can never disagree about
+whether something is wrong.
+
+### The ledger
+
+Press the mark and the ledger opens: the same facts as dated sentences, on
+whatever screen you are on. *On its way* (the far lane), *In the background*
+(the server's own housekeeping), *The library* (freshness). It answers and
+closes.
+
+- **Dated sentences only.** No percentage, no ticking number, no spinner. The
+  numbers of a user-invoked scan stay in the workbench where it was invoked,
+  because asking there is what made the errand theirs.
+- **No levers.** Retry, Stop and Clear live in the workbench; the ledger's one
+  action is going there. A surface that is everywhere must not be able to *do*
+  anything everywhere, or every screen becomes an admin console — the same rule
+  that keeps administration off the phone.
+- **It never opens itself.** Detail is on demand, and demand is a press.
+- A background scan may appear here as a dated sentence — opening the ledger is
+  asking, the same way walking into the workbench is.
+- It adds no traffic: it reads the envelopes the app already polls.
+
+### The reader
+
+Nothing may draw over a page, so while one is open the seam is absent from the
+page itself. The mark rides the reader's chrome — already hidden until tapped —
+and appears even there only when the answer to "stuck or wrong?" is yes: amber
+or red. Pencil work and rest are silence in the reader. Someone who taps for the
+chrome was already asking *where am I, what's going on*; the mark answers the
+second half without being asked twice.
+
+### Considered and rejected
+
+- **A status screen or tab** — a room you must walk to reproduces the exact
+  complaint. The workbench already speaks at length to anyone who walks in.
+- **A persistent status bar or footer strip** — a bar has width to fill. Idle,
+  it either fills with reassurance copy (theatre) or sits empty (a dead tax on
+  every screen, and on reading height in particular).
+- **Toasts and snackbars** — they push detail; everything here pulls. Arrival
+  is discovered on the Continue rail, not announced.
+- **Animating the mark while work runs** — the seam's animation belongs to the
+  near lane, and a server that is often busy would animate often. A permanent
+  shimmer is how background work becomes ambient anxiety.
+- **A count in or beside the mark** ("3 jobs") — a ticking number invites
+  watching; a static one is a question ("three what?") that costs a click to
+  answer, which is worse than a weave that already answered.
+- **Letting the background scan tint the mark** — contradicts scheduler.md §3
+  directly, and would hold the mark at pencil for stretches of every day. Rest
+  would become the rare state and the mark would stop meaning anything.
+
 ## Acquisition — *settled*
 
 **One verb.** "Get" means *make it readable where I am* — two hops from the phone,

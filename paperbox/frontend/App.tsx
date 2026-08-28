@@ -15,6 +15,7 @@ import { LibraryView } from "./views/Library";
 import { SeriesView } from "./views/Series";
 import { ReaderView } from "./views/Reader";
 import { WorkbenchView } from "./views/Workbench";
+import { Ledger, SeamMark, readSeam, useJobMovement } from "./seam";
 import { clock } from "./lib";
 
 /* ------------------------------------------------------------------ */
@@ -157,10 +158,20 @@ export function App() {
   const inking = tasks.filter((t) => t.status === "downloading" || t.status === "queued").length;
   const needsYou = tasks.filter((t) => t.status === "failed").length;
 
+  // The seam: one reading for every screen. The mark is its constant
+  // presence; the ledger opens from it and from nowhere else.
+  const movedAt = useJobMovement(jobsEnv);
+  const [ledgerOpen, setLedgerOpen] = useState(false);
+  const reading = readSeam({ tasks, jobsEnv, status, reachable, asOf, movedAt });
+
   // A fresh tab with nothing loaded and no server: the one blocking state.
   if (!everLoaded && !reachable) return <Unreachable lastTry={lastTry} />;
 
   const openSeries = (id: string) => go({ view: "series", id });
+  const toWorkbench = () => {
+    setLedgerOpen(false);
+    go({ view: "workbench", tab: "activity" });
+  };
 
   return (
     <>
@@ -170,8 +181,11 @@ export function App() {
           <h1>Paper<span>box</span></h1>
         </button>
 
-        {/* The ambient seam: silence is the healthy state. */}
+        {/* The ambient seam: silence is the healthy state. The mark is
+            always there — its stillness is the message; the chips are its
+            words and appear only when there is something to say. */}
         <div className="seam" aria-live="polite">
+          <SeamMark reading={reading} open={ledgerOpen} onToggle={() => setLedgerOpen((o) => !o)} />
           {inking > 0 && <span className="chip chip-pencil">Inking {inking}</span>}
           {needsYou > 0 && (
             <button
@@ -237,6 +251,31 @@ export function App() {
           chapterId={route.read}
           onClose={() => go({ view: "series", id: route.id })}
           onNavigate={(chapterId) => go({ view: "series", id: route.id, read: chapterId })}
+          // The reader is sacred: the mark rides its own chrome (already
+          // hidden until tapped) and only when something is stuck or wrong.
+          // Pencil work and rest are silence while a page is open.
+          seam={
+            reading.tone === "amber" || reading.tone === "red" ? (
+              <SeamMark
+                reading={reading}
+                open={ledgerOpen}
+                onToggle={() => setLedgerOpen((o) => !o)}
+              />
+            ) : null
+          }
+        />
+      )}
+
+      {ledgerOpen && (
+        <Ledger
+          tasks={tasks}
+          jobsEnv={jobsEnv}
+          status={status}
+          reading={reading}
+          movedAt={movedAt}
+          asOf={asOf}
+          onClose={() => setLedgerOpen(false)}
+          onWorkbench={toWorkbench}
         />
       )}
     </>

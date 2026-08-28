@@ -146,6 +146,82 @@ h1, h2, h3 { font-family: var(--f-display); line-height: 1.1; margin: 0; }
     repeating-linear-gradient(45deg, transparent 0 3px, var(--amber-wash) 3px 5px);
   border-color: var(--amber);
 }
+/* The seam mark — the constant of the seam. One glyph, four weaves:
+   solid ink at rest, pencil dash while something moves, amber hatch for
+   weather, red ring-dot when a person is needed. It never animates and
+   never carries a number — the seam's motion stays reserved for the
+   near lane, which the web client does not have. */
+.seam-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+}
+.seam-mark:hover,
+.seam-mark[aria-expanded="true"] { background: var(--bg-sunken); }
+.seam-mark .glyph { width: 13px; height: 13px; }
+/* At rest the ink dot steps back a register — present, never loud. */
+.seam-mark.seam-ink .g-ink { fill: var(--tx2); }
+
+/* In the reader's night chrome the marks keep night inks, whatever the
+   app theme, and the hover ground is drawn from the reader's own paper. */
+.rd-chrome .seam-mark:hover,
+.rd-chrome .seam-mark[aria-expanded="true"] { background: rgba(234, 229, 217, 0.12); }
+.rd-chrome .g-amber-line,
+.rd-chrome .g-amber-hatch { stroke: #d9a84e; }
+.rd-chrome .g-red-line { stroke: #e06b53; }
+.rd-chrome .g-red-fill { fill: #e06b53; }
+
+/* The ledger — detail on demand, and only on demand. Opens from the
+   mark, answers in dated sentences, holds no levers. */
+.ledger {
+  position: fixed;
+  top: 58px;
+  right: clamp(10px, 2vw, 28px);
+  z-index: 60;
+  width: min(400px, calc(100vw - 20px));
+  max-height: min(72vh, 560px);
+  overflow-y: auto;
+  background: var(--bg-raised);
+  border: 1px solid var(--rule-strong);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  padding: 14px 18px 12px;
+}
+.ledger-head { margin: 0; font-family: var(--f-display); font-size: 15px; font-weight: 640; }
+.ledger-head.ledger-pencil { color: var(--pencil-strong); }
+.ledger-head.ledger-amber { color: var(--amber); }
+.ledger-head.ledger-red { color: var(--red); }
+.ledger-sec { border-top: 1px solid var(--rule); margin-top: 10px; padding-top: 8px; }
+.ledger-sec h3 {
+  font-family: var(--f-body);
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--tx3);
+  margin: 0 0 2px;
+}
+.ledger .line { margin: 5px 0; }
+.ledger-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  border-top: 1px solid var(--rule);
+  margin-top: 10px;
+  padding-top: 10px;
+  font-size: 13px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ledger { animation: ledger-in 130ms ease-out; }
+  @keyframes ledger-in {
+    from { opacity: 0; transform: translateY(-4px); }
+  }
+}
+
 .hdr-nav { display: flex; gap: 4px; }
 .hdr-nav button {
   padding: 5px 12px;

@@ -122,6 +122,14 @@ export interface ServerStatus {
     pagesTotal: number;
   };
   sources: { sig: string; count: number };
+  /** Present once the jobs runner ships; absent on an older server. */
+  jobs?: { sig: string; running: number; queued: number };
+  /**
+   * The scheduler's own report on itself (scheduler.md §3): `behind` is
+   * true when the measured floor rotation has exceeded twice its deadline
+   * for two consecutive rotations — the amber "running behind" weather.
+   */
+  freshness?: { floorRotationMs: number | null; floorDeadlineMs: number; behind: boolean };
 }
 
 export interface StatusApi {

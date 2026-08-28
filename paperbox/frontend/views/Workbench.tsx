@@ -5,7 +5,7 @@
  * nowhere else.
  */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api, jobsAdapterActive } from "../api";
 import type {
   DownloadTask,
@@ -20,6 +20,7 @@ import type {
   TreeChild,
 } from "../api/contract";
 import { Line, Weather, NeedsYou, AsOf } from "../ui";
+import { STUCK_AFTER_MS, useJobMovement } from "../seam";
 import { timeAgo, clock, fmt, fmtBytes, hostOf, healsItself } from "../lib";
 
 type Tab = "activity" | "sources" | "registries" | "rules" | "diagnosis";
@@ -41,25 +42,6 @@ type Tab = "activity" | "sources" | "registries" | "rules" | "diagnosis";
 /* only on the user-invoked scan above, because asking made it theirs. */
 /* ------------------------------------------------------------------ */
 
-const STUCK_AFTER_MS = 4 * 60_000;
-
-/** Track when each job last changed shape, across poll responses. */
-function useJobMovement(env: JobsEnvelope | null): Map<string, number> {
-  const moved = useRef<Map<string, { key: string; at: number }>>(new Map());
-  const out = new Map<string, number>();
-  if (env) {
-    const seen = new Set<string>();
-    for (const jb of env.jobs) {
-      seen.add(jb.id);
-      const key = `${jb.state}:${jb.done}:${jb.total ?? ""}`;
-      const prev = moved.current.get(jb.id);
-      if (!prev || prev.key !== key) moved.current.set(jb.id, { key, at: Date.now() });
-    }
-    for (const id of [...moved.current.keys()]) if (!seen.has(id)) moved.current.delete(id);
-  }
-  for (const [id, v] of moved.current) out.set(id, v.at);
-  return out;
-}
 
 function BackgroundWork({
   env,

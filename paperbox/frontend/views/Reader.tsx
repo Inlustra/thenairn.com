@@ -5,7 +5,7 @@
  * retry tile, never an ejection.
  */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { api, recordContinue } from "../api";
 import type { SeriesDetail, ChapterInfo, PageInfo } from "../api/contract";
 import { Line } from "../ui";
@@ -48,11 +48,19 @@ export function ReaderView({
   chapterId,
   onClose,
   onNavigate,
+  seam,
 }: {
   seriesId: string;
   chapterId: string;
   onClose: () => void;
   onNavigate: (chapterId: string) => void;
+  /**
+   * The seam mark, handed down only when something is stuck or wrong —
+   * amber or red. It rides the chrome the reader already hides, so a
+   * page in progress never gains a single new pixel; a reader who taps
+   * for the chrome was already asking "where am I, what's going on".
+   */
+  seam?: ReactNode;
 }) {
   const [detail, setDetail] = useState<SeriesDetail | null>(null);
   const [pages, setPages] = useState<PageInfo[] | null>(null);
@@ -201,6 +209,7 @@ export function ReaderView({
         <span className="rd-pos">
           {pages ? `${cur + 1} / ${pages.length}` : ""}
         </span>
+        {seam}
       </div>
 
       <div className="rd-scroll" ref={scrollRef} onScroll={onScroll} onClick={() => setChrome((c) => !c)}>
