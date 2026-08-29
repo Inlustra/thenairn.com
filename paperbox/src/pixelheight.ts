@@ -23,14 +23,30 @@ export const NORMAL_WIDTH = 1000;
  * "unknown" (never divide a spine by it).
  */
 export async function chapterPixelHeight(dir: string, files: string[]): Promise<number> {
+  // Concurrently, because the cost here is not reading a header -- it is the
+  // FUSE round trip to open each file, and awaiting them one at a time pays that
+  // in full every time. Measured on this box: 7.9 ms/page sequential against
+  // 1.6 ms/page at this width, on the same pages. A raw 64 KB read is 0.3 ms, so
+  // the remainder is sharp's own per-call overhead and not worth chasing.
+  //
+  // 8, not 32: R-01's stat throughput plateaus around 32, but this shares the
+  // FUSE queue with whoever is reading a comic, and `docs/scheduler.md` argues
+  // for leaving them room.
+  const WIDTH = 8;
   let total = 0;
-  for (const file of files) {
-    try {
-      const m = await sharp(join(dir, file)).metadata();
-      if (m.height && m.width) total += Math.round((m.height * NORMAL_WIDTH) / m.width);
-    } catch {
-      // A page sharp cannot read contributes nothing; the rest still count.
+  let next = 0;
+  const workers = Array.from({ length: Math.min(WIDTH, files.length) }, async () => {
+    while (next < files.length) {
+      const file = files[next++];
+      if (file === undefined) return;
+      try {
+        const m = await sharp(join(dir, file)).metadata();
+        if (m.height && m.width) total += Math.round((m.height * NORMAL_WIDTH) / m.width);
+      } catch {
+        // A page sharp cannot read contributes nothing; the rest still count.
+      }
     }
-  }
+  });
+  await Promise.all(workers);
   return total;
 }
