@@ -377,20 +377,38 @@ export interface ReadStateApi {
 /* Identity — MISSING (registry binding, docs/upstream.md)             */
 /* ------------------------------------------------------------------ */
 
+/**
+ * The bar for a binding to carry a candidate at all is "this might be
+ * correct". A candidate the evidence disproves is discarded before it
+ * reaches a client — it surfaces as plain "no-match", never as a
+ * rejected choice for the user to ratify (docs/ui.md, "Conclusions,
+ * not deliberation").
+ */
 export type IdentityState =
   /** Corroborated or confirmed; derived facts may stand on it. */
   | "identified"
-  /** A guess awaiting a person. External facts render greyed, unconfirmed. */
+  /** Genuinely uncertain — the only state that earns a question. The
+      candidate and its evidence travel with it, because the user is
+      adjudicating and needs the grounds. */
   | "guess"
-  /** Evidence contradicts the match. Red row in the queue; facts retracted. */
-  | "contradicted"
   /** No registry we asked knows it — but one we haven't configured might. */
   | "unconfigured"
-  /** The user said "keep files-only". A full citizen, never an apology. */
+  /** The user said don't look this up. A full citizen, never an apology. */
   | "files-only"
-  /** Never looked at (or nothing found by the phrasing tried). */
-  | "unmatched";
+  /** We looked; nothing credible. Disproven candidates resolve to this
+      with the candidate already gone — what was ruled out is not news. */
+  | "no-match"
+  /** We have not looked yet. Kept apart from no-match: to someone
+      waiting on a result they are different answers. */
+  | "unchecked";
 
+/**
+ * One fact the matcher weighed. "contradict" is disproof, not doubt —
+ * a single contradicting fact removes the candidate entirely, so a
+ * surfaced candidate only ever carries "agree" and "unknown" rows.
+ * Soft tension (a year off by one, a cover not yet compared) is
+ * recorded as "unknown".
+ */
 export interface EvidenceRow {
   fact: string;
   verdict: "agree" | "contradict" | "unknown";
@@ -421,6 +439,8 @@ export interface IdentityBinding {
   registry: RegistryFacts | null;
   /** Second corroborating provider, when one agrees. */
   alsoConfirmedBy?: string;
+  /** Only in "guess": a candidate that might be correct, carrying the
+      grounds a person needs to judge it. nameScore stays internal. */
   candidate?: { provider: string; title: string; nameScore: number; evidence: EvidenceRow[] };
   /** For "unconfigured": which provider would likely know this series. */
   suggestedProvider?: string;

@@ -446,7 +446,7 @@ function RegistriesTab({ onOpenSeries }: { onOpenSeries: (id: string) => void })
     if (b.alsoConfirmedBy) connected.set(b.alsoConfirmedBy, (connected.get(b.alsoConfirmedBy) ?? 0) + 1);
     if (b.suggestedProvider) suggested.set(b.suggestedProvider, (suggested.get(b.suggestedProvider) ?? 0) + 1);
   }
-  const queue = all.filter((b) => b.state === "guess" || b.state === "contradicted" || b.state === "unconfigured");
+  const queue = all.filter((b) => b.state === "guess" || b.state === "unconfigured");
 
   return (
     <div>
@@ -477,12 +477,10 @@ function RegistriesTab({ onOpenSeries }: { onOpenSeries: (id: string) => void })
         {queue.map((b) => (
           <button key={b.seriesId} className="queue-row" onClick={() => onOpenSeries(b.seriesId)}>
             <strong>{titles[b.seriesId] ?? b.seriesId}</strong>
-            <span className={`cap ${b.state === "contradicted" ? "cap-red" : ""}`}>
-              {b.state === "contradicted"
-                ? "Match looks wrong"
-                : b.state === "guess"
-                  ? `Best guess ready · ${b.candidate?.title ?? ""}`
-                  : `${b.suggestedProvider ?? "Someone"} would likely know it — not connected`}
+            <span className="cap">
+              {b.state === "guess"
+                ? `Best guess ready · ${b.candidate?.title ?? ""}`
+                : `${b.suggestedProvider ?? "Someone"} would likely know it — not connected`}
             </span>
           </button>
         ))}

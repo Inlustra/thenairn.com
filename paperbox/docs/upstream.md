@@ -172,6 +172,13 @@ mislabelled. Something stronger than a similarity score has to decide.
 Evidence beats similarity: chapter count comparison, year, type, alternative titles,
 cover.
 
+**A disproven candidate is not a guess.** When a fact contradicts the match
+decisively — a novel against a folder of page images, an upstream count the held
+chapters make impossible — the candidate is discarded before it surfaces and the
+series reads "not identified". The user is never shown the ruled-out candidate or
+asked to ratify the rejection; the confirm flow exists for the uncertain, not the
+disproven (docs/ui.md, "Conclusions, not deliberation").
+
 **Store the confirmed mapping.** Once, per series, then never guess again.
 
 **Four states, all real:** matched and sourced; matched but unsourced (we know what

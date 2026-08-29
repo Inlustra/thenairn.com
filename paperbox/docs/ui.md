@@ -349,6 +349,54 @@ Evidence, from the pass that settled this:
 | "Art didn't cut · tries again itself" (a library card) | *(deleted — housekeeping shows as the art itself arriving; only a person-needed failure captions a card)* |
 | "The server keeps the library fresh and makes covers and spine art on its own." | *(deleted — the section's own dated sentences already show it)* |
 
+### Conclusions, not deliberation — settled 2026-08-29
+
+The voice rule above polices sentences, and a panel got past it with every
+sentence individually clean. The identity panel for one series rendered:
+
+> **Probably not** The Greatest Estate Developer (Novel) — the name fits, the
+> facts don't.
+> ✕ It is a novel — this folder holds image chapters
+> ✕ Its latest chapter is 0 — you hold 219. Impossible.
+> [Not this] [Keep files-only]
+
+Each line reads aloud fine. The panel is still wrong, and Thomas said why in
+one sentence: *"What's the point of all of this, if it looks like it got it
+correct?"* The system had already disproven the candidate — decisively, from
+facts it held — then displayed its reasoning and asked a person to confirm the
+negative. Three ✕ marks and a "Not this" button is a machine asking permission
+to be right. That is over-explaining in *structure* rather than in copy, and
+the guard has to cover both:
+
+**The bar for showing a candidate at all is "this might be correct."** If the
+evidence disproves it, discard it silently and never mention it. A rejected
+candidate is not a choice; it is noise wearing the costume of a choice. What
+was ruled out is not news.
+
+**Only genuine uncertainty earns a question** — and then the candidate *and*
+its evidence are shown, because the user is adjudicating and needs the
+grounds. This is also the only reading of the two settled rules that survives
+contact with both: a guessed match must never interrupt, and confidence cannot
+gate silence (two of twelve matched wrong at "high") — so the uncertain middle
+is shown quietly, with its evidence, and neither bound nor buried.
+
+**"We looked and found nothing" is a different answer from "we have not
+looked."** To someone waiting on a result they differ, and conflating them is
+its own dishonesty. Four surfaced states, then: identified (bound quietly,
+with a way to disagree); best guess (the one earned question); not identified,
+looked (said plainly, with the next move — never an enumeration of what was
+ruled out); not looked yet.
+
+**Verbs are in the user's terms, not the state machine's.** "Keep files-only"
+was our state name wearing a button; it became "Don't look this up", which is
+the thing a person actually decides.
+
+The amended test: read every *element* — a panel, an evidence row, a button —
+as a sentence, and put it to the same judgement as a string. A button is the
+sentence "this decision is yours"; offered for a decision the system has
+already made, it is machinery narrating itself, and the "would a designer with
+taste be embarrassed" test applies to it unchanged.
+
 **Sync is the process, not download.** You download a TV episode — large, discrete,
 unchanged once you have it. A chapter is dozens of small files, any of which can
 change, held as a shifting subset that must stay in agreement. The word "download"
@@ -363,4 +411,3 @@ forever, whereas being *in step* is a state you can silently fall out of.
 | What is the shared information architecture? | Both clients |
 | Adds-only eviction vs rolling unread windows | The rule system — see [rules.md](rules.md) |
 | Does the hiatus return earn a push notification? | Notification design |
-| How is a guessed match shown before it is confirmed? | Library and series views |

@@ -180,15 +180,8 @@ function IdentityLine({
         </Line>
       );
       break;
-    case "contradicted":
-      line = (
-        <Line tone="red">
-          Probably not {b.candidate?.title} — the name fits, the facts don't.{" "}
-          <button className="linkish" onClick={() => setOpen(!open)}>look</button>
-        </Line>
-      );
-      break;
     case "unconfigured":
+    case "no-match":
       line = (
         <Line tone="quiet">
           Not identified yet.{" "}
@@ -200,11 +193,9 @@ function IdentityLine({
       line = <Line tone="quiet">Files only — as you chose.</Line>;
       break;
     default:
-      line = (
-        <Line tone="quiet">
-          Not identified. <button className="linkish" onClick={() => setOpen(!open)}>options</button>
-        </Line>
-      );
+      // "unchecked" — the server has not looked yet. A different answer
+      // from no-match to anyone waiting on a result, and not a question.
+      line = <Line tone="quiet">Not looked up yet.</Line>;
   }
 
   return (
@@ -212,7 +203,10 @@ function IdentityLine({
       {line}
       {open && (
         <div className="id-sheet">
-          {b.candidate && (
+          {/* Evidence appears only on a live question — the user is
+              adjudicating and needs the grounds. A disproven candidate
+              never reaches this panel at all. */}
+          {b.state === "guess" && b.candidate && (
             <>
               <p className="id-cand">
                 {b.candidate.title} <span className="cap">· {b.candidate.provider}</span>
@@ -225,19 +219,22 @@ function IdentityLine({
               Matched to {b.registry.canonicalTitle} at {b.registry.provider} · as of {b.registry.asOf}
             </p>
           )}
+          {b.state === "no-match" && (
+            <p className="cap">No registry we asked knows this one.</p>
+          )}
           <div className="id-verbs">
             {b.state === "guess" && (
               <button className="btn btn-primary" onClick={() => act(() => api.identity.confirm(b.seriesId, b.candidate!.provider, ""))}>
                 Yes, that's it
               </button>
             )}
-            {(b.state === "guess" || b.state === "contradicted" || b.state === "identified") && (
+            {(b.state === "guess" || b.state === "identified") && (
               <button className="btn" onClick={() => act(() => api.identity.reject(b.seriesId))}>
                 Not this
               </button>
             )}
             <button className="btn" onClick={() => act(() => api.identity.keepFilesOnly(b.seriesId))}>
-              Keep files-only
+              Don't look this up
             </button>
           </div>
           {b.state === "unconfigured" && b.suggestedProvider && (

@@ -57,12 +57,20 @@ exception, not a second mechanism.
 The registry binding of docs/upstream.md: one binding per series, stored
 as provider IDs, established by corroborated evidence (never by name
 score alone — two of twelve matched at "high" and were wrong), re-scored
-as chapters arrive, demoting itself on contradiction.
+as chapters arrive. On contradiction the binding drops to `no-match`
+with the candidate discarded server-side: a candidate crosses the wire
+only while it might be correct, so the client never holds a disproven
+match to show (docs/ui.md, "Conclusions, not deliberation"). `no-match`
+(we looked, nothing credible) is distinct from `unchecked` (we have not
+looked) — a waiting user hears them as different answers.
 
 Adapter behaviour: the REAL 2026-08-28 harvest results (real registry
 counts: Nano Machine 327, Disaster-Class 186, the ORV/Estate-Developer
 contradictions, the Warhammer unconfigured case), keyed by series title,
-with confirm/reject/files-only decisions overlaid in localStorage. It
+with confirm/reject/files-only decisions overlaid in localStorage; the
+three harvest proposals disproven by their own evidence (ORV, Estate
+Developer, Suicidal Battle God) resolve to plain `no-match`, exactly as
+the server will. It
 does not poll anything, so its `asOf` stamp never moves — visible in the
 UI as "card as of 2026-08-28", which is the honest rendering.
 

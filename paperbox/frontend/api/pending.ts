@@ -126,8 +126,11 @@ export function recordContinue(point: ContinuePoint): void {
 /*                                                                     */
 /* The bindings below are the REAL results of the 2026-08-28 harvest    */
 /* measured against this library (docs/upstream.md, "Matching"):        */
-/* real registry chapter counts, the two confidently-wrong matches,     */
-/* the Warhammer unconfigured case. Confirm/reject decisions are        */
+/* real registry chapter counts, the matcher's raw proposals — three    */
+/* of them disproven by their own evidence — and the Warhammer          */
+/* unconfigured case. Disproven candidates are discarded silently in    */
+/* resolveBinding, exactly as the server will: the bar for surfacing a  */
+/* candidate is "this might be correct". Confirm/reject decisions are   */
 /* overlaid in localStorage so the flows work end to end in a browser.  */
 /* ------------------------------------------------------------------ */
 
@@ -217,7 +220,7 @@ const HARVEST: Record<string, Omit<IdentityBinding, "seriesId">> = {
     },
   },
   [norm("Omniscient Reader's Viewpoint")]: {
-    state: "contradicted",
+    state: "guess",
     registry: null,
     candidate: {
       provider: "MangaUpdates",
@@ -231,7 +234,7 @@ const HARVEST: Record<string, Omit<IdentityBinding, "seriesId">> = {
     },
   },
   [norm("The Greatest Estate Developer")]: {
-    state: "contradicted",
+    state: "guess",
     registry: null,
     candidate: {
       provider: "MangaUpdates",
@@ -294,7 +297,13 @@ function resolveBinding(seriesId: string, title: string): IdentityBinding {
   const overlay = store.get<IdentityOverlay>(idKey(seriesId));
   let binding: IdentityBinding = base
     ? { seriesId, ...base }
-    : { seriesId, state: "unmatched", registry: null };
+    : { seriesId, state: "unchecked", registry: null };
+  // The surfacing bar (docs/ui.md, "Conclusions, not deliberation"): a
+  // candidate any fact disproves is not a guess — discard it here,
+  // silently, and the series reads as looked-at, nothing credible.
+  if (binding.candidate?.evidence.some((e) => e.verdict === "contradict")) {
+    binding = { seriesId, state: "no-match", registry: null };
+  }
   if (overlay?.confirmed && binding.candidate) {
     // A confirmed guess becomes an identified binding with the candidate's
     // facts promoted — mirroring "store the confirmed mapping, never re-guess".
@@ -329,7 +338,8 @@ export const identity: IdentityApi = {
     store.set(idKey(seriesId), { confirmed: true } satisfies IdentityOverlay);
   },
   async reject(seriesId) {
-    store.set(idKey(seriesId), { state: "unmatched" } satisfies IdentityOverlay);
+    // "Not this" after a look lands on no-match, not on never-looked.
+    store.set(idKey(seriesId), { state: "no-match" } satisfies IdentityOverlay);
   },
   async keepFilesOnly(seriesId) {
     store.set(idKey(seriesId), { state: "files-only" } satisfies IdentityOverlay);

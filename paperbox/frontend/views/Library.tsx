@@ -41,8 +41,6 @@ interface SeriesCardData {
 function caption(d: SeriesCardData): { text: string; tone: "quiet" | "pencil" | "amber" | "red" } {
   const { series, identity, queued, inking, failed, derived } = d;
   if (failed) return { text: "Stopped — needs you in the workbench", tone: "red" };
-  if (identity?.state === "contradicted")
-    return { text: "Match looks wrong — take a look", tone: "red" };
   if (derived?.kind === "red")
     return { text: "Artwork stopped — see the workbench", tone: "red" };
   if (identity?.state === "guess")
@@ -140,7 +138,7 @@ export function LibraryView({
     () =>
       [...cards].sort((a, b) => {
         const rank = (c: SeriesCardData) =>
-          c.failed || c.identity?.state === "contradicted" || c.derived?.kind === "red" ? 0
+          c.failed || c.derived?.kind === "red" ? 0
           : c.identity?.state === "guess" ? 1
           : c.inking || c.queued ? 2
           : 3;
@@ -202,9 +200,6 @@ export function LibraryView({
                     <Cover series={d.series} />
                     {d.unread != null && d.unread > 0 && (
                       <span className="unread" aria-label={`${d.unread} unread`}>{d.unread}</span>
-                    )}
-                    {d.identity?.state === "contradicted" && (
-                      <span className="idmark" aria-label="Match looks wrong">?</span>
                     )}
                   </div>
                   <InkBar
