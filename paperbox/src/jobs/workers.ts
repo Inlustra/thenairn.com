@@ -78,9 +78,28 @@ function seriesFor(scope: string | null): MangaDetail[] {
  * rather than N extractions. That is the property the content-addressed key
  * buys, and it is why this worker has no "what changed" logic of its own.
  */
+/**
+ * A scope that does not resolve right now is not a scope that will never
+ * resolve.
+ *
+ * The queue is persistent and jobs outlive the process, so one can be claimed
+ * in a window where the library cache has not yet been rebuilt -- after a
+ * restart, or across a rescan. Throwing marked the job permanently failed and
+ * put a red line in front of the user for a series that was sitting on disk the
+ * whole time, with its uid unchanged.
+ *
+ * Skipping is safe because discovery is idempotent and runs after every scan:
+ * if the series is really there, the work comes back on the next pass. If it is
+ * really gone, discovery never queues it again, so this cannot spin.
+ */
+function unresolved(ctx: JobContext): boolean {
+  if (ctx.job.scope) console.log(`[jobs] ${ctx.job.kind} skipped: ${ctx.job.scope} not in the library cache yet`);
+  return true;
+}
+
 export async function artWorker(ctx: JobContext): Promise<void> {
   const series = seriesFor(ctx.job.scope);
-  if (series.length === 0) throw new Error(`no series for scope ${ctx.job.scope ?? "(library)"}`);
+  if (series.length === 0 && unresolved(ctx)) return;
 
   const units: { uid: string; fingerprint?: string; manga: MangaDetail; chapterId: string }[] = [];
   for (const m of series) {
@@ -107,7 +126,7 @@ export async function artWorker(ctx: JobContext): Promise<void> {
  */
 export async function coverWorker(ctx: JobContext): Promise<void> {
   const series = seriesFor(ctx.job.scope);
-  if (series.length === 0) throw new Error(`no series for scope ${ctx.job.scope ?? "(library)"}`);
+  if (series.length === 0 && unresolved(ctx)) return;
   ctx.progress(0, series.length);
 
   await pool(series, ctx, async (m) => {
@@ -142,7 +161,7 @@ export function makeScanWorker(getProgress: () => { seriesDone: number; seriesTo
     const scoped = ctx.job.scope ? getMangaByUid(ctx.job.scope) : undefined;
     // A scoped job whose series has since disappeared must not silently widen
     // into a full-library scan, which is what an ignored scope would do.
-    if (ctx.job.scope && !scoped) throw new Error(`no series for scope ${ctx.job.scope}`);
+    if (ctx.job.scope && !scoped && unresolved(ctx)) return;
     const running = ctx.budget.run(() => scan(scoped ? { series: scoped.dir } : {}), {
       foreground: ctx.foreground,
     });
@@ -176,7 +195,7 @@ export function makeScanWorker(getProgress: () => { seriesDone: number; seriesTo
  */
 export async function heightWorker(ctx: JobContext): Promise<void> {
   const series = seriesFor(ctx.job.scope);
-  if (series.length === 0) throw new Error(`no series for scope ${ctx.job.scope ?? "(library)"}`);
+  if (series.length === 0 && unresolved(ctx)) return;
 
   const units: { manga: MangaDetail; dir: string; fingerprint: string | undefined }[] = [];
   for (const m of series) {

@@ -279,7 +279,7 @@ export function Ledger({
             <Line key={jb.id} tone={healsItself(jb.error) ? "amber" : "red"}>
               {healsItself(jb.error)
                 ? `${jobPhrase(jb)} didn't finish — it tries again by itself.`
-                : `${jobPhrase(jb)} stopped — needs a look. Nothing on your shelf was touched.`}
+                : `${jobPhrase(jb)} stopped — needs a look.`}
             </Line>
           ))}
           {running.map((jb) => (
