@@ -70,6 +70,8 @@ export function startJobs(opts: StartOptions = {}): JobQueue | null {
     queue = null;
     return null;
   }
+  const retired = queue.forgetRetiredFailures();
+  if (retired > 0) console.log(`[jobs] cleared ${retired} failure(s) from a retired code path`);
   const recovered = queue.recover();
   if (recovered > 0) console.log(`[jobs] ${recovered} interrupted job(s) returned to the queue`);
 

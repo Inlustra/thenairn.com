@@ -383,6 +383,28 @@ export class JobQueue {
       .run(kind, scope).changes;
   }
 
+  /**
+   * Drop failure rows that no code can produce any more.
+   *
+   * `supersede` clears a failure when the work is retried, which is the right
+   * rule and cannot reach this case: the art store records a miss so extraction
+   * that produced nothing is not attempted again, so the work is never
+   * re-queued, so nothing supersedes it. The row is then unreachable -- pinned
+   * by RETAIN_MIN, describing a fault that no longer exists, in words from a
+   * worker that was deleted.
+   *
+   * The specific text is "no series for scope <uid>", written when a job was
+   * claimed before the library cache had been rebuilt. That worker now skips
+   * instead of throwing, so any row carrying this is a monument and not a
+   * signal. Matched narrowly and on purpose: this clears one retired message,
+   * not failures in general.
+   */
+  forgetRetiredFailures(): number {
+    return this.db
+      .query("DELETE FROM job WHERE state = 'failed' AND error LIKE 'no series for scope %'")
+      .run().changes;
+  }
+
   prune(now = Date.now()): number {
     return this.db
       .query(
