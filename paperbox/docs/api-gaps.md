@@ -234,3 +234,132 @@ Known hole, recorded on purpose: **there is no retry route for a failed
 job.** The red treatment's one verb is "Look again" (`POST /api/scan`),
 on the reading that a fresh look re-queues whatever work was missed. If
 the server grows a dedicated re-run route, repoint that one verb.
+
+---
+
+# Sync wire gaps — found building the client engine, 2026-08-29
+
+The table above is the *web* client's list: routes that do not exist yet. This
+second list is different in kind. Every route below **does** exist and answers;
+these are places where the contract is ambiguous, silently lossy, or reports
+something other than what its name suggests. They were found by building
+`client/` against it (see `docs/client-sync.md`) and each one is designed around
+in the client rather than papered over.
+
+Nothing here is a proposal to change the server. Where the client can carry the
+cost it does, and the note says so.
+
+| # | Gap | Where | What the client does instead |
+|---|-----|-------|------------------------------|
+| 12 | No `sortKey` on the wire | `NodeSummary` | approximates a chapter number from the label |
+| 13 | `gone` is computed against the *scoped* subtree | `diff` | ignores `gone` from every scoped call |
+| 14 | A deletion is only reportable for ids the client sent | `diff` | forgets a vanished chapter locally |
+| 15 | `changed` is flat, pre-order, with no parent pointers | `diff` | reconstructs parentage from `kind` and order |
+| 16 | Page-level `have` cannot express a page *deletion* | `diff` | re-resolves in full when the merge disagrees with `n` |
+| 17 | The `after` cursor can return an empty page after a scan | `diff` | never paginates; plans per chapter instead |
+
+## 12. `sortKey` is stored and never sent
+
+`decisions.md` is emphatic that a chapter's number is **stored, never derived at
+read time**, precisely so a parser improvement does not silently re-key every
+block hash. But `NodeSummary` carries `id, kind, hash, n, label, state` — the
+stored `sortKey` never leaves the server, so a client that wants to evaluate
+*"chapters 40 to 60 of this series"* has to re-derive one from the label, using
+the same first-digit-run heuristic, at read time. That is the exact thing the
+decision forbids, moved across the wire.
+
+The client's approximation agrees with the server on 1,702 of the live library's
+1,706 chapters, and falls back to the chapter's block range where it cannot read
+a number — coarse, but wrong only in the widening direction, so it can never
+silently drop a chapter the user asked for.
+
+**Cheap to close:** add `sortKey` (and `sequence`) to `NodeSummary` for chapter
+nodes. It is already on the `Chapter` type and in every `paperbox.json`.
+
+## 13. `gone` is scoped, and says so nowhere
+
+`diff` computes `live` from `collectIds(start ?? root)` where `start` is the
+*scope*. So a scoped call reports every id the client sent that is not inside
+that scope as `gone` — which, for a client sending its whole `have` set, is
+almost everything it owns. Verified against the live server on 2026-08-29:
+
+```
+POST /api/sync/diff {"scope":"s:<uid>","have":[{"id":"root","hash":"stale"}]}
+  → gone: ["root"]
+```
+
+Two documented rules point in opposite directions here. `gone` is meaningful
+*within* a `treeVersion`, per `sync.md`; but nothing says it is meaningless
+outside a scope, and a client that believed it would delete its library on the
+strength of asking about one series.
+
+**The client ignores `gone` from every scoped call, permanently.** It only acts
+on `gone` from the unscoped planning diff. Worth either scoping the comparison to
+what the client sent, or naming the behaviour in the response schema.
+
+## 14. A deletion is unreportable unless the client already holds it
+
+`gone` is derived from the `have` array: `have.filter(h => !live.has(h.id))`. So
+the server can only tell a client about a disappearance for an id that client
+*sent*, and a client sends only what it holds.
+
+The gap is a chapter the client **wants but has not fetched yet**. It is in the
+client's catalog (it appeared as `added` in an earlier diff), it is not in the
+`have` set (nothing is held), and when it is deleted server-side nothing ever
+says so. The client plans it, resolves it, gets an empty reply, and — before this
+was found — planned it again, for ever. The scenario-2 test span 200,000 ticks
+before it was diagnosed.
+
+**The client now forgets the chapter locally** on an empty scoped resolve, and
+marks the plan stale so the next pass re-derives. That is sound: it observed the
+absence directly. But it means a client's catalog can only be corrected by
+attempting a fetch, which is a poor way to learn about a deletion.
+
+## 15. `changed` carries no structure
+
+The reply is a flat array with a `kind` on each entry. The *order* is a pre-order
+walk, and that is the only structural information available — there is no
+`parentId`. A client building a catalog has to reconstruct parentage from the
+kind hierarchy and the array order, which works but is undocumented and would
+break silently if the walk order ever changed.
+
+There is a second, sharper edge. `diff` visits each node id once (`visited`), so
+a **ranged chapter filed into several blocks appears under the first block only**.
+A client counting the chapters it saw under a block will find fewer than the
+block's own `n`, with nothing marking the difference. The client detects exactly
+this and refuses to claim coverage of such a block — under-claiming, which costs
+bytes rather than content.
+
+## 16. Page-level `have` cannot express a deletion
+
+Sending page entries in `have` works and is the client's cheapest tool: the
+server skips pages whose hash matches, so a re-sourced chapter transfers zero
+bytes (see `client-sync.md`). Confirmed against the live server:
+
+```
+POST /api/sync/diff {"scope":"c:<uid>","resolve":"pages","have":[…19 of the 20 pages…]}
+  → images: 1   gone: []   changed: ["c:<uid>"]
+```
+
+But the reply is *only* the changed pages, and `gone` filters `p:` ids out
+entirely — so a chapter that **lost** a page comes back short and silent, and a
+client merging the reply onto what it holds keeps a page that no longer exists.
+
+The client cross-checks the merged page list against the chapter node's own `n`
+and re-resolves the chapter with no page `have` when they disagree. Correct, and
+it costs a full re-download of a chapter that lost one page. Letting `gone`
+carry `p:` ids when the request scope is a chapter would close it exactly.
+
+## 17. The `after` cursor and a concurrent scan
+
+Known and already flagged: `after` is "skip until past this id" over a tree that
+is rebuilt whenever `getScanGeneration()` moves. If a scan lands between the
+first page and the continuation, the cursor id may no longer exist in the new
+tree and the continuation returns an empty `images` array with `truncated:
+false` — indistinguishable from "you are done".
+
+**The client never paginates.** It plans one chapter at a time with a scoped
+`resolve: "pages"` call, which cannot exceed the 20,000-image cap, so it never
+holds a cursor across a scan. That is not a fix, it is an avoidance; anything
+that does want a library-wide image plan needs the cursor to carry the scan
+generation and 409 on a mismatch.

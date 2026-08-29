@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "bun run --watch src/index.ts",
     "build": "bun build frontend/index.html --outdir=frontend/dist --minify",
-    "start": "bun run src/index.ts"
+    "start": "bun run src/index.ts",
+    "sync-demo": "bun run client/demo.ts"
   },
   "devDependencies": {
     "@types/bun": "latest"

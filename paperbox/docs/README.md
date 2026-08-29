@@ -14,6 +14,8 @@ comic" and ended somewhere quite different.
 | [ui.md](ui.md) | Interface decisions — the state language, failure, the shelf, client boundaries |
 | [decisions.md](decisions.md) | What was decided, what was rejected, and what is still open |
 | [scheduler.md](scheduler.md) | The rolling partial scan — lanes, budget, and what the user is told |
+| [client-sync.md](client-sync.md) | The device half of sync: the engine in `client/`, its state machine and failure modes |
+| [api-gaps.md](api-gaps.md) | What the clients need that the server does not provide, and where the wire is lossy |
 | [register.md](register.md) | Every load-bearing claim, with its status: measured, projected, assumed, decided, disproved |
 
 ## Status at a glance
@@ -36,7 +38,12 @@ comic" and ended somewhere quite different.
 
 **Designed but not built.**
 
-- Selective sync rules beyond the one rolling window — see [rules.md](rules.md)
+- The mobile app itself. The **client sync engine it will use is built and
+  tested** — `client/`, platform-agnostic, with a deterministic simulator and
+  seven scenario suites; see [client-sync.md](client-sync.md) and
+  `bun run client/demo.ts`
+- Selective sync rules beyond the one rolling window on the server — the client
+  engine implements the full model from [rules.md](rules.md)
 - Registry binding and series matching — see [upstream.md](upstream.md)
 - The deep and verify scan tiers — the rolling scan runs the quick tier only,
   see [scheduler.md](scheduler.md)
