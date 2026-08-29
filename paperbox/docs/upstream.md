@@ -125,12 +125,51 @@ Paperbox.
 A series identified this way has no ID to re-query, no cover to refresh, and no
 upstream chapter count — so it is *matched* but cannot tell you that you are behind.
 
-### The abstraction needs defining
+### The abstraction, settled 2026-08-29
 
-What must a provider supply to be treated uniformly? What happens when two providers
-disagree — and they will? What does the interface show when identity came from an
-embedded file rather than any provider? A design assuming one provider will not
-survive a mixed library.
+Built as `src/identity/`. The three questions this section used to leave open, answered:
+
+**What a provider must supply.** A normalised `RegistryCard` and two methods —
+`search(phrase)` and `fetch(registryId)`. Four rules make "uniformly" mean something:
+
+1. *A provider reports; it never scores.* No method returns a confidence. One matcher,
+   one bar, one place to fix it. Two of twelve matched wrong at "high" — a per-provider
+   score is a second place for that mistake to be made where nobody would find it.
+2. *Every field may be unknown, and unknown is never zero.* `latestChapter: null` means
+   the registry keeps no records; `0` means its records say zero. Opposite verdicts:
+   null removes the gap line entirely, 0 against a held library is a contradiction.
+3. *A registryId must be stable and re-queryable.* A provider that cannot answer for its
+   own id can be **believed but never bound** — which is exactly the ComicInfo case, and
+   `canRequery` states it out loud rather than leaving it as a defect.
+4. *Normalisation happens at the provider boundary.* `kind` and `status` are our
+   vocabulary; `typeLabel` keeps the provider's own word for display. The matcher never
+   learns a provider's dialect, so a new provider is not an edit to the matcher.
+
+**When two disagree: one binding, one provider, never a merge.** The card a client sees
+always comes from exactly one provider. A second can only corroborate (`alsoConfirmedBy`)
+or say nothing; it never contributes a field and never overrides one. Merging was the
+obvious design and it is wrong — a merged card has no single `asOf` and no single id to
+re-query, so "you hold 313 of 327" stops having an author, and when a count is wrong
+nobody can say which database said it. **Disagreement is therefore expressed as absence.**
+The user is never shown two registries arguing; that is deliberation, and the interface
+shows conclusions.
+
+Precedence: embedded identity, then a domain-matched registry exact on a curated title,
+then nothing — because "anything else" does not bind, it asks.
+
+**When identity came from a file.** ComicInfo.xml is deliberately **not** a
+`RegistryProvider`, and trying to make it one was the mistake. A provider answers *what
+does the world know about this name* and is searchable; ComicInfo answers *what does this
+library say about itself* and has no search surface at all. It is an assertion, not
+evidence, so it enters one level up: an identity already decided, which registries may
+corroborate and may not overrule.
+
+The interface shows it as identified, with the title the file carries, the provider named
+as the file itself — and **no gap line at all**. `latestChapter` is null, so nothing
+renders a denominator, a behind-count or an "up to date". That is the honest rendering of
+a series we can name and cannot follow. `<Count>` is present in the format and
+deliberately unused: a denominator frozen at whenever the file was written would render
+as a live gap line for ever.
 
 ## Matching
 
@@ -154,6 +193,38 @@ Warhammer 40,000 ×3                 1–5          —   none
 **Two matched at "high" confidence and are plainly wrong** — 42 upstream chapters
 against our 201. Chapter-count agreement is a far better signal than string distance.
 
+#### What the built matcher does with the same twelve — measured 2026-08-29
+
+```
+folder                                     ours   upstream   result
+Nano Machine                                313        327   Nano Machine
+Solo Leveling                               201        201   Solo Leveling
+SSS-Class Suicide Hunter                    151        151   SSS-Class Revival Hunter
+Return of the Disaster-Class Hero           167        187   The Return of the Disaster-Class Hero
+Omniscient Reader's Viewpoint               201        308   Omniscient Reader
+Reincarnation of the Suicidal Battle God    102        101   Doom Breaker
+Trash of the Count's Family                 176        185   Lout of Count's Family
+The Greatest Estate Developer               219        222   Yeokdaegeup Yeongji Seolgyesa
+The S-Classes That I Raised                 165        179   My S-Class Hunters
+Warhammer 40,000 ×3                         1–5          —   not identified · a registry we have not connected
+```
+
+**Nine of nine correct, including all three the earlier harvest got wrong**, and the
+reason is one thing: *every* correct binding here is an exact match on an **alternative**
+title of a record whose canonical title looks nothing like our folder. "Omniscient
+Reader's Viewpoint" is an alternative title of a record called **Omniscient Reader**.
+"Reincarnation of the Suicidal Battle God" is an alternative title of **Doom Breaker**.
+"The Greatest Estate Developer" is an alternative title of **Yeokdaegeup Yeongji
+Seolgyesa**. All three of the old wrong bindings were exact or near-exact on the
+*canonical* title of a novel.
+
+Alternative titles come only from the series endpoint, never from search — which is why
+the matcher costs a card read per candidate, and why doing it on the search response
+alone is not a cheaper version of this, it is the broken version.
+
+`The S-Classes That I Raised` also gains a count it did not have: 179, not "—". The
+earlier harvest recorded no records for it because it never reached the right record.
+
 An early harvest was worse still: a title search returned records from *fourteen
 different series*, some dated `1111-11-11`. The releases API supports series-ID
 scoping and it was not used. Our own data-gathering is the exhibit for why this
@@ -168,9 +239,22 @@ series.
 **Confidence cannot gate silence.** Two of twelve would have been silently
 mislabelled. Something stronger than a similarity score has to decide.
 
-**Show the guess, the user confirms.** Failing that, they search within Paperbox.
-Evidence beats similarity: chapter count comparison, year, type, alternative titles,
-cover.
+**Show the guess, the user confirms.** Failing that, they search within Paperbox —
+`GET /api/identity/:id/search?q=`, their phrase, bind what they recognise. Evidence beats
+similarity: chapter count comparison, year, type, alternative titles, cover.
+
+**What binds, concretely.** An *exact* match against a title the registry itself curates
+— canonical or alternative — with no contradiction and no rival. A similarity score gets
+a question, never an answer. Ambiguity (two exact matches) is genuine uncertainty and
+also gets a question.
+
+**A fuzzy resemblance floor cannot tell you which database to ask.** Tried, measured,
+dropped. The first design used "did anything even resemble the name?" to separate *we
+asked the wrong sort of registry* from *the right registry has no record*. Asked for
+"Warhammer 40,000", MangaUpdates returns "Versus Earth - War Hammer", whose alternative
+titles include the bare word "Warhammer" — 0.5, over any floor worth having, from a
+database that has never heard of Warhammer 40,000. Whether an unconnected registry might
+know a series is answered by **which slots are unconnected**, full stop.
 
 **A disproven candidate is not a guess.** When a fact contradicts the match
 decisively — a novel against a folder of page images, an upstream count the held

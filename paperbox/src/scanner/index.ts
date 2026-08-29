@@ -5,6 +5,7 @@ import { IdAllocator, newUid, pathUid, hash31 } from "../ids";
 import { chapterFingerprint } from "../fingerprint";
 import { deriveChapterKey } from "../chapters";
 import { loadMeta, saveMeta, dirMtime, withSeriesLock, SCHEMA_VERSION, type SeriesMeta, type ChapterMeta } from "../metadata";
+import type { IdentityRecord } from "../identity/types";
 
 /**
  * -------------------------------------------------------------------------
@@ -724,5 +725,46 @@ async function applyPixelHeights(seriesUid: string, heights: MeasuredHeight[]): 
     }
     if (written > 0) await saveMeta(path, meta);
     return written;
+  });
+}
+
+/**
+ * Write a series' registry binding into its sidecar, and into the live cache.
+ *
+ * Queued behind the scan chain for exactly the reason `recordPixelHeights` is:
+ * a scan does load-modify-write over the whole sidecar with a long gap in the
+ * middle, so a writer holding only the series lock still loses its write to a
+ * scan that read the file first. Identity is a decision a person made -- losing
+ * it silently is materially worse than losing a recomputable measurement.
+ *
+ * Passing `undefined` clears the binding, which is what "we have not looked"
+ * means on disk: absent, not a state string saying absent.
+ */
+export function recordIdentity(seriesUid: string, record: IdentityRecord | undefined): Promise<boolean> {
+  const next = scanChain.then(
+    () => applyIdentity(seriesUid, record),
+    () => applyIdentity(seriesUid, record),
+  );
+  scanChain = next.then(
+    () => {},
+    () => {},
+  );
+  return next;
+}
+
+async function applyIdentity(seriesUid: string, record: IdentityRecord | undefined): Promise<boolean> {
+  const manga = getMangaByUid(seriesUid);
+  if (!manga) return false;
+  const path = join(mangaDir(), manga.dir);
+  return withSeriesLock(path, async () => {
+    const { meta } = await loadMeta(path);
+    if (record) meta.identity = record;
+    else delete meta.identity;
+    await saveMeta(path, meta);
+    // The cache holds the object the API serves, so patching it in place is
+    // what makes a confirmed binding show up without waiting for a rescan.
+    if (record) manga.series.identity = record;
+    else delete manga.series.identity;
+    return true;
   });
 }

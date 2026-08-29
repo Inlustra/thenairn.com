@@ -61,9 +61,9 @@ export const api: PaperboxApi = {
   sources: real.sources,
   sync: real.sync,
   jobs,
+  identity: real.identity,
   // Pending — adapter-backed until the server catches up
   readState: pending.readState,
-  identity: pending.identity,
   sourceHealth: pending.sourceHealth,
   survey: pending.survey,
   rules: pending.rules,

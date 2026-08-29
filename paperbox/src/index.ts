@@ -11,6 +11,7 @@ import { syncRoutes } from "./routes/sync";
 import { graphqlRoutes } from "./routes/graphql";
 import { artRoutes } from "./routes/art";
 import { jobRoutes } from "./routes/jobs";
+import { identityRoutes } from "./routes/identity";
 import { scan } from "./scanner";
 import { pullScripts, scanScripts } from "./lua/scripts";
 import { startJobs, startScheduler, runToCompletion, getBudget } from "./jobs";
@@ -49,6 +50,7 @@ const app = new Elysia()
   .use(syncRoutes)
   .use(artRoutes)
   .use(jobRoutes)
+  .use(identityRoutes)
   .use(graphqlRoutes)
   .use(staticPlugin({ assets: "frontend/dist", prefix: "/" }))
   .get("/", () => Bun.file("frontend/dist/index.html"))

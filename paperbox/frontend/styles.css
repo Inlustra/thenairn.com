@@ -448,6 +448,17 @@ h1, h2, h3 { font-family: var(--f-display); line-height: 1.1; margin: 0; }
 }
 .id-cand { font-weight: 640; margin: 0 0 6px; }
 .id-verbs { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.id-find { display: flex; gap: 8px; margin-top: 12px; }
+.id-find input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 7px 10px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 8px;
+  background: var(--bg);
+}
+.id-hit { border-top: 1px solid var(--rule); margin-top: 12px; padding-top: 12px; }
+.id-hit .btn { margin-top: 8px; }
 .evidence { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
 .ev { display: flex; gap: 8px; font-size: 13px; color: var(--tx2); }
 .ev-mark { width: 12px; flex: none; text-align: center; font-weight: 700; }

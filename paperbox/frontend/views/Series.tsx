@@ -11,6 +11,7 @@ import type {
   SeriesDetail,
   ChapterInfo,
   IdentityBinding,
+  IdentityCandidate,
   DownloadTask,
   SeriesReadState,
   ContentFlag,
@@ -147,18 +148,40 @@ function HeadCover({ detail }: { detail: SeriesDetail }) {
 
 function IdentityLine({
   binding,
+  title,
   onChanged,
 }: {
   binding: IdentityBinding;
+  title: string;
   onChanged: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [phrase, setPhrase] = useState(title);
+  const [found, setFound] = useState<IdentityCandidate[] | null>(null);
   const b = binding;
 
-  const act = async (fn: () => Promise<void>) => {
-    await fn();
+  const act = async (fn: () => Promise<unknown>) => {
+    setBusy(true);
+    try {
+      await fn();
+    } finally {
+      setBusy(false);
+    }
     setOpen(false);
+    setFound(null);
     onChanged();
+  };
+
+  const runSearch = async () => {
+    setBusy(true);
+    try {
+      setFound(await api.identity.search(b.seriesId, phrase));
+    } catch {
+      setFound([]);
+    } finally {
+      setBusy(false);
+    }
   };
 
   let line: React.ReactNode;
@@ -193,9 +216,17 @@ function IdentityLine({
       line = <Line tone="quiet">Files only — as you chose.</Line>;
       break;
     default:
-      // "unchecked" — the server has not looked yet. A different answer
-      // from no-match to anyone waiting on a result, and not a question.
-      line = <Line tone="quiet">Not looked up yet.</Line>;
+      // "unchecked" — nobody has looked. A different answer from no-match to
+      // anyone waiting on a result, and not a question. The verb is the ask,
+      // because looking costs somebody else's API and is never automatic.
+      line = (
+        <Line tone="quiet">
+          Not looked up yet.{" "}
+          <button className="linkish" disabled={busy} onClick={() => act(() => api.identity.identify(b.seriesId))}>
+            look it up
+          </button>
+        </Line>
+      );
   }
 
   return (
@@ -223,20 +254,66 @@ function IdentityLine({
             <p className="cap">No registry we asked knows this one.</p>
           )}
           <div className="id-verbs">
-            {b.state === "guess" && (
-              <button className="btn btn-primary" onClick={() => act(() => api.identity.confirm(b.seriesId, b.candidate!.provider, ""))}>
+            {b.state === "guess" && b.candidate && (
+              <button
+                className="btn btn-primary"
+                disabled={busy}
+                onClick={() =>
+                  act(() => api.identity.confirm(b.seriesId, b.candidate!.provider, b.candidate!.registryId))
+                }
+              >
                 Yes, that's it
               </button>
             )}
             {(b.state === "guess" || b.state === "identified") && (
-              <button className="btn" onClick={() => act(() => api.identity.reject(b.seriesId))}>
+              <button className="btn" disabled={busy} onClick={() => act(() => api.identity.reject(b.seriesId))}>
                 Not this
               </button>
             )}
-            <button className="btn" onClick={() => act(() => api.identity.keepFilesOnly(b.seriesId))}>
+            {(b.state === "no-match" || b.state === "unconfigured") && (
+              <button className="btn" disabled={busy} onClick={() => act(() => api.identity.identify(b.seriesId))}>
+                Look again
+              </button>
+            )}
+            <button className="btn" disabled={busy} onClick={() => act(() => api.identity.keepFilesOnly(b.seriesId))}>
               Don't look this up
             </button>
           </div>
+
+          {/* Searching by hand. The one thing a person can do that the
+              matcher cannot: they know what the comic is called. */}
+          <div className="id-find">
+            <input
+              type="search"
+              value={phrase}
+              disabled={busy}
+              onChange={(e) => setPhrase(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void runSearch();
+              }}
+              aria-label="Search by name"
+            />
+            <button className="btn" disabled={busy || !phrase.trim()} onClick={() => void runSearch()}>
+              Search
+            </button>
+          </div>
+          {found !== null && found.length === 0 && <p className="cap">Nothing that fits.</p>}
+          {found?.map((c) => (
+            <div key={`${c.provider}:${c.registryId}`} className="id-hit">
+              <p className="id-cand">
+                {c.title} <span className="cap">· {c.provider}</span>
+              </p>
+              <Evidence rows={c.evidence} />
+              <button
+                className="btn btn-primary"
+                disabled={busy}
+                onClick={() => act(() => api.identity.confirm(b.seriesId, c.provider, c.registryId))}
+              >
+                That's the one
+              </button>
+            </div>
+          ))}
+
           {b.state === "unconfigured" && b.suggestedProvider && (
             <p className="cap">{b.suggestedProvider} would likely know it — see Identity in the workbench.</p>
           )}
@@ -427,7 +504,7 @@ export function SeriesView({
             <Weather>Artwork didn't finish — it tries again by itself.</Weather>
           )}
 
-          {binding && <IdentityLine binding={binding} onChanged={load} />}
+          {binding && <IdentityLine binding={binding} title={detail.title} onChanged={load} />}
 
           {detail.meta.description && (
             <div className="desc">

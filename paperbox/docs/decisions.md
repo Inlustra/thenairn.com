@@ -267,6 +267,63 @@ honest copy in §4 names that number out loud — so changing it means changing 
 sentence in the same edit. Likewise §2's 50% idle duty: it is one worker, so the
 ceiling is one core plus its share of the FUSE queue, but nobody has watched it.
 
+### The provider abstraction — *settled 2026-08-29*
+
+`src/identity/`. Three questions, answered; [upstream.md](upstream.md) carries the long
+form.
+
+**A provider supplies a normalised card and two methods** — `search(phrase)` and
+`fetch(registryId)` — under four rules. It *reports and never scores* (one matcher, one
+bar; a per-provider confidence is a second place to make the mistake that put two of
+twelve wrong at "high"). *Unknown is never zero*: `latestChapter: null` means the
+registry keeps no records and removes the gap line, `0` against a held library is a
+contradiction that discards the candidate. *A registryId must be re-queryable*, and a
+provider that cannot answer for its own id is believable but not bindable. And
+*normalisation happens at the provider boundary*, so the matcher never learns a
+provider's dialect.
+
+**When two disagree: one binding, one provider, never a merge.** A second provider
+corroborates or says nothing; it never contributes a field. Merging looks obvious and
+loses the two things that make a number checkable — a single `asOf` and a single id to
+re-query — so "you hold 313 of 327" stops having an author. Disagreement is therefore
+rendered as *absence of corroboration*. The user never sees two registries arguing:
+that is deliberation, and the interface shows conclusions.
+
+**Identity from an embedded `ComicInfo.xml` is not a provider**, and making it one was
+the mistake. A provider answers "what does the world know about this name"; a file
+answers "what does this library say about itself", has no search surface and no id to
+re-ask. It is an *assertion*, so it enters a level above the matcher: already decided,
+corroborable, not overrulable. The interface shows it identified, with the file named as
+the source, and **no gap line at all** — `latestChapter` is null, which is the honest
+rendering of a series we can name and cannot follow. `<Count>` exists in the format and
+is deliberately unused, because a denominator frozen at the file's write date would read
+as live for ever.
+
+**What binds automatically:** an exact match on a title the registry itself curates
+(canonical *or* alternative), no contradiction, no rival. Not a score — measured against
+the real twelve, all nine manhwa bind correctly *and all three that the earlier harvest
+got wrong are among them*, because every correct answer is exact on an **alternative**
+title of a record whose canonical title looks nothing like the folder (Omniscient
+Reader's Viewpoint → "Omniscient Reader"; Reincarnation of the Suicidal Battle God →
+"Doom Breaker"; The Greatest Estate Developer → "Yeokdaegeup Yeongji Seolgyesa"). All
+three old wrong bindings were near-exact on a *canonical* title, of a novel.
+
+**A human binding is frozen.** `decidedBy: "human"` lets a later match refresh the
+card's facts from the same id and never the identity. "Human flagging outranks any
+automated confidence" is a precondition in one place rather than a rule every call site
+must remember.
+
+**Comic Vine is a slot, not an integration** — it needs a key nobody has supplied. It
+exists as an object anyway, because *unconfigured* is only expressible if something
+declares the slot; without it the answer for three Warhammer series is "nothing knows
+this", which is false and sounds permanent.
+
+**Cost, and why there is no poller.** Identification is once per series ever: one search
+plus at most five card reads, serialised at one request per second. Refresh is one card
+read per bound series. Nothing a render can reach touches the network. A nightly refresh
+at 5,000 series is therefore ~83 minutes of budgeted, resumable work — designed, written
+down, and deliberately not built.
+
 ### Read state is not a server concern
 
 Settled 2026-08-28, and it reverses a decision taken the same day. A SQLite
@@ -435,12 +492,6 @@ deliberate resets, because last-write-wins fails by silently rewinding a
 reader's place; and a window that defaults to the *next* unread rather than the
 most recent, since comics are read in order.
 
-### The provider abstraction
-
-What must a registry supply to be treated uniformly? What happens when two disagree?
-What does the interface show when identity came from an embedded `ComicInfo.xml`
-rather than a provider?
-
 ### Push notifications
 
 Rejected in one design as contestable. The hiatus-return case — a series silent for
@@ -459,6 +510,8 @@ roughly one per year on a twenty-series shelf.
 | `listDirs` stats every entry | ~1,700 serial FUSE round trips per scan |
 | Slugs are de-duplicated per scan, not pinned | A colliding directory's `-2` suffix moves if the directory it collided with is removed |
 | Far and near lanes share no vocabulary | The API cannot express the distinction the UI needs |
+| Season boundaries are parsed but nothing confirms them | `POST /api/identity/:id/seasons` exists; no screen offers it, so `seasons` is always empty |
+| Nothing refreshes a binding | A card is read once and kept; the nightly refresh is designed, not built |
 
 ## Mistakes worth remembering
 

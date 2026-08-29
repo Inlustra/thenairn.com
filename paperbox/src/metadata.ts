@@ -10,6 +10,7 @@ import { readFile, rename, stat, open, unlink } from "fs/promises";
 import { randomUUID } from "node:crypto";
 import { join } from "path";
 import { newUid } from "./ids";
+import type { IdentityRecord } from "./identity/types";
 
 export const METADATA_FILE = "paperbox.json";
 export const SCHEMA_VERSION = 2;
@@ -102,6 +103,19 @@ export interface SeriesMeta {
   status?: "ongoing" | "completed" | "hiatus" | "cancelled";
   /** Every source this series has ever been pulled from. */
   sources?: string[];
+  /**
+   * The registry binding -- what this series *is*, as opposed to where its
+   * chapters came from.
+   *
+   * It lives here, in the sidecar, rather than in an index, because identity
+   * has to survive a rename: the folder moves and the file moves with it. The
+   * derived *cache* was moved off the sidecar (docs/decisions.md, "Derived
+   * artefacts live outside the library"); identity deliberately stayed.
+   *
+   * Absent means nobody has looked. That is a different answer from having
+   * looked and found nothing, and the two must not collapse into each other.
+   */
+  identity?: IdentityRecord;
   /** Keyed by directory name. */
   chapters: Record<string, ChapterMeta>;
 }

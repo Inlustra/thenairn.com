@@ -14,7 +14,7 @@ never silently pretends adapter data is server fact.
 | # | Gap | Contract | Views that need it | What it blocks |
 |---|-----|----------|--------------------|----------------|
 | 1 | Read state | `ReadStateApi` | Library (unread counts, Continue rail), Series (read dim, Unread filter, resume), Reader (positions) | Cross-device positions, rolling windows, Tachiyomi migration |
-| 2 | Identity / registries | `IdentityApi` | Library (captions, gap tail), Series (hold line, pulse, seasons, identity line), Workbench › Registries | Honest behind-counts, stalled-source detection, the returned band |
+| ~~2~~ | ~~Identity / registries~~ | **Shipped 2026-08-29** — `/api/identity/*` is real; the adapter entry is deleted. What is still missing is below, under "Identity: what shipped and what did not". | | |
 | 3 | Source health | `SourceHealthApi` | Workbench › Sources, Series and Library amber captions | Stall detection, fetch history, diagnosis evidence |
 | 4 | Look elsewhere (survey) | `SurveyApi` | Series (behind + stalled) | The re-sourcing journey; also the wrong-content replacement hunt |
 | 5 | Sync rules | `RulesApi` | Workbench › Rules | Everything in docs/rules.md; needs device pairing first |
@@ -52,43 +52,47 @@ Merge rule (from docs/sync.md): read positions merge furthest-wins, and
 they stay **out of the hash tree** — device-authored state is the one
 exception, not a second mechanism.
 
-## 2. Identity / registries — `IdentityApi`
+## 2. Identity / registries — **shipped 2026-08-29**
 
-The registry binding of docs/upstream.md: one binding per series, stored
-as provider IDs, established by corroborated evidence (never by name
-score alone — two of twelve matched at "high" and were wrong), re-scored
-as chapters arrive. On contradiction the binding drops to `no-match`
-with the candidate discarded server-side: a candidate crosses the wire
-only while it might be correct, so the client never holds a disproven
-match to show (docs/ui.md, "Conclusions, not deliberation"). `no-match`
-(we looked, nothing credible) is distinct from `unchecked` (we have not
-looked) — a waiting user hears them as different answers.
-
-Adapter behaviour: the REAL 2026-08-28 harvest results (real registry
-counts: Nano Machine 327, Disaster-Class 186, the ORV/Estate-Developer
-contradictions, the Warhammer unconfigured case), keyed by series title,
-with confirm/reject/files-only decisions overlaid in localStorage; the
-three harvest proposals disproven by their own evidence (ORV, Estate
-Developer, Suicidal Battle God) resolve to plain `no-match`, exactly as
-the server will. It
-does not poll anything, so its `asOf` stamp never moves — visible in the
-UI as "card as of 2026-08-28", which is the honest rendering.
-
-Needs server-side: the provider abstraction (registry card: identity,
-status vocabulary, latest unit + unit kind, contributors, seasons,
-release records, freshness stamp — every field may be "unknown"),
-per-field precedence when providers disagree, evidence scoring, the
-stored mapping, and a nightly poll. ComicInfo.xml read/write is part of
-this surface (a fourth provider, believed first).
+`IdentityApi` is served by `real.ts` against `/api/identity/*`. The adapter
+entry in `pending.ts` — including the recorded 2026-08-28 harvest fixture —
+has been deleted, and `frontend/api/index.ts` points at the real routes.
 
 ```
-GET  /api/identity                        → Record<seriesId, IdentityBinding>
-GET  /api/identity/:seriesId              → IdentityBinding
-POST /api/identity/:seriesId/confirm      { provider, registryId }
+GET  /api/identity                        -> Record<seriesId, IdentityBinding>   free
+GET  /api/identity/providers              -> which registries exist / connected  free
+GET  /api/identity/:seriesId              -> IdentityBinding                     free
+POST /api/identity/:seriesId/identify     -> look it up now       1 search + <=5 cards
+GET  /api/identity/:seriesId/search?q=    -> candidates           1 search + <=5 cards
+POST /api/identity/:seriesId/confirm      { provider, registryId }        1 card read
 POST /api/identity/:seriesId/reject
 POST /api/identity/:seriesId/files-only
-GET  /api/identity/:seriesId/search?q=    → candidates with evidence rows
+POST /api/identity/:seriesId/seasons      { seasons }
 ```
+
+Everything a render can reach is in the free half — those read the binding
+stored in `paperbox.json`, which the scan already holds in memory. The paid
+half is only ever reached by somebody clicking, and is serialised at one
+request per second per provider.
+
+**One contract fix went with it.** `IdentityCandidate` gained `registryId`.
+The candidate carried none while `confirm` required one, so the only confirm
+button in the client passed `""` — a binding to nothing. A candidate you
+cannot bind is not a candidate.
+
+### Identity: what shipped and what did not
+
+Still stubbed or unbuilt, deliberately:
+
+| | Why |
+|---|---|
+| **Comic Vine** | The slot is declared and reports itself unconnected, which is what makes the `unconfigured` state truthful for the three Warhammer series. The integration needs a free API key nobody has supplied. `configured()` becomes an env check and `search`/`fetch` get written; nothing else moves. |
+| **Season boundaries** | Parsed out of MangaUpdates' free-text `status` into `seasonHints` and never into `seasons`. `POST /api/identity/:id/seasons` exists so a person's agreement has somewhere to land; **no screen offers it yet**, so `registry.seasons` is always empty and the season dividers in the series view never appear. |
+| **The nightly refresh** | A card is read once and kept; nothing refreshes it. The shape is costed (5,000 card reads, ~83 min at 1/s, budgeted and resumable) and written down in `src/identity/index.ts`. A fan-out would get us blocked on the first night, so nothing polls. |
+| **AniList as a second provider** | The abstraction takes it and the corroboration path (`alsoConfirmedBy`) is implemented and unused, since only one registry is connected. |
+| **Cover comparison** | Surfaces as an honest `unknown` evidence row — "Cover art not compared". It is the one cheap corroborating fact not yet built. |
+| **ComicInfo inside archives** | Read from a loose `ComicInfo.xml` in the series directory only. No CBZ support anywhere yet (see decisions.md, Known gaps). |
+| **Writing ComicInfo back out** | The other direction of the fourth-upstream idea, and what stops people being trapped in Paperbox. Not started. |
 
 ## 3. Source health — `SourceHealthApi`
 

@@ -16,6 +16,7 @@ import type {
   SourceHealth,
   SourceInfo,
   IdentityBinding,
+  ProviderSlot,
   SyncRule,
   TreeChild,
 } from "../api/contract";
@@ -427,49 +428,80 @@ function SourcesTab({ refreshTasks }: { refreshTasks: () => void }) {
 
 function RegistriesTab({ onOpenSeries }: { onOpenSeries: (id: string) => void }) {
   const [bindings, setBindings] = useState<Record<string, IdentityBinding>>({});
+  const [slots, setSlots] = useState<ProviderSlot[]>([]);
   const [titles, setTitles] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
+  const load = () => {
     api.identity.all().then(setBindings).catch(() => {});
+    api.identity.providers().then(setSlots).catch(() => {});
     api.library.list({ limit: 100 }).then((d) => {
       const t: Record<string, string> = {};
       for (const m of d.data) t[m.id] = m.title;
       setTitles(t);
     }).catch(() => {});
-  }, []);
+  };
+  useEffect(load, []);
 
   const all = Object.values(bindings);
-  const connected = new Map<string, number>();
-  const suggested = new Map<string, number>();
+  const bound = new Map<string, number>();
   for (const b of all) {
-    if (b.registry) connected.set(b.registry.provider, (connected.get(b.registry.provider) ?? 0) + 1);
-    if (b.alsoConfirmedBy) connected.set(b.alsoConfirmedBy, (connected.get(b.alsoConfirmedBy) ?? 0) + 1);
-    if (b.suggestedProvider) suggested.set(b.suggestedProvider, (suggested.get(b.suggestedProvider) ?? 0) + 1);
+    if (b.registry) bound.set(b.registry.provider, (bound.get(b.registry.provider) ?? 0) + 1);
+    if (b.alsoConfirmedBy) bound.set(b.alsoConfirmedBy, (bound.get(b.alsoConfirmedBy) ?? 0) + 1);
   }
+  const wouldHelp = (name: string) => all.filter((b) => b.suggestedProvider === name).length;
+
   const queue = all.filter((b) => b.state === "guess" || b.state === "unconfigured");
+  const unchecked = all.filter((b) => b.state === "unchecked");
+
+  /**
+   * Looking up costs somebody else's free API a request, so it is a verb here
+   * and never something a screen does on its own. Serialised deliberately: the
+   * server paces itself, and firing twelve at once only queues them anyway.
+   */
+  const lookUpAll = async () => {
+    setBusy(true);
+    try {
+      for (const b of unchecked) await api.identity.identify(b.seriesId).catch(() => {});
+    } finally {
+      setBusy(false);
+      load();
+    }
+  };
 
   return (
     <div>
       <section className="wb-section">
         <h3>Where identities come from</h3>
-        {[...connected.entries()].map(([name, n]) => (
-          <div key={name} className="health-row">
-            <strong>{name}</strong>
-            <span className="cap">{n} series identified · no key needed</span>
-          </div>
-        ))}
-        {[...suggested.entries()].map(([name, n]) => (
-          <div key={name} className="health-row">
-            <strong>{name}</strong>
-            <span className="cap">
-              Not connected · free key · would likely identify {n} of your series
-            </span>
-          </div>
-        ))}
-        {connected.size === 0 && suggested.size === 0 && (
-          <p className="cap">Nothing to report yet.</p>
-        )}
+        {slots
+          .filter((p) => p.domain !== "embedded")
+          .map((p) => {
+            const n = bound.get(p.name) ?? 0;
+            const could = wouldHelp(p.name);
+            return (
+              <div key={p.id} className="health-row">
+                <strong>{p.name}</strong>
+                <span className="cap">
+                  {p.configured
+                    ? n > 0 ? `${n} identified` : "Connected"
+                    : could > 0
+                      ? `${p.requirement} · would likely identify ${could} of your series`
+                      : p.requirement}
+                </span>
+              </div>
+            );
+          })}
+        {slots.length === 0 && <p className="cap">Nothing to report yet.</p>}
       </section>
+
+      {unchecked.length > 0 && (
+        <section className="wb-section">
+          <h3>{unchecked.length} not looked up</h3>
+          <button className="btn" disabled={busy} onClick={() => void lookUpAll()}>
+            {busy ? "Looking…" : "Look them up"}
+          </button>
+        </section>
+      )}
 
       <section className="wb-section">
         <h3>Your series {queue.length > 0 && `· ${queue.length} need a look`}</h3>
@@ -576,7 +608,7 @@ function DiagnosisTab({ status }: { status: ServerStatus | null }) {
         <p className="cap">Parts of this client run ahead of the server. Today that means:</p>
         <ul className="gaps">
           <li>Read positions — this browser only; they do not reach other devices yet</li>
-          <li>Identity — matches are a saved snapshot, not live</li>
+          <li>Identity — a match is read once and kept; nothing refreshes it on its own</li>
           <li>Source health — this session only; no history</li>
           <li>Rules — a sample; nothing is stored yet</li>
           <li>Freshness — one library-wide stamp, shown per series</li>

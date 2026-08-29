@@ -10,24 +10,17 @@
  *  - Derive from real server data wherever possible (read state counts
  *    against the real chapter lists; source health against the real
  *    download tasks).
- *  - Where derivation is impossible (registry facts), representative data
- *    comes from the REAL 2026-08-28 registry harvest recorded in
- *    docs/upstream.md — real numbers, keyed by the real series titles.
  *  - Local persistence (localStorage) is used so flows are exercisable,
  *    and is explicitly NOT the store of record. When the server route
  *    lands, the localStorage layer is deleted with this entry.
  */
 
 import { store } from "../lib";
-import { library, downloads, status, scan } from "./real";
+import { library, downloads, status, scan, identity } from "./real";
 import type {
   ReadStateApi,
   SeriesReadState,
   ContinuePoint,
-  IdentityApi,
-  IdentityBinding,
-  RegistryFacts,
-  EvidenceRow,
   SourceHealthApi,
   SourceHealth,
   SurveyApi,
@@ -116,242 +109,6 @@ export function recordContinue(point: ContinuePoint): void {
 }
 
 /* ------------------------------------------------------------------ */
-/* Identity — registry binding                                         */
-/*                                                                     */
-/* STANDS IN FOR: /api/identity/* — one registry binding per series,    */
-/* established by evidence-corroborated matching (docs/upstream.md),    */
-/* stored once as provider IDs, re-scored as chapters arrive. Needs a   */
-/* provider abstraction (MangaUpdates, AniList, Comic Vine, Metron)     */
-/* and the confirm/reject/files-only flow.                              */
-/*                                                                     */
-/* The bindings below are the REAL results of the 2026-08-28 harvest    */
-/* measured against this library (docs/upstream.md, "Matching"):        */
-/* real registry chapter counts, the matcher's raw proposals — three    */
-/* of them disproven by their own evidence — and the Warhammer          */
-/* unconfigured case. Disproven candidates are discarded silently in    */
-/* resolveBinding, exactly as the server will: the bar for surfacing a  */
-/* candidate is "this might be correct". Confirm/reject decisions are   */
-/* overlaid in localStorage so the flows work end to end in a browser.  */
-/* ------------------------------------------------------------------ */
-
-const norm = (t: string) =>
-  t.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-
-function mu(over: Partial<RegistryFacts> & { canonicalTitle: string }): RegistryFacts {
-  return {
-    provider: "MangaUpdates",
-    registryId: `mu:${norm(over.canonicalTitle).replace(/ /g, "-")}`,
-    status: "unknown",
-    latestChapter: null,
-    cadenceDays: null,
-    cadenceLabel: null,
-    asOf: "2026-08-28",
-    seasons: [],
-    ...over,
-  };
-}
-
-const ev = (fact: string, verdict: EvidenceRow["verdict"]): EvidenceRow => ({ fact, verdict });
-
-/** Keyed by normalised on-disk title. Every number is from the harvest. */
-const HARVEST: Record<string, Omit<IdentityBinding, "seriesId">> = {
-  [norm("Nano Machine")]: {
-    state: "identified",
-    alsoConfirmedBy: "AniList",
-    registry: mu({
-      canonicalTitle: "Nano Machine",
-      nativeTitle: "나노마신",
-      status: "ongoing",
-      latestChapter: 327,
-      cadenceDays: 7,
-      cadenceLabel: "weekly · Wed",
-      year: 2020,
-      seasons: [{ name: "Season 1", endAfterSortKey: 142 }],
-    }),
-  },
-  [norm("Solo Leveling")]: {
-    state: "identified",
-    registry: mu({
-      canonicalTitle: "Solo Leveling",
-      status: "complete",
-      latestChapter: 201,
-      year: 2018,
-      cadenceLabel: "complete",
-    }),
-  },
-  [norm("Return of the Disaster-Class Hero")]: {
-    state: "identified",
-    registry: mu({
-      canonicalTitle: "The Return of the Disaster-Class Hero",
-      status: "ongoing",
-      latestChapter: 186,
-      cadenceDays: 7,
-      cadenceLabel: "weekly",
-      year: 2021,
-    }),
-  },
-  [norm("SSS-Class Suicide Hunter")]: {
-    state: "identified",
-    registry: mu({
-      canonicalTitle: "SSS-Class Revival Hunter",
-      status: "hiatus",
-      latestChapter: 151,
-      year: 2020,
-      cadenceLabel: "on hiatus",
-      seasons: [
-        { name: "Season 3", endAfterSortKey: 115 },
-        { name: "Season 4", endAfterSortKey: 151 },
-      ],
-    }),
-  },
-  [norm("Trash of the Count's Family")]: {
-    state: "guess",
-    registry: null,
-    candidate: {
-      provider: "MangaUpdates",
-      title: "Lout of Count's Family",
-      nameScore: 0.75,
-      evidence: [
-        ev("Different English rendering of the same Korean title", "agree"),
-        ev("Chapter count sane: you hold 176 · it stands at 185", "agree"),
-        ev("Alternative titles agree in other languages", "agree"),
-        ev("Cover palette: not yet compared", "unknown"),
-      ],
-    },
-  },
-  [norm("Omniscient Reader's Viewpoint")]: {
-    state: "guess",
-    registry: null,
-    candidate: {
-      provider: "MangaUpdates",
-      title: "Omniscient Reader's Viewpoint (Novel)",
-      nameScore: 0.91,
-      evidence: [
-        ev("Name nearly exact", "agree"),
-        ev("It is a novel — this folder holds 201 chapters of page images", "contradict"),
-        ev("Its latest chapter is 42 — you hold 201. Can't be the same thing.", "contradict"),
-      ],
-    },
-  },
-  [norm("The Greatest Estate Developer")]: {
-    state: "guess",
-    registry: null,
-    candidate: {
-      provider: "MangaUpdates",
-      title: "The Greatest Estate Developer (Novel)",
-      nameScore: 0.91,
-      evidence: [
-        ev("Name nearly exact", "agree"),
-        ev("It is a novel — this folder holds image chapters", "contradict"),
-        ev("Its latest chapter is 0 — you hold 219. Impossible.", "contradict"),
-      ],
-    },
-  },
-  [norm("Reincarnation of the Suicidal Battle God")]: {
-    state: "guess",
-    registry: null,
-    candidate: {
-      provider: "MangaUpdates",
-      title: "Reincarnation of the Martial God",
-      nameScore: 0.78,
-      evidence: [
-        ev("Name partially agrees", "agree"),
-        ev("Candidate began 2025 with 27 chapters — you hold 102. Impossible.", "contradict"),
-      ],
-    },
-  },
-  [norm("The S-Classes That I Raised")]: {
-    state: "identified",
-    registry: mu({
-      canonicalTitle: "My S-Class Hunters",
-      status: "ongoing",
-      latestChapter: null, // the registry keeps no release records for it
-      cadenceLabel: null,
-    }),
-  },
-  [norm("Warhammer 40,000")]: {
-    state: "unconfigured",
-    registry: null,
-    suggestedProvider: "Comic Vine",
-  },
-  [norm("Warhammer 40,000: Exterminatus")]: {
-    state: "unconfigured",
-    registry: null,
-    suggestedProvider: "Comic Vine",
-  },
-  [norm("Warhammer 40,000: Marneus Calgar")]: {
-    state: "unconfigured",
-    registry: null,
-    suggestedProvider: "Comic Vine",
-  },
-};
-
-interface IdentityOverlay {
-  state?: IdentityBinding["state"];
-  confirmed?: boolean;
-}
-const idKey = (seriesId: string) => `pb:identity:${seriesId}`;
-
-function resolveBinding(seriesId: string, title: string): IdentityBinding {
-  const base = HARVEST[norm(title)];
-  const overlay = store.get<IdentityOverlay>(idKey(seriesId));
-  let binding: IdentityBinding = base
-    ? { seriesId, ...base }
-    : { seriesId, state: "unchecked", registry: null };
-  // The surfacing bar (docs/ui.md, "Conclusions, not deliberation"): a
-  // candidate any fact disproves is not a guess — discard it here,
-  // silently, and the series reads as looked-at, nothing credible.
-  if (binding.candidate?.evidence.some((e) => e.verdict === "contradict")) {
-    binding = { seriesId, state: "no-match", registry: null };
-  }
-  if (overlay?.confirmed && binding.candidate) {
-    // A confirmed guess becomes an identified binding with the candidate's
-    // facts promoted — mirroring "store the confirmed mapping, never re-guess".
-    binding = {
-      seriesId,
-      state: "identified",
-      registry: mu({
-        canonicalTitle: binding.candidate.title,
-        status: "ongoing",
-        latestChapter: 185, // Lout of Count's Family — the real registry count
-        cadenceLabel: "weekly",
-      }),
-    };
-  } else if (overlay?.state) {
-    binding = { ...binding, state: overlay.state };
-  }
-  return binding;
-}
-
-export const identity: IdentityApi = {
-  async get(seriesId) {
-    const detail = await library.get(seriesId);
-    return resolveBinding(seriesId, detail.title);
-  },
-  async all() {
-    const lib = await library.list({ limit: 100 });
-    const out: Record<string, IdentityBinding> = {};
-    for (const m of lib.data) out[m.id] = resolveBinding(m.id, m.title);
-    return out;
-  },
-  async confirm(seriesId) {
-    store.set(idKey(seriesId), { confirmed: true } satisfies IdentityOverlay);
-  },
-  async reject(seriesId) {
-    // "Not this" after a look lands on no-match, not on never-looked.
-    store.set(idKey(seriesId), { state: "no-match" } satisfies IdentityOverlay);
-  },
-  async keepFilesOnly(seriesId) {
-    store.set(idKey(seriesId), { state: "files-only" } satisfies IdentityOverlay);
-  },
-  async search() {
-    // Registry search needs the provider abstraction server-side; there is
-    // nothing honest to return from a browser.
-    return [];
-  },
-};
-
-/* ------------------------------------------------------------------ */
 /* Source health                                                       */
 /*                                                                     */
 /* STANDS IN FOR: /api/sources/health — per-source state derived from   */
@@ -427,8 +184,10 @@ export const sourceHealth: SourceHealthApi = {
 export const survey: SurveyApi = {
   async run(seriesId) {
     const detail = await library.get(seriesId);
-    const binding = resolveBinding(seriesId, detail.title);
-    const latest = binding.registry?.latestChapter ?? detail.chapterCount;
+    // The registry half of this is real now, and free to ask for: the
+    // binding is stored, so this reads it rather than deriving one.
+    const binding = await identity.get(seriesId).catch(() => null);
+    const latest = binding?.registry?.latestChapter ?? detail.chapterCount;
     const current = detail.meta.sourceId ?? "";
     const rows: SurveyRow[] = [
       {

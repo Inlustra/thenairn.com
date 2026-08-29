@@ -6,6 +6,10 @@
 
 import { API, j, jTagged, post, patch, del } from "../lib";
 import type {
+  IdentityApi,
+  IdentityBinding,
+  IdentityCandidate,
+  ProviderSlot,
   LibraryApi,
   StatusApi,
   ScanApi,
@@ -107,5 +111,39 @@ export const jobs: JobsApi = {
   list: () => jTagged<JobsEnvelope>(`${API}/jobs`),
   async cancel(id) {
     await post(`${API}/jobs/${encodeURIComponent(id)}/cancel`);
+  },
+};
+
+/**
+ * Identity — the registry binding.
+ *
+ * Note which of these cost a request to somebody else's free API: only
+ * `identify`, `search` and `confirm`. `get`, `all` and `providers` read
+ * what the server already stored, so a re-render is free and nothing here
+ * may be put on a timer.
+ */
+export const identity: IdentityApi = {
+  get: (seriesId) => j<IdentityBinding>(`${API}/identity/${encodeURIComponent(seriesId)}`),
+  all: () => j<Record<string, IdentityBinding>>(`${API}/identity`),
+  async confirm(seriesId, provider, registryId) {
+    await post(`${API}/identity/${encodeURIComponent(seriesId)}/confirm`, { provider, registryId });
+  },
+  async reject(seriesId) {
+    await post(`${API}/identity/${encodeURIComponent(seriesId)}/reject`);
+  },
+  async keepFilesOnly(seriesId) {
+    await post(`${API}/identity/${encodeURIComponent(seriesId)}/files-only`);
+  },
+  async search(seriesId, phrase) {
+    const d = await j<{ data: IdentityCandidate[] }>(
+      `${API}/identity/${encodeURIComponent(seriesId)}/search?q=${encodeURIComponent(phrase)}`,
+    );
+    return d.data ?? [];
+  },
+  identify: (seriesId) =>
+    post<IdentityBinding>(`${API}/identity/${encodeURIComponent(seriesId)}/identify`),
+  async providers() {
+    const d = await j<{ providers: ProviderSlot[] }>(`${API}/identity/providers`);
+    return d.providers ?? [];
   },
 };

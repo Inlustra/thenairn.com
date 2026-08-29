@@ -327,54 +327,8 @@ export const spineArtUrl = (chapterUid: string): string =>
 export const coverArtUrl = (seriesUid: string): string =>
   `/api/art/cover/${encodeURIComponent(seriesUid)}`;
 
-/* ================================================================== */
-/* Everything below here does NOT exist server-side yet.               */
-/* Implemented only by pending.ts. See docs/api-gaps.md.               */
-/* ================================================================== */
-
 /* ------------------------------------------------------------------ */
-/* Read state — MISSING (server work underway in src/readstate/)       */
-/* ------------------------------------------------------------------ */
-
-export interface ChapterReadState {
-  chapterId: string;
-  /** Last page index reached, 0-based. */
-  page: number;
-  pageCount: number;
-  /** A chapter is read when the position reached its last page. */
-  read: boolean;
-  updatedAt: number;
-}
-
-export interface SeriesReadState {
-  seriesId: string;
-  /** Keyed by chapter id. Absent = never opened. */
-  chapters: Record<string, ChapterReadState>;
-}
-
-export interface ContinuePoint {
-  seriesId: string;
-  seriesTitle: string;
-  chapterId: string;
-  chapterLabel: string;
-  page: number;
-  pageCount: number;
-  updatedAt: number;
-}
-
-export interface ReadStateApi {
-  series(seriesId: string): Promise<SeriesReadState>;
-  /** Positions merge furthest-wins server-side once the route exists. */
-  setPosition(seriesId: string, chapterId: string, page: number, pageCount: number): Promise<void>;
-  markRead(seriesId: string, chapterId: string, read: boolean): Promise<void>;
-  /** The Continue rail — most recent positions across the library. */
-  continueRail(limit?: number): Promise<ContinuePoint[]>;
-  /** Unread count per series — the one number that drives choosing. */
-  unreadCounts(): Promise<Record<string, number>>;
-}
-
-/* ------------------------------------------------------------------ */
-/* Identity — MISSING (registry binding, docs/upstream.md)             */
+/* Identity — REAL, /api/identity/* (registry binding)                 */
 /* ------------------------------------------------------------------ */
 
 /**
@@ -420,17 +374,46 @@ export interface RegistryFacts {
   canonicalTitle: string;
   /** ongoing / hiatus / complete / unknown — shared vocabulary. */
   status: "ongoing" | "hiatus" | "complete" | "unknown";
-  /** The denominator in "you hold 313 of 327". */
+  /**
+   * The denominator in "you hold 313 of 327".
+   *
+   * `null` and `0` are different answers and must stay so: null means the
+   * registry keeps no chapter records, so nothing renders a gap line at
+   * all; 0 against a held library is a contradiction the server would
+   * already have used to discard the candidate. Identity read from a
+   * ComicInfo.xml is always null here — matched, and unable to tell you
+   * whether more exists.
+   */
   latestChapter: number | null;
   /** Median release interval in days, from dated release records. */
   cadenceDays: number | null;
   cadenceLabel: string | null;
   /** ISO date the registry card was last refreshed — the freshness stamp. */
   asOf: string;
-  /** Season boundaries, if the registry states them. */
+  /**
+   * Season boundaries **a person confirmed**. Never populated by a
+   * provider: upstream they exist only as free-text prose, so an
+   * automatic import would draw dividers on the strength of a regex.
+   */
   seasons: { name: string; endAfterSortKey: number }[];
   nativeTitle?: string;
   year?: number;
+}
+
+/**
+ * Something that might be this series.
+ *
+ * `registryId` is what makes it bindable, and it was missing: `confirm`
+ * has always required one while the candidate carried none, so the only
+ * confirm button in this client passed `""` — a binding to nothing.
+ */
+export interface IdentityCandidate {
+  provider: string;
+  registryId: string;
+  title: string;
+  /** Internal. Never rendered — the evidence rows are what a person reads. */
+  nameScore: number;
+  evidence: EvidenceRow[];
 }
 
 export interface IdentityBinding {
@@ -441,9 +424,20 @@ export interface IdentityBinding {
   alsoConfirmedBy?: string;
   /** Only in "guess": a candidate that might be correct, carrying the
       grounds a person needs to judge it. nameScore stays internal. */
-  candidate?: { provider: string; title: string; nameScore: number; evidence: EvidenceRow[] };
+  candidate?: IdentityCandidate;
   /** For "unconfigured": which provider would likely know this series. */
   suggestedProvider?: string;
+}
+
+/** A registry slot, connected or not. Drives the "not connected" state. */
+export interface ProviderSlot {
+  id: string;
+  name: string;
+  domain: "manga" | "western" | "embedded";
+  configured: boolean;
+  canRequery: boolean;
+  /** What is missing, in a person's words. Empty when connected. */
+  requirement: string;
 }
 
 export interface IdentityApi {
@@ -452,7 +446,61 @@ export interface IdentityApi {
   confirm(seriesId: string, provider: string, registryId: string): Promise<void>;
   reject(seriesId: string): Promise<void>;
   keepFilesOnly(seriesId: string): Promise<void>;
-  search(seriesId: string, phrase: string): Promise<IdentityBinding["candidate"][]>;
+  /** The user's own phrase. Disproven candidates never come back. */
+  search(seriesId: string, phrase: string): Promise<IdentityCandidate[]>;
+  /**
+   * Look this one up now. The only call here that costs a stranger's API
+   * anything, so it is never fired by a render — only by an ask.
+   */
+  identify(seriesId: string): Promise<IdentityBinding>;
+  /** Which registries exist and which are connected. */
+  providers(): Promise<ProviderSlot[]>;
+}
+
+/* ================================================================== */
+/* Everything below here does NOT exist server-side yet.               */
+/* Implemented only by pending.ts. See docs/api-gaps.md.               */
+/* ================================================================== */
+
+/* ------------------------------------------------------------------ */
+/* Read state — MISSING (server work underway in src/readstate/)       */
+/* ------------------------------------------------------------------ */
+
+export interface ChapterReadState {
+  chapterId: string;
+  /** Last page index reached, 0-based. */
+  page: number;
+  pageCount: number;
+  /** A chapter is read when the position reached its last page. */
+  read: boolean;
+  updatedAt: number;
+}
+
+export interface SeriesReadState {
+  seriesId: string;
+  /** Keyed by chapter id. Absent = never opened. */
+  chapters: Record<string, ChapterReadState>;
+}
+
+export interface ContinuePoint {
+  seriesId: string;
+  seriesTitle: string;
+  chapterId: string;
+  chapterLabel: string;
+  page: number;
+  pageCount: number;
+  updatedAt: number;
+}
+
+export interface ReadStateApi {
+  series(seriesId: string): Promise<SeriesReadState>;
+  /** Positions merge furthest-wins server-side once the route exists. */
+  setPosition(seriesId: string, chapterId: string, page: number, pageCount: number): Promise<void>;
+  markRead(seriesId: string, chapterId: string, read: boolean): Promise<void>;
+  /** The Continue rail — most recent positions across the library. */
+  continueRail(limit?: number): Promise<ContinuePoint[]>;
+  /** Unread count per series — the one number that drives choosing. */
+  unreadCounts(): Promise<Record<string, number>>;
 }
 
 /* ------------------------------------------------------------------ */
@@ -589,9 +637,9 @@ export interface PaperboxApi {
   sources: SourcesApi;
   sync: SyncApi;
   jobs: JobsApi;
+  identity: IdentityApi;
   // Pending — served by the adapter until the server catches up:
   readState: ReadStateApi;
-  identity: IdentityApi;
   sourceHealth: SourceHealthApi;
   survey: SurveyApi;
   rules: RulesApi;
