@@ -267,4 +267,32 @@ describe("counts and pruning", () => {
     q.prune(Date.now() + 7 * 60 * 60 * 1000);
     expect(q.get(job.id)).toBeNull();
   });
+
+  test("a success clears an earlier failure at the same work", () => {
+    // prune keeps the newest RETAIN_MIN finished rows regardless of age, so on a
+    // small library a failure is pinned indefinitely -- and the owner was shown
+    // "no series for scope <uid>" long after that worker stopped throwing, for
+    // three series that were never missing. A failure the same work has since
+    // succeeded at is not news.
+    const a = q.enqueue({ kind: "art", scope: "s:1", label: "One" });
+    q.claim();
+    q.fail(a.id, "no series for scope s:1");
+    expect(q.list().filter((j) => j.state === "failed").length).toBe(1);
+
+    const b = q.enqueue({ kind: "art", scope: "s:1", label: "One" });
+    q.claim();
+    q.finish(b.id);
+
+    expect(q.list().filter((j) => j.state === "failed").length).toBe(0);
+  });
+
+  test("a success does not clear a failure at different work", () => {
+    const a = q.enqueue({ kind: "art", scope: "s:1", label: "One" });
+    q.claim();
+    q.fail(a.id, "boom");
+    const b = q.enqueue({ kind: "art", scope: "s:2", label: "Two" });
+    q.claim();
+    q.finish(b.id);
+    expect(q.list().filter((j) => j.state === "failed").length).toBe(1);
+  });
 });

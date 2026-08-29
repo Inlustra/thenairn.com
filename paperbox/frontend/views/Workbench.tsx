@@ -75,8 +75,7 @@ function BackgroundWork({
           </Weather>
         ) : (
           <NeedsYou key={jb.id} verb="Try again" onVerb={() => api.scan.start().catch(() => {})}>
-            {jobPhrase(jb)} stopped{jb.error ? ` — ${jb.error}` : ""}. Nothing on your shelf
-            was touched.
+            {jobPhrase(jb)} stopped.
           </NeedsYou>
         ),
       )}

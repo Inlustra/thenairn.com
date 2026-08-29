@@ -308,6 +308,7 @@ export class JobQueue {
    * success while producing nothing".
    */
   finish(id: string): void {
+    const job = this.get(id);
     this.db
       .query(
         `UPDATE job SET state = CASE WHEN cancelled = 1 THEN 'cancelled' ELSE 'done' END,
@@ -315,6 +316,10 @@ export class JobQueue {
          WHERE id = ? AND state = 'running'`,
       )
       .run(Date.now(), id);
+    // The same work having succeeded, any earlier failure at it is no longer
+    // something to show. Read the state back rather than assuming: `finish` on a
+    // cancelled job lands in 'cancelled', and a cancellation supersedes nothing.
+    if (job && this.get(id)?.state === "done") this.supersede(job.kind, job.scope);
   }
 
   fail(id: string, error: string): void {
@@ -350,6 +355,27 @@ export class JobQueue {
   }
 
   /** Drop old finished work, keeping the most recent regardless of age. */
+  /**
+   * A success cancels the memory of an earlier failure at the same work.
+   *
+   * `prune` keeps the most recent RETAIN_MIN finished rows regardless of age, so
+   * on a small library a failure is pinned indefinitely -- and a red line stays
+   * in front of the user long after the same work has been re-queued by
+   * discovery and completed. Worse, its stored text outlives the code that
+   * produced it: the owner was shown "no series for scope <uid>" from a worker
+   * that no longer throws, for three series that were never missing.
+   *
+   * A failure superseded by a success is not news, so it stops being kept.
+   */
+  supersede(kind: string, scope: string | null): number {
+    return this.db
+      .query(
+        `DELETE FROM job
+          WHERE state = 'failed' AND kind = ? AND scope IS ?`,
+      )
+      .run(kind, scope).changes;
+  }
+
   prune(now = Date.now()): number {
     return this.db
       .query(
