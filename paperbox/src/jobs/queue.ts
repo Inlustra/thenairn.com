@@ -166,6 +166,8 @@ export class JobQueue {
    * Asking is what makes work someone's errand; it can only ever promote.
    */
   enqueue(opts: EnqueueOptions): Job {
+    // A fresh attempt makes any earlier failure at this work stale. See supersede().
+    this.supersede(opts.kind, opts.scope ?? null);
     const scope = opts.scope ?? null;
     const silent = opts.silent === true;
     const existing = this.db
@@ -368,6 +370,11 @@ export class JobQueue {
    * A failure superseded by a success is not news, so it stops being kept.
    */
   supersede(kind: string, scope: string | null): number {
+    // Fired on enqueue as well as on success. Only-on-success was not enough:
+    // work that keeps failing never clears its old row, so a stale failure sits
+    // next to the fresh one and each retry adds another. What makes the old row
+    // meaningless is that the work is being attempted again -- the outcome of
+    // that attempt is the current answer, whatever it turns out to be.
     return this.db
       .query(
         `DELETE FROM job
