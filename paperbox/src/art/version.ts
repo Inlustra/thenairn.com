@@ -21,5 +21,15 @@
  * v1 - 2026-08-28 - first pipeline: banded saliency with a flat-white penalty,
  *                   sliver cut from a 480px-wide raster, tint by coarse
  *                   histogram mode.
+ * v2 - 2026-08-29 - geometry and codec. 120x560/WebP q82 became 132x372/AVIF
+ *                   q35 effort0: 9.7 KB a spine down to 2.73 KB, so a
+ *                   313-chapter shelf is 855 KB rather than 3.0 MB.
+ *
+ *                   The geometry mattered more than the codec. A spine renders
+ *                   21-44 px wide by 124 tall under `object-fit: cover`, so the
+ *                   stored aspect decides what the crop keeps. 120x560 matched
+ *                   neither end, and a thick spine lost ~40% of its height.
+ *                   132x372 is 3x the widest slot: nothing is cropped
+ *                   vertically at any width, and it is sharp on a 3x display.
  */
-export const ART_VERSION = 1;
+export const ART_VERSION = 2;

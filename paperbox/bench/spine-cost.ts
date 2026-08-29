@@ -17,7 +17,7 @@
  *
  *   bun run bench/spine-cost.ts [--chapters 100] [--dump out/]
  *
- * `--dump` writes the spines out as `<series>--<chapter>.webp` so R-09 can be
+ * `--dump` writes the spines out as `<series>--<chapter>.image` so R-09 can be
  * settled the only way it can be settled: by looking at 100 real crops.
  */
 import { readdir, mkdir, writeFile } from "fs/promises";
@@ -25,7 +25,7 @@ import { join, extname } from "path";
 import { extractSpine } from "../src/art/spine";
 
 const ROOT = process.env.MANGA_DIR || "/mnt/user/Media/Manga-new";
-const EXTS = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".avif"]);
+const EXTS = new Set([".jpg", ".jpeg", ".png", ".image", ".gif", ".bmp", ".avif"]);
 const args = process.argv.slice(2);
 const N = Number(args[args.indexOf("--chapters") + 1]) || 100;
 const DUMP = args.includes("--dump") ? args[args.indexOf("--dump") + 1] : null;
@@ -84,14 +84,14 @@ for (const ch of chapters) {
   }
 
   ms.push(took);
-  bytes.push(out.webp.byteLength);
+  bytes.push(out.image.byteLength);
   balloon.push(out.diag.balloon);
   at.push(out.diag.at);
   chromaRatio.push(out.diag.sourceChroma > 0.001 ? out.diag.outputChroma / out.diag.sourceChroma : 1);
   ok++;
   if (DUMP) {
     const name = `${ch.series}--${ch.chapter}`.replace(/[^A-Za-z0-9._-]+/g, "_");
-    await writeFile(join(DUMP, `${name}.webp`), out.webp);
+    await writeFile(join(DUMP, `${name}.image`), out.image);
     await writeFile(join(DUMP, `${name}.json`), JSON.stringify({ tint: out.tint, ...out.diag }, null, 2));
   }
   if (ok % 20 === 0) process.stdout.write(`  ${ok}/${chapters.length}\r`);

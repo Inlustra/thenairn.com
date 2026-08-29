@@ -71,7 +71,7 @@ describe("the store", () => {
 
   test("fans the key out two levels, so no directory holds the whole library", () => {
     const key = "abcdef0123456789abcdef01";
-    expect(artPath("spine", key)).toBe(join(ROOT, "spine", "ab", "cd", `${key}.webp`));
+    expect(artPath("spine", key)).toBe(join(ROOT, "spine", "ab", "cd", `${key}.avif`));
   });
 
   test("put then find round-trips, and the etag is the key", async () => {
@@ -105,7 +105,7 @@ describe("the store", () => {
     const leaf = dirname(artPath("spine", key));
     const names = await readdir(leaf);
     expect(names.filter((n) => n.endsWith(".tmp"))).toEqual([]);
-    expect(names).toEqual([`${key}.webp`]);
+    expect(names).toEqual([`${key}.avif`]);
   });
 
   test("json artefacts round-trip, and a missing one reads as null", async () => {

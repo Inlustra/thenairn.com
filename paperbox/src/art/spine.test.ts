@@ -146,10 +146,13 @@ describe("extraction", () => {
       join(ROOT, "ch", "004.png"),
     ]);
     expect(out).not.toBeNull();
-    const meta = await sharp(Buffer.from(out!.webp)).metadata();
+    const meta = await sharp(Buffer.from(out!.image)).metadata();
     expect(meta.width).toBe(SPINE_W);
     expect(meta.height).toBe(SPINE_H);
-    expect(meta.format).toBe("webp");
+    // sharp reports AVIF as "heif": AVIF is carried in a HEIF container and
+    // libvips decodes it through the same loader. Not a mislabelling -- the
+    // bytes are AVIF and the route serves image/avif.
+    expect(meta.format).toBe("heif");
   });
 
   test("saliency pushes the crop off the balloon band", async () => {
@@ -181,7 +184,7 @@ describe("extraction", () => {
     const pages = [join(ROOT, "ch", "002.png"), join(ROOT, "ch", "003.png")];
     const a = await extractSpine(pages);
     const b = await extractSpine(pages);
-    expect(Buffer.from(a!.webp).equals(Buffer.from(b!.webp))).toBe(true);
+    expect(Buffer.from(a!.image).equals(Buffer.from(b!.image))).toBe(true);
   });
 });
 

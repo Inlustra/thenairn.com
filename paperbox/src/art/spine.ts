@@ -99,9 +99,25 @@
 import sharp from "sharp";
 import { artKey, put, has, type StoredArt } from "./store";
 
-/** Output geometry. Changing any of these means bumping ART_VERSION. */
-export const SPINE_W = 120;
-export const SPINE_H = 560;
+/**
+ * Output geometry. Changing any of these means bumping ART_VERSION.
+ *
+ * The slot is always 124 CSS px tall and 21-44 px wide -- width carries reading
+ * length. `object-fit: cover` then crops whatever does not fit, so the stored
+ * aspect decides WHICH art survives.
+ *
+ * 132x372 is 3x of the WIDEST slot (44x124). Matching the widest means a thick
+ * spine is never cropped vertically and is still sharp on a 3x display; thin
+ * spines lose art from the sides, which is right, because a spine is a texture
+ * and its edges carry nothing.
+ *
+ * The previous 120x560 was a guess at neither: at 9.7 KB it shipped roughly
+ * twice the pixels a phone can use, and its taller aspect meant a thick spine
+ * lost about 40% of its height to the crop -- paying for pixels and then
+ * throwing them away.
+ */
+export const SPINE_W = 132;
+export const SPINE_H = 372;
 /**
  * Sliver width as a fraction of the page. Page widths are effectively
  * standardised (800/940/1200 -- architecture.md), so a fraction is portable
@@ -141,7 +157,8 @@ export interface SpineDiagnostics {
 }
 
 export interface SpineResult {
-  webp: Uint8Array;
+  /** The encoded picture. Codec-neutral by name: it was WebP until v2. */
+  image: Uint8Array;
   tint: Tint;
   diag: SpineDiagnostics;
 }
@@ -416,21 +433,28 @@ export async function extractSpine(pagePaths: string[]): Promise<SpineResult | n
     const tint = dominantOf(sliver);
     const sourceChroma = measureChroma(sliver);
 
-    const webp = await sharp(sliver, {
+    // AVIF at effort 0, quality 35. Measured on 25 real spines at this
+    // geometry: 2.73 KB in 27 ms, against WebP q72's 4.55 KB in 23 ms. Effort 2
+    // takes another 13% off for double the CPU and is deliberately not taken on
+    // a box that also serves pages. Quality 35 rather than 45 because the art
+    // lands at 44 px wide at most -- detail below that is spent on nobody.
+    // Support is universal on anything that can run the client (Safari 16.4+,
+    // Chrome 85+, Firefox 93+).
+    const encoded = await sharp(sliver, {
       raw: { width: info.width, height: info.height, channels: 3 },
     })
       .resize({ width: SPINE_W, height: SPINE_H, fit: "cover" })
-      .webp({ quality: 82 })
+      .avif({ quality: 35, effort: 0 })
       .toBuffer();
 
     // Decode what we are about to store and compare chroma against the source.
     // R-09's desaturation defect was never resolved, so the pipeline measures
     // itself rather than trusting that this time the defaults were right.
-    const back = await sharp(webp).toColourspace("srgb").removeAlpha().raw().toBuffer();
+    const back = await sharp(encoded).toColourspace("srgb").removeAlpha().raw().toBuffer();
     const outputChroma = measureChroma(back);
 
     return {
-      webp: new Uint8Array(webp),
+      image: new Uint8Array(encoded),
       tint,
       diag: {
         page: best.page,
@@ -490,7 +514,7 @@ export async function ensureSpine(
     await put("miss", key, JSON.stringify({ at: new Date().toISOString(), pages: pagePaths.length }));
     return { key, art: null, tint: null, diag: null, cached: false, missed: true };
   }
-  const art = await put("spine", key, out.webp);
+  const art = await put("spine", key, out.image);
   // The tint is written *after* the picture. If the process dies between the
   // two, the next request finds a spine with no tint, regenerates, and writes
   // both -- whereas the other order would leave a tint pointing at artwork that

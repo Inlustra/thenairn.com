@@ -91,7 +91,7 @@ describe("once generated", () => {
     await ensureSpine(chapterUid, chapterFingerprint, pagePaths);
     const res = await get(`/api/art/spine/${chapterUid}`);
     expect(res.status).toBe(200);
-    expect(res.headers.get("content-type")).toContain("image/webp");
+    expect(res.headers.get("content-type")).toContain("image/avif");
     const etag = res.headers.get("etag")!;
     expect(etag).toContain("spine-");
     // Safe only because the etag contains the chapter's fingerprint and

@@ -89,7 +89,7 @@ export function artKey(kind: ArtKind, ...inputs: (string | number | undefined)[]
   return hasher.digest("hex").slice(0, KEY_LEN);
 }
 
-const EXT: Record<ArtKind, string> = { spine: "webp", cover: "webp", tint: "json", miss: "json" };
+const EXT: Record<ArtKind, string> = { spine: "avif", cover: "webp", tint: "json", miss: "json" };
 
 /**
  * Fanned out two levels on the key. 710k files in one directory is a directory
