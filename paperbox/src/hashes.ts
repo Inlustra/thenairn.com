@@ -265,8 +265,13 @@ async function expandPages(node: TreeNode): Promise<TreeNode[]> {
     names = (await readdir(dir))
       .filter((f) => !f.startsWith(".") && IMAGE_EXTS.has(extname(f).toLowerCase()))
       .sort(naturalSort);
-  } catch {
-    return [];
+  } catch (e) {
+    // Unreadable is not empty. Returning [] here told a diff the chapter has no
+    // pages, which is the strongest possible claim to make on the strength of a
+    // failed readdir. Fall back to whatever was last known; a stale page list is
+    // recoverable, an asserted empty one is what a client acts on.
+    console.error(`[tree] could not read ${dir}; serving the last known page list`, e);
+    return hit?.pages ?? [];
   }
 
   const stats = await statPages(dir, names);

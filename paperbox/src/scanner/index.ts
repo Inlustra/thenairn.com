@@ -147,14 +147,25 @@ async function listDirs(path: string): Promise<Listing | null> {
   }
 }
 
-async function getPageFiles(chapterPath: string): Promise<string[]> {
+/**
+ * Returns null when the directory could not be read.
+ *
+ * An unreadable chapter is not an empty one. Returning `[]` for both meant a
+ * transient FUSE failure looked like every page having been deleted: the page
+ * count dropped to zero, the fingerprint recomputed over nothing, and the sync
+ * tree told every client the chapter had emptied. Same fault as listDirs
+ * reporting a failed readdir as an empty directory -- a momentary absence
+ * written down as a fact.
+ */
+async function getPageFiles(chapterPath: string): Promise<string[] | null> {
   try {
     const entries = await readdir(chapterPath);
     return entries
       .filter((f) => !isHidden(f) && IMAGE_EXTS.has(extname(f).toLowerCase()))
       .sort(naturalSort);
-  } catch {
-    return [];
+  } catch (e) {
+    console.error(`[scan] could not read ${chapterPath}; leaving this chapter untouched`, e);
+    return null;
   }
 }
 
@@ -170,7 +181,7 @@ async function findCover(mangaPath: string, chapters: string[]): Promise<string 
   if (chapters.length > 0) {
     const first = chapters[0]!;
     const pages = await getPageFiles(join(mangaPath, first));
-    if (pages.length > 0) return `${first}/${pages[0]}`;
+    if (pages && pages.length > 0) return `${first}/${pages[0]}`;
   }
   return null;
 }
@@ -407,6 +418,9 @@ async function runScan(opts: { series?: string } = {}): Promise<void> {
 
     for (const dir of p.chapterDirs) {
       const pages = await getPageFiles(join(p.path, dir));
+      // Unreadable: keep whatever the sidecar already knows about this chapter
+      // rather than recording it as emptied.
+      if (pages === null) continue;
       let c: ChapterMeta | undefined = meta.chapters[dir];
       if (!c) {
         const k = deriveChapterKey(p.dir, dir);
@@ -633,7 +647,7 @@ export function getChapterByUid(uid: string): { manga: MangaDetail; chapter: Cha
 /** Absolute paths of a chapter's pages, in reading order. */
 export async function getChapterPagePaths(manga: MangaDetail, chapter: Chapter): Promise<string[]> {
   const dir = join(mangaDir(), manga.dir, chapter.dir);
-  return (await getPageFiles(dir)).map((f) => join(dir, f));
+  return ((await getPageFiles(dir)) ?? []).map((f) => join(dir, f));
 }
 
 export async function getPages(mangaId: string, chapterId: string): Promise<Page[]> {
@@ -642,7 +656,7 @@ export async function getPages(mangaId: string, chapterId: string): Promise<Page
   const chapter = manga.chapters.find((c) => c.id === chapterId);
   if (!chapter) return [];
 
-  const files = await getPageFiles(join(mangaDir(), manga.dir, chapter.dir));
+  const files = (await getPageFiles(join(mangaDir(), manga.dir, chapter.dir))) ?? [];
   return files.map((filename, index) => ({
     index,
     filename,
