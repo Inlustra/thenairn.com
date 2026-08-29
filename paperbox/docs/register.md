@@ -124,6 +124,12 @@ extrapolation is a fit rather than a guess — and the largest point is 20% of t
 R-12 target, not a distant one. *Evidence:* `bench/`, empty page files (the quick
 tier never opens a page; it does one readdir and one stat per chapter).
 *Blast radius:* wide — see R-30.
+*Correction, 2026-08-29:* the evidence line above is what the benchmark measured, and
+for a while it was not what the scanner did — pixel height was computed inline, opening
+an image header per page, so the real scanner was doing work this figure explicitly
+excludes. The scanner now matches the benchmark: `docs/decisions.md`, "A scan discovers;
+anything that opens a file is a job". The number stands; what changed is that it is now
+true of the code as well as of `bench/`.
 
 **R-22 · Spine extraction costs 740 ms per chapter — cheap for a real library,
 unaffordable as an eager backfill at target**

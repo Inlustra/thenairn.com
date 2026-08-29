@@ -3,9 +3,32 @@ import { join, extname } from "path";
 import type { Manga, MangaDetail, MangaMeta, Chapter, Page } from "../types";
 import { IdAllocator, newUid, pathUid, hash31 } from "../ids";
 import { chapterFingerprint } from "../fingerprint";
-import { chapterPixelHeight } from "../pixelheight";
 import { deriveChapterKey } from "../chapters";
-import { loadMeta, saveMeta, dirMtime, SCHEMA_VERSION, type SeriesMeta, type ChapterMeta } from "../metadata";
+import { loadMeta, saveMeta, dirMtime, withSeriesLock, SCHEMA_VERSION, type SeriesMeta, type ChapterMeta } from "../metadata";
+
+/**
+ * -------------------------------------------------------------------------
+ * What a scan is allowed to cost
+ * -------------------------------------------------------------------------
+ * **A scan discovers, and it never opens a file.** It records the facts that
+ * come free with walking the tree -- directory names, page names, byte sizes,
+ * mtimes, and the fingerprint those sizes make. Anything derived from what is
+ * *inside* a page is a job: spine art, covers, pixel height.
+ *
+ * Pixel height used to be computed here, inline, on the same trigger as the
+ * fingerprint. It reads an image header per page -- 24M header reads at the
+ * R-12 target, about 18 hours, sitting on the critical path of a pass that is
+ * otherwise 865 s. `docs/scheduler.md` prices the quick tier at 1.218 ms per
+ * chapter precisely because "the quick tier never opens a page", and that
+ * costing was quietly false for as long as this call was here.
+ *
+ * The other half of the rule matters more than the cost: **the scan is what
+ * notices derived work is missing, and enqueues it** -- see `onScanned` at the
+ * foot of this file. Spine art and pixel height each shipped derived-on-change
+ * with no path for content that already existed, and each then needed its own
+ * bespoke backfill. There is one discovery path now, so the next derived
+ * artefact inherits the right behaviour instead of repeating that.
+ */
 
 /**
  * What counts as a page. Exported because `/api/images/*` must serve exactly
@@ -231,6 +254,27 @@ export function getScanProgress(): ScanProgress {
  */
 let scanChain: Promise<void> = Promise.resolve();
 
+/**
+ * Called at the end of every scan, with the series directory that was scanned
+ * or null for the whole library.
+ *
+ * This is the seam that makes "the scan is what notices derived work is
+ * missing" true of *every* scan -- the one at startup, the one a user asked
+ * for, and the rolling rotation's -- rather than of whichever path someone
+ * remembered to wire a backfill into. `src/jobs/handle.ts` registers
+ * `discover`; the scanner deliberately knows nothing about jobs, or the two
+ * modules would import each other.
+ */
+export type ScanObserver = (scope: string | null) => void | Promise<void>;
+let scanned: ScanObserver | null = null;
+
+/** Returns the previous observer, so a test can put it back. */
+export function onScanned(next: ScanObserver | null): ScanObserver | null {
+  const prev = scanned;
+  scanned = next;
+  return prev;
+}
+
 export function scan(opts: { series?: string } = {}): Promise<void> {
   const next = scanChain.then(
     () => runScan(opts),
@@ -397,16 +441,23 @@ async function runScan(opts: { series?: string } = {}): Promise<void> {
       }
       const mtime = await dirMtime(join(p.path, dir));
       // Recompute the sync fingerprint only when something might have moved.
-      // Pixel height rides the same trigger: both are facts derived from the
-      // pages, invalidated by exactly the same events.
-      if (c.pages !== pages.length || c.updatedAt !== mtime || !c.fingerprint || c.pixelHeight === undefined) {
+      // Stat-only, so this stays inside "a scan never opens a file".
+      if (c.pages !== pages.length || c.updatedAt !== mtime || !c.fingerprint) {
+        const fingerprint = await chapterFingerprint(join(p.path, dir), pages);
+        // Only a *changed* fingerprint invalidates the pixel height, and the
+        // distinction is the whole reason it is checked rather than assumed:
+        // mtime is a cache key and never truth (`docs/decisions.md`), so a
+        // backup restore moves every chapter's mtime, recomputes every
+        // fingerprint to the same value it already had -- and would, if this
+        // cleared unconditionally, bill 24M header reads for a change that did
+        // not happen. Clearing it is what the height job discovers as work.
+        if (c.fingerprint !== undefined && fingerprint !== c.fingerprint) c.pixelHeight = undefined;
         c.pages = pages.length;
         c.updatedAt = mtime;
         // Deliberately does NOT re-derive the chapter key. Pages moving is not a
         // reason to re-key a chapter, and re-deriving here would reintroduce the
         // silent re-key this schema exists to prevent.
-        c.fingerprint = await chapterFingerprint(join(p.path, dir), pages);
-        c.pixelHeight = await chapterPixelHeight(join(p.path, dir), pages);
+        c.fingerprint = fingerprint;
         p.dirty = true;
       }
 
@@ -523,6 +574,16 @@ async function runScan(opts: { series?: string } = {}): Promise<void> {
   };
   const what = scopedDir ? `"${scopedDir}"` : `${mangaCache.size} manga series`;
   console.log(`Scanned ${what}, ${newChapterByApiId.size} chapters in ${Date.now() - startedAt}ms`);
+
+  // Last, and after the caches are published, so the observer sees exactly what
+  // a client would. Its failure is not the scan's failure: the scan's own work
+  // is already done and committed by this point, and a queue that could not be
+  // written to must not turn a good scan into a failed one.
+  try {
+    await scanned?.(scopedDir ?? null);
+  } catch (e) {
+    console.error("[scan] discovery of derived work failed; the scan itself stands", e);
+  }
 }
 
 export function getMangaList(): Manga[] {
@@ -602,4 +663,66 @@ export function getScanGeneration(): number {
 
 export function getMangaDir(): string {
   return mangaDir();
+}
+
+/** One chapter's measured height, and the fingerprint it was measured against. */
+export interface MeasuredHeight {
+  dir: string;
+  fingerprint: string | undefined;
+  pixelHeight: number;
+}
+
+/**
+ * Record pixel heights a job computed, into the sidecar and the live cache.
+ *
+ * **On the scan chain, not beside it.** `runScan` does load-modify-write over
+ * the whole sidecar with a long gap between the load and the save, so a writer
+ * that merely took `withSeriesLock` would still be clobbered wholesale by a
+ * scan that had already read the file -- the same lost-update this module's
+ * `scanChain` exists to prevent, arriving by a different door. Queueing behind
+ * the chain costs a wait and cannot lose a write. The series lock is taken as
+ * well, because the download path writes provenance through it.
+ *
+ * **Fingerprint-checked.** The measurement was taken against the pages as they
+ * were when the job started. If the chapter has moved since, the number
+ * describes a chapter that no longer exists, and writing it would be a stale
+ * fact presented as a fresh one -- so it is dropped and the next scan's
+ * discovery pass asks for it again.
+ */
+export function recordPixelHeights(seriesUid: string, heights: MeasuredHeight[]): Promise<number> {
+  const next = scanChain.then(
+    () => applyPixelHeights(seriesUid, heights),
+    () => applyPixelHeights(seriesUid, heights),
+  );
+  scanChain = next.then(
+    () => {},
+    () => {},
+  );
+  return next;
+}
+
+async function applyPixelHeights(seriesUid: string, heights: MeasuredHeight[]): Promise<number> {
+  if (heights.length === 0) return 0;
+  const manga = getMangaByUid(seriesUid);
+  if (!manga) return 0;
+  const path = join(mangaDir(), manga.dir);
+
+  return withSeriesLock(path, async () => {
+    const { meta } = await loadMeta(path);
+    let written = 0;
+    for (const h of heights) {
+      const c = meta.chapters[h.dir];
+      if (!c) continue;
+      if (c.fingerprint !== h.fingerprint) continue;
+      if (c.pixelHeight === h.pixelHeight) continue;
+      c.pixelHeight = h.pixelHeight;
+      written++;
+      // The cache holds the objects the API serves, so patching them in place
+      // is what makes a measured spine appear without waiting for a rescan.
+      const live = manga.chapters.find((ch) => ch.dir === h.dir);
+      if (live && live.fingerprint === h.fingerprint) live.pixelHeight = h.pixelHeight;
+    }
+    if (written > 0) await saveMeta(path, meta);
+    return written;
+  });
 }

@@ -467,6 +467,8 @@ export interface SpineWriteResult {
   diag: SpineDiagnostics | null;
   /** True when the store already held it and nothing was decoded. */
   cached: boolean;
+  /** Extraction was attempted and produced nothing. Recorded; see `miss`. */
+  missed?: boolean;
 }
 
 /** Generate and store one chapter's spine, unless the store already has it. */
@@ -480,7 +482,14 @@ export async function ensureSpine(
     return { key, art: null, tint: null, diag: null, cached: true };
   }
   const out = await extractSpine(pagePaths);
-  if (!out) return { key, art: null, tint: null, diag: null, cached: false };
+  if (!out) {
+    // Record the absence, so the scan's discovery pass stops asking for a
+    // chapter that cannot produce one. See `ArtKind` in `store.ts`: this is
+    // read by discovery only, so the attempt above still happens on every art
+    // job and a transient decode failure is not a permanent verdict.
+    await put("miss", key, JSON.stringify({ at: new Date().toISOString(), pages: pagePaths.length }));
+    return { key, art: null, tint: null, diag: null, cached: false, missed: true };
+  }
   const art = await put("spine", key, out.webp);
   // The tint is written *after* the picture. If the process dies between the
   // two, the next request finds a spine with no tint, regenerates, and writes

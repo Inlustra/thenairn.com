@@ -129,6 +129,12 @@ The content-addressed key is what makes this cheap to repeat: re-running a serie
 after one chapter moved costs one extraction and N `stat`s, so the worker needs no
 "what changed" bookkeeping of its own and cannot get it wrong.
 
+*Still true after the discovery pass landed (2026-08-29), and worth saying so
+because it looks like a contradiction.* Discovery walks every chapter to decide
+whether a series needs artwork — that is the `stat`, not the extraction — and
+queues **one job per series**, which the duty budget then paces. There is still
+no library-wide artwork sweep, and 146 core-hours at target is still the reason.
+
 ### Background work is a persistent queue — *settled 2026-08-28*
 
 `src/jobs/` — SQLite. Jobs survive a restart;
@@ -142,17 +148,116 @@ rather than a check-then-insert, so two callers racing cannot both pass the chec
 The list's ETag signature is derived from what a client renders, never a counter,
 consistent with "every status signal is content-derived".
 
-### The background scan is not a job — *settled 2026-08-28*
+### The background scan is not surfaced — *settled 2026-08-28, **revised 2026-08-29***
+
+**This entry used to read "The background scan is not a job", and that heading is
+now wrong. Saying so plainly rather than editing it quietly:** the rolling scan
+*is* a job, in the same queue as everything else. What has not changed is a
+single thing the user sees.
 
 [scheduler.md](scheduler.md) §3 is explicit: *"Scan running, nobody asked →
 Nothing. No spinner, no ambient seam, no count."* A rotation that appeared in
 `GET /api/jobs` would be permanently `running` and every client would draw a
-permanent scan, which is how a background process becomes anxiety. So the rolling
-scan reports **freshness** — when each series was last looked at, whether the
-rotation is keeping up — and freshness is the pencil layer applied to time.
+permanent scan, which is how a background process becomes anxiety. **That
+conclusion is right and is preserved exactly. It is a presentation decision, and
+it had been implemented as an architectural one** — by keeping the rotation out
+of the queue entirely, which bought a correct UI at the price of a second,
+parallel way of doing background work, and of a scan that could not be recovered
+after a restart or paced by the same code as everything else.
 
-A scan the *user* asked for is a job, runs as a foreground errand with no duty cap,
-and earns a percentage, because asking made it theirs.
+A job can exist without being surfaced. `silent` is a column on the row: the job
+is queued, claimed, paced, recovered and cancellable like any other, and
+`JobQueue.list()` omits it — so `counts()`, the ETag and every client omit it
+too. The filter lives in the queue rather than in the route, because a rule the
+route could forget to apply is one that would eventually be forgotten. The
+rolling scan still reports **freshness** — when each series was last looked at,
+whether the rotation is keeping up — and freshness is still the pencil layer
+applied to time.
+
+A scan the *user* asked for is the same job kind without the flag, runs as a
+foreground errand with no duty cap, and earns a percentage, because asking made
+it theirs. Deduplication may only ever **promote**: if the rotation has already
+queued a silent scan of the series you just asked about, your ask clears the
+flag rather than being swallowed by it — otherwise the work would happen and
+nothing would ever appear.
+
+### One queue, several job kinds — *settled 2026-08-29*
+
+The same work reached the disk three different ways: a direct `await scan()` at
+startup, a `scan` job kind for user-invoked scans, and a rolling rotation that
+was deliberately not a job. Meanwhile artwork *was* a job and pixel height was
+computed inline inside the scan. Five mechanisms, two of which were the same
+thing wearing different clothes.
+
+There is one now. `scan`, `art`, `cover` and `height` are kinds in one queue,
+behind one runner, under one budget. Startup, user-invoked and rotation scans all
+go through it; the scheduler decides *which* series and *when*, and submits.
+
+What that bought, concretely: the rolling scan is now resumable across a restart
+and paced by the same code as everything else, and a new kind of derived work
+inherits progress, cancellation, deduplication, recovery and pacing by existing.
+
+### A scan discovers; anything that opens a file is a job — *settled 2026-08-29*
+
+**The rule.** A scan records only the facts that are free — names, page counts,
+byte sizes, mtimes, and the fingerprint made of those sizes. It never opens a
+file. Everything derived from what is *inside* a page — spine art, covers, pixel
+height — is a job. **And the scan is what notices derived work is missing, and
+enqueues it.**
+
+The last clause is the load-bearing one, and it exists because the same bug
+shipped twice: **something derived on a change trigger, with no path for content
+that already exists.**
+
+| | What it derived on | What it missed | What was bolted on |
+|---|---|---|---|
+| Spine art | the scheduler's `onChange` | a library that already existed — 12 series, 1,706 chapters, not one spine | an eager `backfillArt()` |
+| Pixel height | the fingerprint's recompute trigger, inline in the scan | the identical hole | nothing |
+
+Each shipped with its own bespoke catch-up, or none. The fix is not a third
+backfill; it is that discovery belongs to the scan, which is the one thing that
+looks at everything. One discovery path (`src/jobs/discover.ts`), run at the end
+of every scan, so the next artefact type inherits correct behaviour instead of
+repeating this.
+
+**Discovery is eager; extraction is paced. They are not the same cost.** Leaving
+discovery to the rotation was the original mistake: `intervalMs` is
+`deadline / seriesCount`, so a twelve-series library takes the full six-hour floor
+deadline merely to *notice* it has no spines. That paces discovery at
+extraction's price — one `stat` per chapter against ~740 ms to cut a spine (R-22).
+So discovery runs in full, at once, over whatever the scan covered; the queue and
+the duty budget pace the expensive half.
+
+**It has to settle, or it is not discovery, it is a loop.** Every check answers
+"is the artefact there?" against the derived store or the scan's own facts, never
+"did we try recently?". Two ways that could have failed are closed explicitly: a
+chapter with no pages has nothing to derive and is skipped from the page count the
+scan already holds, and a chapter whose pages cannot be decoded gets a recorded
+`miss` under the same content-addressed key — so its absence is an answer rather
+than a permanent question. Without the second, the 19 HTML-error-pages-saved-as-
+`.jpg` in this library (R-38) would queue an art job the user can see, for every
+affected series, after every scan, for ever.
+
+*Measured read-only against the real library and the live derived store,
+2026-08-29:* 1,706 chapters, 14 spines missing, 0 heights missing → 3 art jobs,
+1 cover job, 0 height jobs, in 1.3 s wall including process start. A second pass
+after those run queues nothing.
+
+**What pixel height cost where it was.** `sharp().metadata()` reads an image
+header per page. That is 24M header reads at the R-12 target — roughly 18 hours
+after the concurrency fix — sitting on the critical path of a pass costed at
+865 s *precisely because* [scheduler.md](scheduler.md) says the quick tier never
+opens a page. The costing had been quietly false for as long as the call was
+there. It is a job now, and one that only measures chapters with no height:
+`chapterPixelHeight` returns 0 for a chapter it cannot read, and **0 is stored**,
+because "we looked and got nothing" is an answer.
+
+One correction that matters more than it looks: the height is invalidated only
+when the fingerprint **actually changes**, not whenever the recompute trigger
+fires. mtime is a cache key and never truth, so a backup restore moves every
+chapter's mtime and recomputes every fingerprint to the value it already had —
+and clearing on the trigger would have billed 24M header reads for a change that
+did not happen.
 
 ### The floor deadline is 6 hours — *proposed; the row is the owner's*
 

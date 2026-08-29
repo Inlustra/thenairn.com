@@ -39,7 +39,24 @@ import { join, dirname } from "path";
 import { randomUUID } from "node:crypto";
 import { ART_VERSION } from "./version";
 
-export type ArtKind = "spine" | "cover" | "tint";
+/**
+ * `miss` is a recorded absence, and it exists so that discovery can settle.
+ *
+ * A chapter whose pages cannot be decoded -- 19 of the files in this library
+ * are HTML error pages saved as `.jpg` (R-38) -- produces no spine, ever. With
+ * only `spine` in the store, "has this chapter got artwork?" answers no on
+ * every pass, so the scan's discovery pass would queue that series' art job
+ * again after every single scan, forever: a job the user can see, appearing
+ * every rotation, for work that cannot succeed. Recording the failure under the
+ * same content-addressed key makes the pass idempotent, and keeps the retry
+ * story honest -- the key moves when the chapter's pages move, so replacing the
+ * broken pages is what asks again.
+ *
+ * It is deliberately advisory. Only *discovery* reads it; an art job that runs
+ * for any other reason still attempts the extraction, so a transient decode
+ * failure is never a permanent verdict.
+ */
+export type ArtKind = "spine" | "cover" | "tint" | "miss";
 
 /**
  * Read at call time, never bound at module load: the tests point it at a
@@ -72,7 +89,7 @@ export function artKey(kind: ArtKind, ...inputs: (string | number | undefined)[]
   return hasher.digest("hex").slice(0, KEY_LEN);
 }
 
-const EXT: Record<ArtKind, string> = { spine: "webp", cover: "webp", tint: "json" };
+const EXT: Record<ArtKind, string> = { spine: "webp", cover: "webp", tint: "json", miss: "json" };
 
 /**
  * Fanned out two levels on the key. 710k files in one directory is a directory

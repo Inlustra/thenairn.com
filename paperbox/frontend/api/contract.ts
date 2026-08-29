@@ -274,12 +274,12 @@ export interface SyncApi {
 }
 
 /* ------------------------------------------------------------------ */
-/* Jobs — background work: scanning, cover generation, spine art       */
+/* Jobs — background work: scanning, covers, spine art, page heights   */
 /* (server routes being built alongside this client; until they answer,*/
 /* the composed client falls back through pending.ts — api-gaps.md #11)*/
 /* ------------------------------------------------------------------ */
 
-export type JobKind = "scan" | "art" | "cover";
+export type JobKind = "scan" | "art" | "cover" | "height";
 export type JobState = "queued" | "running" | "done" | "failed" | "cancelled";
 
 export interface Job {

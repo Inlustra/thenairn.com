@@ -32,19 +32,25 @@ afterAll(async () => {
   await rm(ROOT, { recursive: true, force: true });
 });
 
-describe("reading length", () => {
-  test("chapter pixel height is measured, normalized and persisted", async () => {
+describe("a scan never opens a file", () => {
+  test("it records the free facts and leaves reading length to the height job", async () => {
+    // The rule, and the whole reason the height job exists: a scan records what
+    // walking the tree hands it -- names, page counts, byte sizes, and the
+    // fingerprint made of those sizes -- and nothing that needs a file opened.
+    // Pixel height reads an image header per page, 24M of them at the R-12
+    // target, and it used to sit right here on the scan's critical path.
     await scanner.scan();
     const m = scanner.getManga("nano-machine")!;
     const c = m.chapters.find((x) => x.dir === "Chapter 001")!;
-    // Fixture pages are 1x1 px; normalized to a 1000px-wide page each one
-    // counts 1000, so the chapter totals pageCount x 1000.
-    expect(c.pixelHeight).toBe(c.pageCount * 1000);
-    // Persisted, not derived at read time: the sidecar carries it too.
+    expect(c.pageCount).toBe(2);
+    expect(c.fingerprint).toBeTruthy();
+    expect(c.pixelHeight).toBeUndefined();
     const meta = JSON.parse(
       await Bun.file(join(ROOT, "Nano Machine", "paperbox.json")).text(),
     );
-    expect(meta.chapters["Chapter 001"].pixelHeight).toBe(c.pageCount * 1000);
+    expect(meta.chapters["Chapter 001"].pixelHeight).toBeUndefined();
+    // The scan reports it as work instead of doing it; measured and persisted
+    // in `src/jobs/discovery.test.ts`.
   });
 });
 

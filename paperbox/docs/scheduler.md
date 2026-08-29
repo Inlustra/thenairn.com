@@ -131,6 +131,37 @@ full concurrency with no duty cap, because the user asked for it and is watching
 is also the escape hatch Komga and Kavita both ship and `sync.md` notes we lack. It is
 the seam that resolves §3.
 
+### A scan discovers, and it never opens a file
+
+*Added 2026-08-29, and it is a correction to this document as much as an addition.*
+
+The 1.218 ms per chapter in R-29 was measured against the quick tier, which "never
+opens a page: it does one readdir and one stat per chapter". That was true of the
+benchmark and had stopped being true of the scanner: pixel height was computed inline,
+reading an image header per page — **24M header reads at the R-12 target, roughly 18
+hours**, sitting on the critical path of a pass this document costs at 865 s.
+
+So the rule, stated once here and enforced in `src/scanner/index.ts`:
+
+> **A scan records only the facts that are free** — names, page counts, byte sizes,
+> mtimes, and the fingerprint made of those sizes. **Anything that opens a file is a
+> job**: spine art, covers, pixel height, and whatever comes next.
+>
+> **The scan is what notices derived work is missing, and enqueues it.**
+
+The last line is what stops the next artefact type repeating the bug that produced
+this rule — something derived on a change trigger, with no path for content that
+already exists, shipped twice (see `decisions.md`). Every scan runs the discovery
+pass over whatever it covered: a full scan discovers the library, a rotation step
+discovers one series. **Discovery is eager, extraction is paced**, because they are
+nothing alike in cost: one `stat` per chapter against ~740 ms to cut a spine (R-22).
+
+Cost, since this document's whole method is to state them: one `stat` per chapter for
+artwork and one `readdir`/`stat` pair per series for the cover — 1,706 chapters in
+1.3 s on the real library, ~41 s at the R-12 target on a *full* scan, and ~8 ms on a
+rotation step. Pixel height costs nothing to discover; the scan is already holding the
+answer.
+
 ---
 
 ## 2. Budget
@@ -180,6 +211,9 @@ queue, but nobody has watched it.
 
 ### What the scheduler does not run
 
+- **Derived artefacts.** Spine art, covers and pixel height are jobs, not scan phases.
+  The scheduler's step queues a *scan*; that scan's discovery pass queues the rest, and
+  the same budget paces all of them behind the same single worker.
 - **Verify** (read bytes, sha256) stays **manual, forever**. R-21 already establishes
   the right answer is a content digest computed **once at download commit while the
   bytes are in hand**, never by scanning.
@@ -230,6 +264,17 @@ it theirs.
 **No ambient presence.** `ui.md` reserves the animating seam for the near lane. A
 permanently-scanning server would animate it permanently, which is how a background
 process becomes anxiety.
+
+**This is a presentation rule, and it was for a while implemented as an
+architectural one.** *(Corrected 2026-08-29.)* The row above is right and is
+unchanged — but the way it was honoured was to keep the rotation out of the job queue
+altogether, which is a much larger claim than the row makes, and it cost a background
+scan that could not be recovered after a restart or paced by the same code as
+everything else. A job can exist without being surfaced. The rotation now submits an
+ordinary `scan` job carrying a `silent` flag, and the queue's `list()` — and therefore
+`counts()`, the ETag and every client — omits it. Nothing above changes. Asking for a
+scan of the same series clears the flag, because asking is what makes work someone's
+errand; deduplication may promote, never demote.
 
 The "was anything harmed" rule still applies: a scan **never** rewrites, moves or
 deletes (`ui.md`, Ownership), so the honest answer is always *nothing was touched* —

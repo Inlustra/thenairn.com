@@ -4,6 +4,8 @@ import { tmpdir } from "os";
 import { join } from "path";
 import { Budget } from "./budget";
 import { ScanScheduler, type Lane } from "./scheduler";
+import { JobQueue } from "./queue";
+import { JobRunner } from "./runner";
 
 const PIXEL = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
@@ -179,6 +181,61 @@ describe("pacing", () => {
   test("an empty library waits rather than dividing by zero", () => {
     const s = new ScanScheduler(freeBudget());
     expect((s as unknown as { intervalMs(n: number): number }).intervalMs(0)).toBe(5000);
+  });
+});
+
+describe("the rotation goes through the one queue, and is not surfaced", () => {
+  test("a step submits its scan and waits for it, rather than running it itself", async () => {
+    const submitted: string[] = [];
+    let finished = false;
+    const s = new ScanScheduler(freeBudget(), {
+      submit: async (t) => {
+        submitted.push(t.dir);
+        await new Promise((r) => setTimeout(r, 10));
+        finished = true;
+      },
+    });
+    const step = await s.step();
+    expect(submitted.length).toBe(1);
+    // The signature comparison that decides `changed` is read after the scan,
+    // so a step that did not wait would report on a scan that had not landed.
+    expect(finished).toBe(true);
+    expect(step).not.toBeNull();
+  });
+
+  test("through a real queue: the scan runs, and no client can see it", async () => {
+    // docs/scheduler.md section 3 -- "Scan running, nobody asked -> Nothing" --
+    // preserved exactly, as a presentation flag rather than as a second
+    // scheduler. The job itself is entirely real: claimed, run, finished.
+    const q = new JobQueue(":memory:");
+    let scanned = 0;
+    const runner = new JobRunner(
+      q,
+      freeBudget(),
+      {
+        scan: async () => {
+          scanned++;
+        },
+      },
+      { pollMs: 5 },
+    );
+    runner.start();
+    const s = new ScanScheduler(freeBudget(), {
+      submit: async (t) => {
+        const job = q.enqueue({ kind: "scan", scope: t.uid, label: t.title, silent: true });
+        runner.wake();
+        await runner.waitFor(job.id);
+      },
+    });
+    await s.step();
+    expect(scanned).toBe(1);
+    expect(q.listAll().length).toBe(1);
+    expect(q.listAll()[0]!.state).toBe("done");
+    // What a client is handed: nothing at all.
+    expect(q.list()).toEqual([]);
+    expect(q.counts()).toEqual({ running: 0, queued: 0 });
+    await runner.stop();
+    q.close();
   });
 });
 

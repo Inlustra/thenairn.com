@@ -31,9 +31,25 @@
  * index rather than as a check-then-insert means two callers racing cannot both
  * pass the check. `ifnull(scope,'')` because SQL NULLs never compare equal, so
  * without it every library-wide job would be distinct from every other one.
+ *
+ * -------------------------------------------------------------------------
+ * `silent` is a presentation flag, and it is the only thing that was ever
+ * architectural about the background scan
+ * -------------------------------------------------------------------------
+ * `docs/scheduler.md` section 3 is right that a scan nobody asked for gets no
+ * spinner, no ambient seam and no count. That conclusion used to be implemented
+ * by keeping the rolling rotation out of the queue altogether, which bought a
+ * correct UI at the price of a second, parallel way of doing background work.
+ * It is a column now. A silent job is queued, claimed, paced, recovered after a
+ * restart and cancelled like any other; it is simply absent from `list()`, from
+ * `counts()` and therefore from the ETag signature, so no client can render it.
+ * Asking for the same work by hand clears the flag -- see `enqueue` -- because
+ * asking is what makes work someone's errand.
  */
 
-export const JOBS_SCHEMA_VERSION = 1;
+// 2 -- 2026-08-29: `silent`, so the rolling scan can be a job without being
+//      surfaced. Added by ALTER for an existing file; see `queue.ts`.
+export const JOBS_SCHEMA_VERSION = 2;
 
 export const DDL = `
 CREATE TABLE IF NOT EXISTS job (
@@ -54,7 +70,9 @@ CREATE TABLE IF NOT EXISTS job (
   error       TEXT,
   -- Set by cancel, cleared by nothing. The worker reads it between units, so a
   -- cancel is observed at unit granularity rather than by killing anything.
-  cancelled   INTEGER NOT NULL DEFAULT 0
+  cancelled   INTEGER NOT NULL DEFAULT 0,
+  -- Nobody asked for this one. It runs; it is never listed. See above.
+  silent      INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE INDEX IF NOT EXISTS job_state ON job (state, created_at);

@@ -3,7 +3,7 @@ import { getJobs, getScheduler, enqueueNow } from "../jobs";
 
 const JobSchema = t.Object({
   id: t.String(),
-  kind: t.Union([t.Literal("scan"), t.Literal("art"), t.Literal("cover")]),
+  kind: t.Union([t.Literal("scan"), t.Literal("art"), t.Literal("cover"), t.Literal("height")]),
   scope: t.Union([t.String(), t.Null()]),
   label: t.String(),
   state: t.Union([
@@ -32,8 +32,12 @@ export const jobRoutes = new Elysia({ prefix: "/api" })
    *
    * Note what is *not* here: the rolling background scan. `docs/scheduler.md`
    * section 3 is explicit that a scan nobody asked for gets no spinner and no
-   * count, so it is not a job and never appears in this list. Its freshness
-   * lives on `/api/status` instead, as dated facts rather than as progress.
+   * count. It *is* a job now -- one queue, one runner, one budget -- but it is
+   * enqueued `silent`, and `JobQueue.list()` omits silent work, so it can reach
+   * neither this body nor its ETag. The filter lives in the queue rather than
+   * here on purpose: a rule this route could forget to apply is one that would
+   * eventually be forgotten. Freshness has its own endpoint, below, and is
+   * dated facts rather than progress.
    */
   .get(
     "/jobs",

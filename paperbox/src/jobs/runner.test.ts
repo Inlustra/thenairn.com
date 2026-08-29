@@ -90,6 +90,23 @@ describe("running a job", () => {
     expect(seen).toEqual({ scan: true, art: false });
   });
 
+  test("a scan nobody asked for stays under the duty cap, though it is the same kind", async () => {
+    // The rotation used to call `budget.run` itself, outside the queue. It now
+    // submits a silent scan job, so the flag has to carry the pacing too --
+    // otherwise unifying the mechanism would quietly let the background scan
+    // run at full tilt on a mount shared with whoever is reading a comic.
+    const seen: Record<string, boolean> = {};
+    const runner = new JobRunner(q, budget(), {
+      scan: async (ctx) => {
+        seen.foreground = ctx.foreground;
+        seen.silent = ctx.silent;
+      },
+    });
+    q.enqueue({ kind: "scan", scope: "s1", label: "Alpha", silent: true });
+    await runner.runOne();
+    expect(seen).toEqual({ foreground: false, silent: true });
+  });
+
   test("the loop runs one job at a time -- parallelism lives inside a job", async () => {
     // scheduler.md specifies one worker and one shared budget. Running jobs
     // side by side would mean the concurrency cap bounds each of them
@@ -123,5 +140,67 @@ describe("running a job", () => {
     await new Promise((r) => setTimeout(r, 30));
     await runner.stop();
     expect(ran).toBe(1);
+  });
+});
+
+describe("waiting on a job", () => {
+  test("resolves once the job has run, which is how the rotation paces itself", async () => {
+    const job = q.enqueue({ kind: "scan", scope: "s1", label: "Alpha", silent: true });
+    let ran = false;
+    const runner = new JobRunner(
+      q,
+      budget(),
+      {
+        scan: async () => {
+          await new Promise((r) => setTimeout(r, 20));
+          ran = true;
+        },
+      },
+      { pollMs: 5 },
+    );
+    runner.start();
+    await runner.waitFor(job.id);
+    expect(ran).toBe(true);
+    expect(q.get(job.id)!.state).toBe("done");
+    await runner.stop();
+  });
+
+  test("a failed job is a finished job -- the waiter is released, not left hanging", async () => {
+    // The rotation's answer to a series it cannot read is to move on to the
+    // next one. A rejection here would stop the rotation on one bad directory,
+    // which is precisely what the old inline loop caught and logged.
+    const job = q.enqueue({ kind: "scan", scope: "s1", label: "Alpha", silent: true });
+    const runner = new JobRunner(
+      q,
+      budget(),
+      {
+        scan: async () => {
+          throw new Error("library root unreadable");
+        },
+      },
+      { pollMs: 5 },
+    );
+    runner.start();
+    await runner.waitFor(job.id);
+    expect(q.get(job.id)!.state).toBe("failed");
+    await runner.stop();
+  });
+
+  test("returns at once for work that has already finished", async () => {
+    const job = q.enqueue({ kind: "art", scope: "s", label: "x" });
+    const runner = new JobRunner(q, budget(), { art: async () => {} });
+    await runner.runOne();
+    await runner.waitFor(job.id);
+    expect(q.get(job.id)!.state).toBe("done");
+  });
+
+  test("stopping releases anyone still waiting, rather than wedging the shutdown", async () => {
+    const job = q.enqueue({ kind: "art", scope: "s", label: "x" });
+    const runner = new JobRunner(q, budget(), { art: async () => {} }, { pollMs: 60_000 });
+    // Never started, so nothing will ever claim it.
+    const waiting = runner.waitFor(job.id);
+    await runner.stop();
+    await waiting;
+    expect(q.get(job.id)!.state).toBe("queued");
   });
 });

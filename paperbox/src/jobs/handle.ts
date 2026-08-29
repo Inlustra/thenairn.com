@@ -1,18 +1,24 @@
 /**
  * The process-wide background pipeline.
  *
- * Separate from index.ts for the same reason `src/readstate/handle.ts` is:
+ * Separate from index.ts for the same reason `src/readstate/handle.ts` was:
  * modules that need the handle (the routes, the download path) can import it
  * without pulling in everything the barrel re-exports.
+ *
+ * One queue, one budget, one runner, and a scheduler that paces the rotation
+ * but no longer executes it. Everything that reaches the disk in the background
+ * arrives through `queue` -- see `docs/decisions.md`, "One queue, several job
+ * kinds".
  */
 import { join } from "path";
 import { JobQueue } from "./queue";
 import { Budget } from "./budget";
 import { JobRunner } from "./runner";
 import { ScanScheduler } from "./scheduler";
-import { artWorker, coverWorker, makeScanWorker } from "./workers";
-import { derivedDir, spineKey, has as hasArt } from "../art";
-import { getScanProgress, getMangaList, getMangaByUid } from "../scanner";
+import { artWorker, coverWorker, heightWorker, makeScanWorker } from "./workers";
+import { discover } from "./discover";
+import { derivedDir } from "../art";
+import { getScanProgress, getMangaList, onScanned } from "../scanner";
 
 let queue: JobQueue | null = null;
 let budget: Budget | null = null;
@@ -56,45 +62,6 @@ export interface StartOptions {
   scheduler?: boolean;
 }
 
-
-/**
- * Audit every series for missing artwork, once, and queue what is absent.
- *
- * The rotation was doing this discovery, and that was wrong: `intervalMs` is
- * `deadline / seriesCount`, so on a twelve-series library the rotation visits
- * one series every thirty minutes and takes the full six-hour deadline just to
- * NOTICE that twelve series have no spines. That paces discovery at
- * extraction's cost, and the two are nothing alike -- `needsArt` is two stats
- * per series (24 for this library, ~10k and under a second at the R-12 target),
- * while cutting a spine is ~740 ms per chapter.
- *
- * So discovery runs eagerly and in full; the queue and the duty budget still
- * pace the extraction, which is the part that is actually expensive. Once a
- * series has its artwork this settles to two stats and no enqueue.
- */
-export async function backfillArt(): Promise<number> {
-  const q = queue;
-  if (!q) return 0;
-  let queued = 0;
-  for (const m of getMangaList()) {
-    const uid = m.uid;
-    if (!uid) continue;
-    try {
-      if (!(await needsArt(uid))) continue;
-    } catch {
-      continue; // an unreadable series is the scan's problem, not the art pass's
-    }
-    q.enqueue({ kind: "cover", scope: uid, label: m.title });
-    q.enqueue({ kind: "art", scope: uid, label: m.title });
-    queued++;
-  }
-  if (queued > 0) {
-    console.log(`[jobs] artwork missing for ${queued} series; queued`);
-    runner?.wake();
-  }
-  return queued;
-}
-
 export function startJobs(opts: StartOptions = {}): JobQueue | null {
   try {
     queue = new JobQueue(jobsDbPath());
@@ -110,108 +77,109 @@ export function startJobs(opts: StartOptions = {}): JobQueue | null {
   runner = new JobRunner(queue, budget, {
     art: artWorker,
     cover: coverWorker,
+    height: heightWorker,
     scan: makeScanWorker(getScanProgress),
   });
   runner.start();
 
-  if (opts.scheduler !== false) {
-    scheduler = new ScanScheduler(budget, {
-      // A series whose content moved gets its artwork refreshed. The store is
-      // content-addressed, so this costs one extraction per changed chapter and
-      // a stat per unchanged one -- there is no "what changed" bookkeeping to
-      // get wrong.
-      onChange: (uid, title) => {
-        queue?.enqueue({ kind: "cover", scope: uid, label: title });
-        queue?.enqueue({ kind: "art", scope: uid, label: title });
-        runner?.wake();
-      },
-      // A visit still backstops the eager pass -- a series whose artwork was
-      // deleted, or whose extraction failed, is picked up next time round
-      // without waiting for its content to change. The eager `backfillArt()` is
-      // what makes a cold library derive in minutes rather than in a deadline.
-      onVisit: async (uid, title, _lane, changed) => {
-        if (changed) return; // onChange already queued it
-        if (!(await needsArt(uid))) return;
-        queue?.enqueue({ kind: "cover", scope: uid, label: title });
-        queue?.enqueue({ kind: "art", scope: uid, label: title });
-        runner?.wake();
-      },
-      // -------------------------------------------------------------------
-      // Hot lane by reading recency -- PARKED, not abandoned.
-      //
-      // "What is this person reading right now" is the best available predictor
-      // of where the next chapter lands, and it is a genuinely good signal: a
-      // series you are 3 chapters from the end of is far likelier to gain one
-      // than a completed series you finished in 2023. The rotation currently
-      // leans on recent *change* instead, which is weaker -- it can only notice
-      // a series after it has already moved, never before.
-      //
-      // It is parked because the signal needs a server-side reading position,
-      // and that was removed on 2026-08-28 (see docs/decisions.md: read state
-      // needs a user model, which needs auth). Nothing else about the lane was
-      // wrong, so the scheduler still declares `readRecency`, still defaults it
-      // to `() => null`, and still weighs it in `laneFor()`.
-      //
-      // To bring it back: give the block below a source of "when did anyone
-      // last read this series" and uncomment it. Any store with a per-series
-      // timestamp will do -- it does not have to be per-person, and it does not
-      // have to be ours. A client that syncs its own progress could report a
-      // last-read timestamp per series without the server knowing who read it,
-      // which would restore the signal without reopening the auth question.
-      //
-      // readRecency: (uid) => {
-      //   const store = getReadState();
-      //   if (!store) return null;
-      //   try {
-      //     return store.lastReadAt?.(uid) ?? null;
-      //   } catch {
-      //     return null;
-      //   }
-      // },
-      // -------------------------------------------------------------------
-    });
-    scheduler.start();
-    console.log(
-      `[jobs] rolling scan started over ${getMangaList().length} series, floor deadline ${(scheduler.floorDeadlineMs / 3600000).toFixed(1)} h`,
-    );
-  }
+  // Every scan discovers, and this is the only place it is wired. There is no
+  // second path, no boot-time backfill, and nothing to remember to call.
+  //
+  // Discovery covers exactly what the scan covered. A full-library scan --
+  // startup, or a user asking -- discovers the whole library at once, which is
+  // what makes a cold library derive in minutes rather than in a deadline. A
+  // rotation step scans one series and discovers one series, and *that* is the
+  // guarantee that nothing is missed for ever: the floor lane visits every
+  // series within the floor deadline, permanently, by construction.
+  onScanned(async (scope) => {
+    const q = queue;
+    if (!q) return;
+    const found = await discover(q, scope);
+    const total = found.art + found.cover + found.height;
+    if (total > 0) {
+      console.log(`[jobs] queued ${found.art} art, ${found.cover} cover, ${found.height} height`);
+      runner?.wake();
+    }
+  });
+
+  if (opts.scheduler !== false) startScheduler();
 
   console.log(`[jobs] queue at ${jobsDbPath()}, derived store at ${derivedDir()}`);
   return queue;
 }
 
+/**
+ * Start the rolling rotation.
+ *
+ * Separate from `startJobs` because it cannot run until something has been
+ * scanned: it addresses series by uid, and nothing has a uid until the first
+ * scan has published the cache. `src/index.ts` therefore opens the queue,
+ * submits the first scan *as a job*, and starts this afterwards.
+ */
+export function startScheduler(): ScanScheduler | null {
+  if (!budget || scheduler) return scheduler;
+  scheduler = new ScanScheduler(budget, {
+    /**
+     * The rotation's unit of work, expressed as a job.
+     *
+     * `docs/scheduler.md` section 3's conclusion is preserved exactly: a scan
+     * nobody asked for gets no progress count, no spinner and no animating
+     * seam. `silent` is how -- the job runs through the same queue, the same
+     * runner and the same duty budget as everything else, and is filtered out
+     * of `list()`, `counts()` and therefore the ETag, so no client can see it.
+     * What changed is that this is a presentation flag rather than a second
+     * scheduler; what did not change is anything the user sees.
+     */
+    submit: async (target) => {
+      const q = queue;
+      if (!q || !runner) return;
+      const job = q.enqueue({
+        kind: "scan",
+        scope: target.uid,
+        label: target.title,
+        silent: true,
+      });
+      runner.wake();
+      await runner.waitFor(job.id);
+    },
+  });
+  scheduler.start();
+  console.log(
+    `[jobs] rolling scan started over ${getMangaList().length} series, floor deadline ${(scheduler.floorDeadlineMs / 3600000).toFixed(1)} h`,
+  );
+  return scheduler;
+}
+
 export async function stopJobs(): Promise<void> {
   await scheduler?.stop();
   await runner?.stop();
+  // Before anything else lets go: a scan firing the observer afterwards would
+  // reach a handle to a closed database, and a test that stops the pipeline and
+  // keeps scanning would fail inside the observer rather than where it looked.
+  onScanned(null);
   scheduler = null;
   runner = null;
 }
 
 /** Enqueue and wake in one call, so an API request does not wait for a poll. */
-
-/**
- * Has this series had its artwork derived yet?
- *
- * Checks the first and last chapter rather than all of them: one `stat` per
- * series on a rotation that already costs a scan, against 313 for a full audit.
- * First catches "never derived at all"; last catches a run that died part way
- * through. Chapters appended since are covered by the change signature instead,
- * which is what `onChange` is for.
- */
-async function needsArt(uid: string): Promise<boolean> {
-  const manga = getMangaByUid(uid);
-  if (!manga || manga.chapters.length === 0) return false;
-  const ends = [manga.chapters[0]!, manga.chapters[manga.chapters.length - 1]!];
-  for (const c of ends) {
-    if (!(await hasArt("spine", spineKey(c.uid, c.fingerprint)))) return true;
-  }
-  return false;
-}
-
 export function enqueueNow(opts: Parameters<JobQueue["enqueue"]>[0]) {
   const q = queue;
   if (!q) return null;
   const job = q.enqueue(opts);
   runner?.wake();
   return job;
+}
+
+/**
+ * Enqueue one job and wait for it to finish.
+ *
+ * For the caller that genuinely has to wait -- the first scan at startup, which
+ * the rotation and every derived artefact are sequenced behind. Returns false
+ * when there is no queue to run it, so the caller can fall back.
+ */
+export async function runToCompletion(opts: Parameters<JobQueue["enqueue"]>[0]): Promise<boolean> {
+  const job = enqueueNow(opts);
+  if (!job || !runner) return false;
+  await runner.waitFor(job.id);
+  return true;
 }

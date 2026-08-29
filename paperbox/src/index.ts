@@ -13,7 +13,7 @@ import { artRoutes } from "./routes/art";
 import { jobRoutes } from "./routes/jobs";
 import { scan } from "./scanner";
 import { pullScripts, scanScripts } from "./lua/scripts";
-import { startJobs, backfillArt, getBudget } from "./jobs";
+import { startJobs, startScheduler, runToCompletion, getBudget } from "./jobs";
 
 const PORT = process.env.PORT || 3000;
 
@@ -61,19 +61,29 @@ async function init() {
   // rebuilt by rescanning, so a failure to open it should be visible in the
   // log above everything else, not buried after a minute of scanning.
 
-  await scan();
+  // The queue first, and the rotation deliberately not yet: the first scan is
+  // itself a job, and the rotation cannot start until something has been
+  // scanned, because it addresses series by uid and nothing has a uid before
+  // then.
+  const queued = startJobs({ scheduler: false });
 
-  // After the first scan, not before: the scheduler's rotation and the art
-  // workers both address series by uid, and nothing has a uid until something
-  // has been scanned.
-  startJobs();
+  // First run is a **foreground errand** -- `docs/scheduler.md` section 1:
+  // full concurrency, no duty cap, a percentage on screen, because the user is
+  // watching a cold library come up. It is not `silent`, so it is exactly that.
+  //
+  // Awaited rather than fired and forgotten, so nothing below it -- the
+  // rotation especially -- runs against an empty cache. There is no artwork
+  // backfill here any more: this scan's own discovery pass queues every missing
+  // spine, cover and pixel height, for content that already exists as much as
+  // for content that arrives later. That is the point of the pass.
+  if (!queued || !(await runToCompletion({ kind: "scan", label: "Scan library" }))) {
+    // No queue: the library still has to be readable, so scan directly. The
+    // derived work simply does not happen this run, which is what "background
+    // work is disabled for this run" already meant.
+    await scan();
+  }
 
-  // Artwork for content that already exists. Deliberately not left to the
-  // rotation: that paces one series per `deadline / seriesCount`, so a cold
-  // twelve-series library would take the full six-hour deadline merely to
-  // notice it has no spines. Discovery is two stats per series; only the
-  // extraction is expensive, and the queue still paces that.
-  void backfillArt().catch((e) => console.error("[jobs] artwork backfill failed", e));
+  startScheduler();
 
   // Pull scripts if not already present, otherwise just scan
   try {

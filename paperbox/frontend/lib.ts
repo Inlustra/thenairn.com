@@ -182,6 +182,7 @@ export function jobPhrase(jb: Job): string {
   const label = (jb.label ?? "").trim();
   if (jb.kind === "art") return label ? `Artwork for ${label}` : "Artwork";
   if (jb.kind === "cover") return label ? `The cover for ${label}` : "A cover";
+  if (jb.kind === "height") return label ? `Measuring ${label}` : "Measuring chapters";
   return label || "Looking through the library";
 }
 

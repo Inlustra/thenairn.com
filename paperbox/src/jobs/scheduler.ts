@@ -8,19 +8,28 @@
  * was. So this is a rotation with a deadline, not a sweep with a period.
  *
  * -------------------------------------------------------------------------
- * Why this is not a job
+ * What this schedules, and what it no longer executes
  * -------------------------------------------------------------------------
- * `scheduler.md` section 3 is explicit: *"Scan running, nobody asked -> Nothing.
- * No spinner, no ambient seam, no count."* A background rotation that appeared
- * in `GET /api/jobs` would be permanently `running`, every client would show a
- * permanent scan, and `ui.md`'s rule that the animating seam belongs to the
- * near lane would be broken by a process that never stops. So the rotation is
- * **not a job**. It reports freshness -- when each series was last looked at,
- * and whether the rotation is keeping up -- and freshness is drawn as the
- * pencil layer applied to time, with dated sentences and no ticking number.
+ * This class decides *which* series to look at next, and *when*. It does not
+ * run the scan. `submit` hands one series to the job queue and waits, so a
+ * rotation step is an ordinary job: paced by the same duty budget, recovered
+ * after a restart, cancellable, behind the same single worker as everything
+ * else.
  *
- * A scan the *user* asked for is a job, because asking made it their errand.
- * That is `makeScanWorker` in `workers.ts`.
+ * **The rule it used to be built around is unchanged, and it is worth being
+ * exact about what moved.** `scheduler.md` section 3 says *"Scan running,
+ * nobody asked -> Nothing. No spinner, no ambient seam, no count."* That
+ * conclusion is right. It is a **presentation** decision, and it had been
+ * implemented as an architectural one, by keeping the rotation out of the queue
+ * altogether -- but a job can exist without being surfaced. The rotation
+ * submits its scans with `silent` set, and `JobQueue.list()`, `counts()`, the
+ * ETag and therefore every client omit them. So a background scan still reports
+ * freshness rather than progress, still draws no percentage, and still never
+ * animates the seam; there is simply one mechanism for background work now
+ * instead of two.
+ *
+ * A scan the *user* asked for is the same job kind without the flag, because
+ * asking made it their errand: full concurrency, no duty cap, a percentage.
  *
  * -------------------------------------------------------------------------
  * Three lanes, weighted round-robin, one worker
@@ -40,6 +49,14 @@
  */
 import { getManga, getMangaList, scan } from "../scanner";
 import type { Budget } from "./budget";
+
+/** The series a rotation step has chosen to look at. */
+export interface ScanTarget {
+  uid: string;
+  /** Directory name under the library root. */
+  dir: string;
+  title: string;
+}
 
 export type Lane = "floor" | "hot" | "warm";
 
@@ -88,19 +105,38 @@ export interface SchedulerStatus {
 
 export interface SchedulerOptions {
   floorDeadlineMs?: number;
-  /** Called with the uid and title of a series whose content moved. */
-  onChange?: (uid: string, title: string, lane: Lane) => void;
   /**
-   * Called on EVERY visit, changed or not.
+   * How one series actually gets looked at. Resolves when the scan is done.
    *
-   * `onChange` alone only ever fires for content that moves, so a library that
-   * already exists never derives anything -- which is exactly what happened:
-   * 12 series, 1,706 chapters, and not one spine, because nothing had changed
-   * since the workers were built. This is the backfill path.
+   * Injected rather than called directly, and that is the whole shape of the
+   * change: in production this enqueues a silent `scan` job and waits on it, so
+   * the rotation runs through the one queue. The default runs the scan inline
+   * under the budget, which is what a test wants and what a scheduler with no
+   * queue behind it should do.
    */
-  onVisit?: (uid: string, title: string, lane: Lane, changed: boolean) => void | Promise<void>;
+  submit?: (target: ScanTarget) => Promise<void>;
+  /**
+   * Called with the uid and title of a series whose content moved.
+   *
+   * Observation only. It used to be the artwork trigger as well, and that was
+   * the bug: something derived on a change signal has no path for content that
+   * already exists. Derivation is the scan's discovery pass now
+   * (`src/jobs/discover.ts`), and a rotation step submits a scan, so this is
+   * left carrying only what it was always good for -- R-33's evidence about
+   * which lane finds the changes.
+   */
+  onChange?: (uid: string, title: string, lane: Lane) => void;
   /** Injected for tests. */
   now?: () => number;
+  /**
+   * When anyone last read this series, if anything knows.
+   *
+   * Parked, not abandoned, and deliberately still declared: `docs/decisions.md`
+   * records that server-side read state needs a user model, and that the server
+   * takes everything anyway, so recency predicts less here than it appears to.
+   * Defaults to null, which puts every series in the floor lane -- a perfectly
+   * good system, just a simpler one.
+   */
   readRecency?: (uid: string) => number | null;
 }
 
@@ -142,7 +178,7 @@ export class ScanScheduler {
   private loop: Promise<void> | null = null;
   readonly floorDeadlineMs: number;
   private onChange?: (uid: string, title: string, lane: Lane) => void;
-  private onVisit?: (uid: string, title: string, lane: Lane, changed: boolean) => void | Promise<void>;
+  private submit: (target: ScanTarget) => Promise<void>;
   private now: () => number;
   private readRecency: (uid: string) => number | null;
   changesByLane: Record<Lane, number> = { floor: 0, hot: 0, warm: 0 };
@@ -151,7 +187,7 @@ export class ScanScheduler {
     this.floorDeadlineMs =
       opts.floorDeadlineMs ?? (Number(process.env.SCAN_FLOOR_DEADLINE_MS) || DEFAULT_FLOOR_DEADLINE_MS);
     this.onChange = opts.onChange;
-    this.onVisit = opts.onVisit;
+    this.submit = opts.submit ?? ((t) => this.budget.run(() => scan({ series: t.dir })));
     this.now = opts.now ?? (() => Date.now());
     this.readRecency = opts.readRecency ?? (() => null);
   }
@@ -266,7 +302,10 @@ export class ScanScheduler {
       }
     }
 
-    await this.budget.run(() => scan({ series: target.dir }));
+    // Waits for the scan to actually happen -- in production that means waiting
+    // for a queued job to be claimed and run. The signature below is read after
+    // it, so a step never reports on a scan that has not landed.
+    await this.submit({ uid: target.uid, dir: target.dir, title: target.title });
 
     const signature = seriesSignature(target.slug);
     const changed = signature !== target.signature;
@@ -277,7 +316,10 @@ export class ScanScheduler {
       this.changesByLane[lane]++;
       this.onChange?.(target.uid, target.title, lane);
     }
-    await this.onVisit?.(target.uid, target.title, lane, changed);
+    // Nothing is derived here. The scan that just ran discovered whatever
+    // artwork, cover or height work this series is missing and queued it -- see
+    // `src/jobs/discover.ts`. There is no visit-time backstop any more, because
+    // a visit *is* a scan, and every scan discovers.
     return { lane, uid: target.uid, changed };
   }
 

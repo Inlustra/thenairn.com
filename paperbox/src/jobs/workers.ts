@@ -1,16 +1,34 @@
 /**
- * The three workers.
+ * The workers -- one per job kind, and every kind of background work is one of
+ * them.
  *
  * All of them are the same shape: enumerate units, run each unit through the
  * shared budget, report progress, and check for cancellation between units.
- * None of them writes anything into the library.
+ * That was already true of art and cover; scanning joins them here rather than
+ * remaining a second mechanism that happened to do the same thing. See
+ * `docs/decisions.md`, "One queue, several job kinds".
+ *
+ * None of them writes anything into the user's library. `height` persists a
+ * derived number into `paperbox.json`, which the scanner already owns and
+ * already writes -- which is exactly why it hands it back to the scanner
+ * instead of writing it itself.
  */
-import { getManga, getMangaByUid, getMangaList, getChapterPagePaths, getMangaDir, scan } from "../scanner";
+import {
+  getManga,
+  getMangaByUid,
+  getMangaList,
+  getChapterPagePaths,
+  getMangaDir,
+  recordPixelHeights,
+  scan,
+  type MeasuredHeight,
+} from "../scanner";
 import { ensureSpine, ensureCover } from "../art";
+import { chapterPixelHeight } from "../pixelheight";
 import type { JobContext } from "./runner";
 import type { JobQueue } from "./queue";
 import type { MangaDetail } from "../types";
-import { join } from "path";
+import { basename, join } from "path";
 
 /**
  * Run units through the budget with real concurrency.
@@ -103,22 +121,31 @@ export async function coverWorker(ctx: JobContext): Promise<void> {
 }
 
 /**
- * A scan the user asked for.
+ * A scan. Every scan -- first run, the one a user asked for, and each step of
+ * the rolling rotation.
  *
- * `docs/scheduler.md`: first run, and any user-invoked "scan my library", is a
+ * The two behave differently in exactly one respect, and it is `ctx.foreground`
+ * rather than a second code path. `docs/scheduler.md`: a user-invoked scan is a
  * **foreground errand** -- full concurrency, no duty cap, a percentage on
- * screen -- "because the user asked for it and is watching". The background
- * rolling scan is a different thing entirely and is not a job at all; see
- * `scheduler.ts`.
+ * screen -- "because the user asked for it and is watching". A rotation step is
+ * submitted `silent`, so the runner hands it `foreground: false` and the same
+ * `budget.run` call that lets the first one past the duty cap holds the second
+ * one to it. That is precisely what the rotation used to do for itself.
  *
  * Progress is republished from the scanner's own `ScanProgress` rather than
  * counted here, so the number on the job and the number on `/api/status`
- * cannot disagree.
+ * cannot disagree. On a silent job nothing reads it, and writing it anyway
+ * costs one UPDATE per 250 ms and keeps the worker one thing rather than two.
  */
 export function makeScanWorker(getProgress: () => { seriesDone: number; seriesTotal: number }) {
   return async function scanWorker(ctx: JobContext): Promise<void> {
     const scoped = ctx.job.scope ? getMangaByUid(ctx.job.scope) : undefined;
-    const running = scan(scoped ? { series: scoped.dir } : {});
+    // A scoped job whose series has since disappeared must not silently widen
+    // into a full-library scan, which is what an ignored scope would do.
+    if (ctx.job.scope && !scoped) throw new Error(`no series for scope ${ctx.job.scope}`);
+    const running = ctx.budget.run(() => scan(scoped ? { series: scoped.dir } : {}), {
+      foreground: ctx.foreground,
+    });
     const tick = setInterval(() => {
       const p = getProgress();
       ctx.progress(p.seriesDone, p.seriesTotal || null);
@@ -131,6 +158,69 @@ export function makeScanWorker(getProgress: () => { seriesDone: number; seriesTo
     const p = getProgress();
     ctx.progress(p.seriesTotal, p.seriesTotal || null);
   };
+}
+
+/**
+ * Reading length in pixels, one chapter at a time.
+ *
+ * This was inline in the scan until 2026-08-29, on the fingerprint's trigger.
+ * It reads an image header per page: cheap per page, and 24M of them at the
+ * R-12 target -- around 18 hours, on the critical path of a pass costed at
+ * 865 s precisely because it never opens a file. It is a job for the same
+ * reason spine art is one.
+ *
+ * Only chapters with no height are measured. `chapterPixelHeight` returns 0 for
+ * a chapter it could not read, and 0 is stored, because "we looked and got
+ * nothing" is an answer -- an absent value would be re-measured on every scan
+ * forever, which is the shape of bug this refactor exists to stop repeating.
+ */
+export async function heightWorker(ctx: JobContext): Promise<void> {
+  const series = seriesFor(ctx.job.scope);
+  if (series.length === 0) throw new Error(`no series for scope ${ctx.job.scope ?? "(library)"}`);
+
+  const units: { manga: MangaDetail; dir: string; fingerprint: string | undefined }[] = [];
+  for (const m of series) {
+    for (const c of m.chapters) {
+      if (c.pixelHeight !== undefined) continue;
+      units.push({ manga: m, dir: c.dir, fingerprint: c.fingerprint });
+    }
+  }
+  ctx.progress(0, units.length);
+  if (units.length === 0) return;
+
+  const measured = new Map<string, MeasuredHeight[]>();
+  try {
+    // Deliberately *not* through `pool`. `chapterPixelHeight` already reads a
+    // chapter's headers eight at a time, for the reason recorded in
+    // `pixelheight.ts` -- the cost is the FUSE round trip, not the header. Wrap
+    // that in a pool of eight and the mount sees 64 in flight, which is twice
+    // R-01's plateau and takes the whole FUSE queue from whoever is reading. So
+    // the unit is one chapter, run one at a time, with the concurrency inside
+    // it. The budget's cap and the module's are the same number on purpose.
+    let done = 0;
+    for (const u of units) {
+      if (ctx.cancelled()) break;
+      const chapter = u.manga.chapters.find((c) => c.dir === u.dir);
+      if (!chapter) continue;
+      const paths = await getChapterPagePaths(u.manga, chapter);
+      if (paths.length === 0) continue;
+      const dir = join(getMangaDir(), u.manga.dir, chapter.dir);
+      const pixelHeight = await ctx.budget.run(
+        () => chapterPixelHeight(dir, paths.map((p) => basename(p))),
+        { foreground: ctx.foreground },
+      );
+      const entry = { dir: u.dir, fingerprint: u.fingerprint, pixelHeight };
+      const list = measured.get(u.manga.uid);
+      if (list) list.push(entry);
+      else measured.set(u.manga.uid, [entry]);
+      ctx.progress(++done);
+    }
+  } finally {
+    // In `finally`, so a cancelled job keeps what it already measured. Throwing
+    // away completed work because the *rest* was stopped is how a cancel turns
+    // into an hour of re-reading headers next time round.
+    for (const [uid, heights] of measured) await recordPixelHeights(uid, heights);
+  }
 }
 
 /** Queue art and cover work for one series. Used after a download commits. */

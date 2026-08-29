@@ -45,6 +45,20 @@ describe("GET /api/jobs", () => {
     expect(body.jobs).toEqual([]);
   });
 
+  test("the rolling scan is a job, and this route still shows nothing", async () => {
+    // docs/scheduler.md section 3: "Scan running, nobody asked -> Nothing. No
+    // spinner, no ambient seam, no count." The rotation is in the queue now, so
+    // this is the assertion that the change was structural and not visible.
+    const before = (await call("/api/jobs")).headers.get("etag");
+    q.enqueue({ kind: "scan", scope: "series-uid", label: "Nano Machine", silent: true });
+    q.claim();
+    const res = await call("/api/jobs");
+    const body = (await res.json()) as { jobs: unknown[]; running: number; queued: number };
+    expect(body).toEqual({ jobs: [], running: 0, queued: 0 });
+    // And a poll during the whole rotation still revalidates to 304.
+    expect(res.headers.get("etag")).toBe(before);
+  });
+
   test("carries a weak etag and revalidates to 304, like /api/status", async () => {
     q.enqueue({ kind: "art", scope: "s", label: "x" });
     const first = await call("/api/jobs");

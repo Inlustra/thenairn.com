@@ -10,7 +10,19 @@ import { dirname } from "node:path";
 import { randomUUID } from "node:crypto";
 import { DDL, JOBS_SCHEMA_VERSION } from "./schema";
 
-export type JobKind = "scan" | "art" | "cover";
+/**
+ * Every kind of background work there is.
+ *
+ * The list is flat on purpose. A scan is not a different *category* of work
+ * from cutting a spine -- it is the same shape (enumerate units, run them
+ * through the shared budget, report progress, stop when cancelled) pointed at a
+ * different artefact. See `docs/decisions.md`, "One queue, several job kinds".
+ *
+ * `scan` discovers, and records only facts that are free -- names, byte sizes,
+ * mtimes, the fingerprint. It never opens a page. Everything that opens a page
+ * is one of the others, and the scan is what notices they are missing.
+ */
+export type JobKind = "scan" | "art" | "cover" | "height";
 export type JobState = "queued" | "running" | "done" | "failed" | "cancelled";
 
 /**
@@ -51,6 +63,7 @@ interface Row {
   finished_at: number | null;
   error: string | null;
   cancelled: number;
+  silent: number;
 }
 
 function toJob(r: Row): Job {
@@ -75,6 +88,13 @@ export interface EnqueueOptions {
   scope?: string | null;
   label: string;
   total?: number | null;
+  /**
+   * Nobody asked for this. It runs like any other job and appears in no list.
+   *
+   * Only the rolling scan sets it. See `schema.ts` for why this is a column and
+   * not a second scheduler.
+   */
+  silent?: boolean;
 }
 
 /** How long a finished job stays visible before it is pruned. */
@@ -92,10 +112,28 @@ export class JobQueue {
     this.db.exec("PRAGMA journal_mode = WAL");
     this.db.exec("PRAGMA busy_timeout = 5000");
     this.db.exec(DDL);
+    this.migrate();
     this.db
       .query("INSERT OR REPLACE INTO jobs_meta (key, value) VALUES ('schema_version', ?)")
       .run(String(JOBS_SCHEMA_VERSION));
     this.recover();
+  }
+
+  /**
+   * `CREATE TABLE IF NOT EXISTS` does nothing to a table that already exists,
+   * so a column added later has to be added by hand. Read from
+   * `PRAGMA table_info` rather than from the recorded schema version: the
+   * version says what we last *wrote*, the pragma says what is actually there,
+   * and only the second one can be checked.
+   */
+  private migrate(): void {
+    const cols = this.db
+      .query<{ name: string }, []>("PRAGMA table_info(job)")
+      .all()
+      .map((c) => c.name);
+    if (!cols.includes("silent")) {
+      this.db.exec("ALTER TABLE job ADD COLUMN silent INTEGER NOT NULL DEFAULT 0");
+    }
   }
 
   close(): void {
@@ -119,24 +157,32 @@ export class JobQueue {
    * Queue a job, or return the one already queued or running for this
    * (kind, scope). The caller is told which by comparing ids, and in practice
    * does not care: what it asked for is going to happen either way.
+   *
+   * One exception, and it is the whole reason `silent` can be trusted: if the
+   * job already queued is silent and this caller is *not* silent, the flag is
+   * cleared. Otherwise a rotation that happened to queue a scan of series X one
+   * second earlier would swallow the user's "look at X now" -- they would press
+   * the button, the work would genuinely happen, and nothing would ever appear.
+   * Asking is what makes work someone's errand; it can only ever promote.
    */
   enqueue(opts: EnqueueOptions): Job {
     const scope = opts.scope ?? null;
+    const silent = opts.silent === true;
     const existing = this.db
       .query<Row, [JobKind, string]>(
         "SELECT * FROM job WHERE kind = ? AND ifnull(scope,'') = ? AND state IN ('queued','running')",
       )
       .get(opts.kind, scope ?? "");
-    if (existing) return toJob(existing);
+    if (existing) return toJob(this.promote(existing, silent));
 
     const id = `job-${randomUUID().slice(0, 8)}`;
     const now = Date.now();
     try {
       this.db
         .query(
-          "INSERT INTO job (id, kind, scope, label, state, done, total, created_at) VALUES (?, ?, ?, ?, 'queued', 0, ?, ?)",
+          "INSERT INTO job (id, kind, scope, label, state, done, total, created_at, silent) VALUES (?, ?, ?, ?, 'queued', 0, ?, ?, ?)",
         )
-        .run(id, opts.kind, scope, opts.label, opts.total ?? null, now);
+        .run(id, opts.kind, scope, opts.label, opts.total ?? null, now, silent ? 1 : 0);
     } catch (e) {
       // Lost the race against the partial unique index. The winner's job is
       // the answer; this is the reason the index exists rather than a check.
@@ -145,10 +191,16 @@ export class JobQueue {
           "SELECT * FROM job WHERE kind = ? AND ifnull(scope,'') = ? AND state IN ('queued','running')",
         )
         .get(opts.kind, scope ?? "");
-      if (won) return toJob(won);
+      if (won) return toJob(this.promote(won, silent));
       throw e;
     }
     return toJob(this.db.query<Row, [string]>("SELECT * FROM job WHERE id = ?").get(id)!);
+  }
+
+  private promote(row: Row, silent: boolean): Row {
+    if (silent || row.silent === 0) return row;
+    this.db.query("UPDATE job SET silent = 0 WHERE id = ?").run(row.id);
+    return { ...row, silent: 0 };
   }
 
   get(id: string): Job | null {
@@ -156,11 +208,28 @@ export class JobQueue {
     return r ? toJob(r) : null;
   }
 
-  /** Newest first among finished work, but anything live comes first. */
+  /**
+   * What a client may see: newest first among finished work, anything live
+   * first, and nothing silent.
+   *
+   * The filter is here rather than in the route so it cannot be forgotten by
+   * the next reader of the queue -- `counts()` and `signature()` are both built
+   * on it, so a silent job cannot move the ETag either, and a poll during the
+   * whole rolling rotation still costs a 304 and no body.
+   */
   list(): Job[] {
+    return this.rows("WHERE silent = 0");
+  }
+
+  /** Everything, silent work included. For the runner, the tests and nothing else. */
+  listAll(): Job[] {
+    return this.rows("");
+  }
+
+  private rows(where: string): Job[] {
     return this.db
       .query<Row, []>(
-        `SELECT * FROM job
+        `SELECT * FROM job ${where}
          ORDER BY CASE state WHEN 'running' THEN 0 WHEN 'queued' THEN 1 ELSE 2 END,
                   created_at DESC`,
       )
@@ -171,10 +240,23 @@ export class JobQueue {
   counts(): { running: number; queued: number } {
     const r = this.db
       .query<{ running: number; queued: number }, []>(
-        `SELECT SUM(state = 'running') AS running, SUM(state = 'queued') AS queued FROM job`,
+        `SELECT SUM(state = 'running') AS running, SUM(state = 'queued') AS queued
+         FROM job WHERE silent = 0`,
       )
       .get();
     return { running: r?.running ?? 0, queued: r?.queued ?? 0 };
+  }
+
+  /**
+   * Did anyone ask for this job?
+   *
+   * Read like `isCancelled`, one small query at claim time, rather than carried
+   * on `Job`: `Job` is the wire shape, and a flag that is false for every job a
+   * client can ever see has no business on it.
+   */
+  isSilent(id: string): boolean {
+    const r = this.db.query<{ silent: number }, [string]>("SELECT silent FROM job WHERE id = ?").get(id);
+    return r?.silent === 1;
   }
 
   /**

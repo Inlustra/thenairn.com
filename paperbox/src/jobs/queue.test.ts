@@ -114,6 +114,55 @@ describe("deduplication", () => {
   });
 });
 
+describe("work nobody asked for", () => {
+  test("a silent job runs, and is invisible to every client", () => {
+    // docs/scheduler.md section 3: a scan nobody asked for gets no spinner, no
+    // ambient seam and no count. That is a *presentation* rule, so it is a flag
+    // on the row rather than a second scheduler: the job is queued, claimable
+    // and paced like any other, and is simply absent from what a client sees.
+    const silent = q.enqueue({ kind: "scan", scope: "s1", label: "Alpha", silent: true });
+    expect(q.list()).toEqual([]);
+    expect(q.listAll().map((j) => j.id)).toEqual([silent.id]);
+    expect(q.counts()).toEqual({ running: 0, queued: 0 });
+    expect(q.claim()!.id).toBe(silent.id);
+  });
+
+  test("it cannot move the etag, so a whole rotation still costs a 304", () => {
+    const before = q.signature();
+    const job = q.enqueue({ kind: "scan", scope: "s1", label: "Alpha", silent: true });
+    q.claim();
+    q.progress(job.id, 3, 12);
+    expect(q.signature()).toBe(before);
+  });
+
+  test("asking for the same work by hand promotes it, rather than being swallowed", () => {
+    // Otherwise a rotation that queued a scan of this series one second earlier
+    // eats the user's "look at it now": the work happens, and nothing ever
+    // appears. Deduplication may only ever promote, never demote.
+    const silent = q.enqueue({ kind: "scan", scope: "s1", label: "Alpha", silent: true });
+    const asked = q.enqueue({ kind: "scan", scope: "s1", label: "Alpha" });
+    expect(asked.id).toBe(silent.id);
+    expect(q.list().map((j) => j.id)).toEqual([silent.id]);
+    expect(q.isSilent(silent.id)).toBe(false);
+  });
+
+  test("the rotation cannot un-ask for something the user asked for", () => {
+    const asked = q.enqueue({ kind: "scan", scope: "s1", label: "Alpha" });
+    q.enqueue({ kind: "scan", scope: "s1", label: "Alpha", silent: true });
+    expect(q.isSilent(asked.id)).toBe(false);
+    expect(q.list().length).toBe(1);
+  });
+
+  test("survives a restart still silent, and still queued", () => {
+    const job = q.enqueue({ kind: "scan", scope: "s1", label: "Alpha", silent: true });
+    q.claim();
+    expect(q.recover()).toBe(1);
+    expect(q.get(job.id)!.state).toBe("queued");
+    expect(q.isSilent(job.id)).toBe(true);
+    expect(q.list()).toEqual([]);
+  });
+});
+
 describe("claiming", () => {
   test("takes the oldest queued job and marks it running", () => {
     const first = q.enqueue({ kind: "art", scope: "a", label: "a" });
