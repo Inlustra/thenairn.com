@@ -3,6 +3,7 @@ import { join, extname } from "path";
 import type { Manga, MangaDetail, MangaMeta, Chapter, Page } from "../types";
 import { IdAllocator, newUid, pathUid, hash31 } from "../ids";
 import { chapterFingerprint } from "../fingerprint";
+import { chapterPixelHeight } from "../pixelheight";
 import { deriveChapterKey } from "../chapters";
 import { loadMeta, saveMeta, dirMtime, SCHEMA_VERSION, type SeriesMeta, type ChapterMeta } from "../metadata";
 
@@ -396,13 +397,16 @@ async function runScan(opts: { series?: string } = {}): Promise<void> {
       }
       const mtime = await dirMtime(join(p.path, dir));
       // Recompute the sync fingerprint only when something might have moved.
-      if (c.pages !== pages.length || c.updatedAt !== mtime || !c.fingerprint) {
+      // Pixel height rides the same trigger: both are facts derived from the
+      // pages, invalidated by exactly the same events.
+      if (c.pages !== pages.length || c.updatedAt !== mtime || !c.fingerprint || c.pixelHeight === undefined) {
         c.pages = pages.length;
         c.updatedAt = mtime;
         // Deliberately does NOT re-derive the chapter key. Pages moving is not a
         // reason to re-key a chapter, and re-deriving here would reintroduce the
         // silent re-key this schema exists to prevent.
         c.fingerprint = await chapterFingerprint(join(p.path, dir), pages);
+        c.pixelHeight = await chapterPixelHeight(join(p.path, dir), pages);
         p.dirty = true;
       }
 
@@ -420,6 +424,7 @@ async function runScan(opts: { series?: string } = {}): Promise<void> {
         sequence: c.sequence ?? "main",
         mark: c.mark ?? "",
         pageCount: pages.length,
+        pixelHeight: c.pixelHeight,
         fingerprint: c.fingerprint,
         provenance: c.provenance,
       };

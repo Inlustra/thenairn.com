@@ -32,6 +32,22 @@ afterAll(async () => {
   await rm(ROOT, { recursive: true, force: true });
 });
 
+describe("reading length", () => {
+  test("chapter pixel height is measured, normalized and persisted", async () => {
+    await scanner.scan();
+    const m = scanner.getManga("nano-machine")!;
+    const c = m.chapters.find((x) => x.dir === "Chapter 001")!;
+    // Fixture pages are 1x1 px; normalized to a 1000px-wide page each one
+    // counts 1000, so the chapter totals pageCount x 1000.
+    expect(c.pixelHeight).toBe(c.pageCount * 1000);
+    // Persisted, not derived at read time: the sidecar carries it too.
+    const meta = JSON.parse(
+      await Bun.file(join(ROOT, "Nano Machine", "paperbox.json")).text(),
+    );
+    expect(meta.chapters["Chapter 001"].pixelHeight).toBe(c.pageCount * 1000);
+  });
+});
+
 describe("scanner identity", () => {
   test("ids survive a new series being inserted ahead of the others", async () => {
     await scanner.scan();

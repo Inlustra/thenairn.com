@@ -210,12 +210,17 @@ never generate an interruption.
 
 Chapters render as **book spines**, not rows or cover tiles.
 
-- **A bookcase, not a shelf** — 313 spines wrap into boards with range plates
+- **A bookcase, not a shelf** — 313 spines wrap into boards with range plates.
+  A board wraps when the shelf is **full** (measured width), never after a count —
+  a count cannot end shelves flush when spine width varies, and the protocol's
+  block size in particular is not a layout unit
 - **Upright numerals on a printed foot band** in the chapter's own dominant colour,
   text picked by luminance. 45° skew was tried first and **lost** against real
   artwork — it fights the art behind it, and real volumes are numbered upright
-- **Thickness carries page count**, square-rooted so 4-page and 205-page chapters
-  both read honestly
+- **Thickness carries reading length** — total pixel height, normalized to a
+  common page width, with page count as the fallback until the server has
+  measured a chapter. Page count alone lies here: one page runs 800px, another
+  46,564px. Square-rooted so short and vast chapters both read honestly
 - **Legibility beats density**, explicitly. Spines are floored at the narrowest width
   that carries a three-digit numeral. The price — five phone screens instead of
   three — is stated rather than hidden

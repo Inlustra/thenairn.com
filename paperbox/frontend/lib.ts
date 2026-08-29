@@ -140,9 +140,25 @@ export function hostOf(url?: string): string {
   }
 }
 
-/** Spine width from page count: 12px + 2.2√pages, floored 21, capped 44. */
-export function spineWidth(pages: number): number {
-  return Math.min(44, Math.max(21, Math.round(12 + 2.2 * Math.sqrt(Math.max(1, pages)))));
+/**
+ * Spine width from reading length. A book's thickness is paper, so the spine
+ * measures pixels of art, not file count — pages here run from 800px to
+ * 46,564px tall, so counting files would make a short chapter of tall strips
+ * thinner than a long chapter of small pages.
+ *
+ * One unit of thickness is 2,500px of art at a 1,000px-wide page (the server
+ * normalizes heights to that width), calibrated so the library's median
+ * chapter (~165k px) keeps a mid-range spine. Chapters not yet measured fall
+ * back to page count on the same curve, so the shelf never waits.
+ *
+ * The clamp is legibility (ui.md): the floor is the narrowest width that
+ * carries a three-digit mark, so anything under ~42k px reads as one thinnest
+ * book; the cap means anything over ~527k px (twice the tallest chapter in
+ * the library today) reads as one fattest book.
+ */
+export function spineWidth(pages: number, pixelHeight?: number | null): number {
+  const eq = pixelHeight && pixelHeight > 0 ? pixelHeight / 2500 : Math.max(1, pages);
+  return Math.min(44, Math.max(21, Math.round(12 + 2.2 * Math.sqrt(eq))));
 }
 
 /* ------------------------------------------------------------------ */

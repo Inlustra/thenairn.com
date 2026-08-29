@@ -55,6 +55,13 @@ export interface ChapterMeta {
   mark?: string;
   pages: number;
   /**
+   * Total page height in px, normalized to a 1000px-wide page. Derived and
+   * persisted like `fingerprint`, on the same trigger: header reads cost one
+   * small open per page, and a library of any size cannot afford that on
+   * every scan. 0 means the pages could not be read.
+   */
+  pixelHeight?: number;
+  /**
    * Chapter directory mtime at last scan. Cheap replacement detector: page
    * filenames stay 001.jpg.. across a re-pull, so names alone prove nothing.
    * A byte-level hash is deliberately not computed -- it would mean stat-ing

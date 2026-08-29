@@ -53,6 +53,11 @@ export interface Chapter {
   /** Compact face for a spine's foot band; empty when nothing numeric exists. */
   mark: string;
   pageCount: number;
+  /**
+   * Total page height in px, normalized to a 1000px-wide page — the reading
+   * length. 0 or absent means not measured yet; fall back to pageCount.
+   */
+  pixelHeight?: number;
   /** Chapter-level sync hash; see metadata.ChapterMeta.fingerprint. */
   fingerprint?: string;
   provenance?: Provenance;

@@ -3,14 +3,21 @@
  * the same sequence the list renders: same states, same verbs, nothing
  * exists here that the list lacks.
  *
- * Spine width is the chapter's real page count (12px + 2.2√pages, floored
- * at 21, capped at 44). Faces stand in flat series ink — spine art
- * extraction is a missing server API (docs/api-gaps.md), and only a real
- * book has a face, so nothing is invented. Boards never mix sequences;
- * a gap is drawn only where one sequence's own run attests the hole.
+ * Spine width measures reading length — pixel height when the server has
+ * measured it, page count as the fallback (see lib.spineWidth). Faces
+ * stand in flat series ink — spine art extraction is a missing server API
+ * (docs/api-gaps.md), and only a real book has a face, so nothing is
+ * invented. Boards never mix sequences; a gap is drawn only where one
+ * sequence's own run attests the hole.
+ *
+ * A board wraps when the shelf is full, not after a count: the bookcase
+ * is measured and each board takes as many books as its width holds, so
+ * every shelf ends flush. (An earlier cut chunked at 25 — the sync
+ * tree's block size, an implementation unit with no business deciding
+ * what a shelf looks like — and shelves ended wherever the count fell.)
  */
 
-import { useMemo, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { spineWidth } from "../lib";
 import { spineArtUrl } from "../api/contract";
 import { glyphLabel } from "../ui";
@@ -85,9 +92,22 @@ type Cell =
   | { kind: "gap"; from: number; to: number }
   | { kind: "pencil"; p: PencilRow };
 
-const BLOCK = 25;
+/* Layout constants mirrored from styles.css — cell gap and row padding
+   (.shelf-row), the fixed widths of gap slots, pencil spines and season
+   posts. Board building is plain arithmetic over these, so the wrap
+   point is known before render and shelves end flush. */
+const GAP = 3;
+const ROW_PAD = 12;
+const GAP_SLOT_W = 21;
+const PENCIL_W = 24;
+const SEASON_POST_W = 5 + GAP;
 
-function buildBoards(rows: ChapterRow[], pencil: PencilRow[]): Board[] {
+function buildBoards(
+  rows: ChapterRow[],
+  pencil: PencilRow[],
+  seasons: { name: string; endAfterSortKey: number }[],
+  rowWidth: number,
+): Board[] {
   const bySeq = new Map<string, ChapterRow[]>();
   for (const r of rows) {
     const list = bySeq.get(r.chapter.sequence) ?? [];
@@ -123,9 +143,19 @@ function buildBoards(rows: ChapterRow[], pencil: PencilRow[]): Board[] {
     }
     if (seq === "main") for (const p of pencil) cells.push({ kind: "pencil", p });
 
-    // Wrap into boards of ~BLOCK spines, plated by the marks they carry.
-    for (let i = 0; i < cells.length; i += BLOCK) {
-      const chunk = cells.slice(i, i + BLOCK);
+    // Fill each board to the measured width, then wrap. The plate then
+    // describes whatever actually landed on the shelf.
+    const usable = Math.max(GAP_SLOT_W, rowWidth - ROW_PAD);
+    const cellWidth = (cell: Cell): number => {
+      if (cell.kind === "gap") return GAP_SLOT_W;
+      if (cell.kind === "pencil") return PENCIL_W;
+      const ch = cell.row.chapter;
+      const post = seasons.some(
+        (sn) => ch.sequence === "main" && (ch.sortKeyEnd ?? ch.sortKey) === sn.endAfterSortKey,
+      );
+      return spineWidth(ch.pageCount, ch.pixelHeight) + (post ? SEASON_POST_W : 0);
+    };
+    const flush = (chunk: Cell[]) => {
       const marks = chunk
         .filter((c): c is Extract<Cell, { kind: "spine" }> => c.kind === "spine")
         .map((c) => c.row.chapter.mark)
@@ -133,7 +163,20 @@ function buildBoards(rows: ChapterRow[], pencil: PencilRow[]): Board[] {
       const plate =
         marks.length > 1 ? `${marks[0]} – ${marks[marks.length - 1]}` : (marks[0] ?? "");
       boards.push({ sequence: seq, plate, cells: chunk });
+    };
+    let chunk: Cell[] = [];
+    let used = 0;
+    for (const cell of cells) {
+      const w = cellWidth(cell);
+      if (chunk.length > 0 && used + GAP + w > usable) {
+        flush(chunk);
+        chunk = [];
+        used = 0;
+      }
+      chunk.push(cell);
+      used += (chunk.length > 1 ? GAP : 0) + w;
     }
+    if (chunk.length > 0) flush(chunk);
   }
   return boards;
 }
@@ -154,13 +197,30 @@ export function SpineShelf({
   onRead: (chapterId: string) => void;
   onToggleRead: (chapterId: string) => void;
 }) {
-  const boards = useMemo(() => buildBoards(rows, pencil), [rows, pencil]);
+  // The bookcase is measured, not assumed: boards are rebuilt when its
+  // width changes, so a resize re-fills every shelf.
+  const caseRef = useRef<HTMLDivElement | null>(null);
+  const [rowWidth, setRowWidth] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    const el = caseRef.current;
+    if (!el) return;
+    const measure = () => setRowWidth(Math.floor(el.clientWidth));
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const boards = useMemo(
+    () => (rowWidth == null ? [] : buildBoards(rows, pencil, seasons, rowWidth)),
+    [rows, pencil, seasons, rowWidth],
+  );
   const [pulled, setPulled] = useState<string | null>(null);
   const pulledRow = rows.find((r) => r.chapter.id === pulled) ?? null;
 
   let lastSeq = "";
   return (
-    <div className="bookcase">
+    <div className="bookcase" ref={caseRef}>
       {boards.map((b, bi) => {
         const stack = b.sequence !== lastSeq && b.sequence !== "main";
         lastSeq = b.sequence;
@@ -198,7 +258,7 @@ export function SpineShelf({
                     );
                   }
                   const r = cell.row;
-                  const w = spineWidth(r.chapter.pageCount);
+                  const w = spineWidth(r.chapter.pageCount, r.chapter.pixelHeight);
                   const seasonAfter = seasons.find(
                     (s) =>
                       r.chapter.sequence === "main" &&
