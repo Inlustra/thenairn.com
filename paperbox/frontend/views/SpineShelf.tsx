@@ -145,7 +145,10 @@ function buildBoards(
 
     // Fill each board to the measured width, then wrap. The plate then
     // describes whatever actually landed on the shelf.
-    const usable = Math.max(GAP_SLOT_W, rowWidth - ROW_PAD);
+    // One pixel held back. `.bookcase` is measured but `.shelf-row` is what
+    // wraps, and a fractional width anywhere between them rounds the wrong way
+    // often enough to cost a book. Cheaper than being right about every device.
+    const usable = Math.max(GAP_SLOT_W, rowWidth - ROW_PAD - 1);
     const cellWidth = (cell: Cell): number => {
       if (cell.kind === "gap") return GAP_SLOT_W;
       if (cell.kind === "pencil") return PENCIL_W;

@@ -562,7 +562,15 @@ h1, h2, h3 { font-family: var(--f-display); line-height: 1.1; margin: 0; }
   display: flex;
   align-items: flex-end;
   gap: 3px;
-  flex-wrap: wrap;
+  /* A board is exactly one shelf, always.
+     Board capacity is computed in JS and performed here, and the two can
+     disagree by a pixel -- a fractional layout width, a device pixel ratio, a
+     width that changed after the board was built. With `wrap`, one book too
+     many silently starts a second line INSIDE the board, so it gets no shelf
+     under it and no plate above it: a book on no shelf. With `nowrap` the same
+     disagreement is a slightly tight row, which nobody can see. The guarantee
+     is worth more than the pixel. */
+  flex-wrap: nowrap;
   padding: 10px 6px 0;
   border-bottom: 3px solid var(--rule-strong);
   min-height: 140px;
