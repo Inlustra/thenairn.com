@@ -17,6 +17,8 @@ comic" and ended somewhere quite different.
 | [client-sync.md](client-sync.md) | The device half of sync: the engine in `client/`, its state machine and failure modes |
 | [api-gaps.md](api-gaps.md) | What the clients need that the server does not provide, and where the wire is lossy |
 | [register.md](register.md) | Every load-bearing claim, with its status: measured, projected, assumed, decided, disproved |
+| [mobile.md](mobile.md) | The phone app — what is decided, what to build first, and why |
+| [paperfront-salvage.md](paperfront-salvage.md) | What the abandoned 2026-03 reader got wrong, and the three things worth taking |
 
 ## Status at a glance
 
