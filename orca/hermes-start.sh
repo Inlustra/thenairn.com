@@ -7,6 +7,8 @@ set -uo pipefail
 HQ_CONTROL="${HQ_CONTROL:-/mnt/user/HQ/repos/hq-control}"
 PROFILE="${HERMES_PM_PROFILE:-rowm}"
 LOG_DIR="$HOME/.hermes/logs"
+# The gateway spawns board workers; they call orca, claude and gh. The entrypoint PATH has none of the persisted-home bins.
+export PATH="$HOME/.config/orca/linux-orca-cli-shim:$HOME/.local/bin:$HOME/.npm-global/bin:$PATH"
 mkdir -p "$LOG_DIR"
 log() { echo "[hermes-start] $(date '+%F %T') $*"; }
 
