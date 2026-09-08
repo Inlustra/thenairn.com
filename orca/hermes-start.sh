@@ -40,7 +40,7 @@ fi
 if pgrep -f "hermes.* dashboard" >/dev/null 2>&1; then
   log "dashboard already running"
 else
-  nohup hermes dashboard --host 127.0.0.1 --port 9118 --no-open --skip-build >>"$LOG_DIR/dashboard.log" 2>&1 &
+  nohup hermes -p "$PROFILE" dashboard --host 127.0.0.1 --port 9118 --no-open --skip-build >>"$LOG_DIR/dashboard.log" 2>&1 &
   log "dashboard started on loopback (pid $!)"
 fi
 if pgrep -f "dashboard-forward.py" >/dev/null 2>&1; then
