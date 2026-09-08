@@ -43,9 +43,9 @@ else
   nohup hermes -p "$PROFILE" dashboard --host 127.0.0.1 --port 9118 --no-open --skip-build >>"$LOG_DIR/dashboard.log" 2>&1 &
   log "dashboard started on loopback (pid $!)"
 fi
-if pgrep -f "dashboard-forward.py" >/dev/null 2>&1; then
+if pgrep -f "socat TCP-LISTEN:9119" >/dev/null 2>&1; then
   log "dashboard forwarder already running"
 else
-  nohup python3 /usr/local/bin/dashboard-forward.py >>"$LOG_DIR/dashboard-forward.log" 2>&1 &
-  log "dashboard forwarder started (pid $!)"
+  nohup socat TCP-LISTEN:9119,fork,reuseaddr TCP:127.0.0.1:9118 >>"$LOG_DIR/dashboard-forward.log" 2>&1 &
+  log "dashboard forwarder started (socat, pid $!)"
 fi

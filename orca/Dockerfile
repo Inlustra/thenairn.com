@@ -69,7 +69,7 @@ RUN install -d /etc/apt/keyrings \
 ARG HERMES_VERSION=2026.9.7
 COPY --from=ghcr.io/astral-sh/uv:0.12.10 /uv /usr/local/bin/uv
 RUN apt-get update \
- && apt-get install -y --no-install-recommends python3 python3-venv git ffmpeg \
+ && apt-get install -y --no-install-recommends python3 python3-venv git ffmpeg socat \
  && rm -rf /var/lib/apt/lists/* \
  && git clone --depth 1 --branch "v${HERMES_VERSION}" https://github.com/NousResearch/hermes-agent.git /usr/local/lib/hermes-agent \
  && cd /usr/local/lib/hermes-agent \
@@ -79,7 +79,6 @@ RUN apt-get update \
  && rm -rf /root/.cache/uv /root/.npm
 COPY hermes-wrapper /usr/local/bin/hermes
 COPY hermes-start.sh /usr/local/bin/hermes-start
-COPY dashboard-forward.py /usr/local/bin/dashboard-forward.py
 RUN chmod +x /usr/local/bin/hermes /usr/local/bin/hermes-start \
  && ln -s /opt/Orca/resources/bin/orca-ide /usr/local/bin/orca
 # Persisted-tool PATH for login-shell terminals Orca spawns (the entrypoint sets
