@@ -67,8 +67,7 @@ RUN install -d /etc/apt/keyrings \
 # Pinned like ORCA_VERSION; an upgrade is a rebuild plus a recreate, deliberately.
 # System python 3.11 from bookworm; no uv-managed interpreter, so nothing lives in /root.
 ARG HERMES_VERSION=2026.9.7
-ARG UV_VERSION=0.12.10
-COPY --from=ghcr.io/astral-sh/uv:${UV_VERSION} /uv /usr/local/bin/uv
+COPY --from=ghcr.io/astral-sh/uv:0.12.10 /uv /usr/local/bin/uv
 RUN apt-get update \
  && apt-get install -y --no-install-recommends python3 python3-venv git ffmpeg \
  && rm -rf /var/lib/apt/lists/* \
