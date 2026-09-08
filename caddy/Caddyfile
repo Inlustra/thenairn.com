@@ -976,8 +976,7 @@ playground.thenairn.com {
     }
 }
 
-# Hermes dashboard (runs inside the orca container, started by orca/hermes-start.sh).
-# Hermes enforces its own login on a non-loopback bind, so this is auth on auth outside the LAN.
+# Hermes dashboard (inside the orca container, started by orca/hermes-start.sh). LAN only, deliberately.
 hermes.thenairn.com {
     @internal {
         remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
@@ -986,12 +985,11 @@ hermes.thenairn.com {
         reverse_proxy orca:9119
     }
     handle {
-        import admin
-        reverse_proxy orca:9119
+        abort
     }
 }
 
-# Plannotator review sessions from inside the orca container (PLANNOTATOR_REMOTE=1 pins port 19432).
+# Plannotator sessions from inside the orca container (PLANNOTATOR_REMOTE=1 pins 19432). LAN only, deliberately.
 # 502 means no review session is open right now, not a routing fault.
 plannotator.thenairn.com {
     @internal {
@@ -1001,7 +999,6 @@ plannotator.thenairn.com {
         reverse_proxy orca:19432
     }
     handle {
-        import admin
-        reverse_proxy orca:19432
+        abort
     }
 }
