@@ -984,6 +984,7 @@ hermes.thenairn.com {
     handle @internal {
         reverse_proxy orca:9119 {
             header_up Host 127.0.0.1:9118
+            header_up Origin http://127.0.0.1:9118
         }
     }
     handle {
