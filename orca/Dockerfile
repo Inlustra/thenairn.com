@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 # Orca headless runtime server (orca serve) for Tower/Unraid.
 # Electron app run headless under Xvfb; see entrypoint.sh.
 FROM node:22
@@ -33,7 +34,7 @@ RUN install -m0755 -d /etc/apt/keyrings \
  && chmod a+r /etc/apt/keyrings/docker.asc \
  && echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian bookworm stable" \
       > /etc/apt/sources.list.d/docker.list \
- && apt-get update && apt-get install -y --no-install-recommends docker-ce-cli docker-compose-plugin \
+ && apt-get update && apt-get install -y --no-install-recommends docker-ce-cli docker-compose-plugin docker-buildx-plugin \
  && rm -rf /var/lib/apt/lists/*
 
 # Modern interactive CLI tooling for the terminals Orca exposes (prompt, fuzzy
@@ -68,10 +69,26 @@ RUN install -d /etc/apt/keyrings \
 # System python 3.11 from bookworm; no uv-managed interpreter, so nothing lives in /root.
 ARG HERMES_VERSION=2026.9.7
 COPY --from=ghcr.io/astral-sh/uv:0.12.10 /uv /usr/local/bin/uv
-RUN apt-get update \
+# The source is the tag tarball, fetched with a token mounted as a build secret.
+# It used to be an in-build `git clone`, which is anonymous: GitHub rate-limits
+# unauthenticated traffic from this box, and six builds in a row died on HTTP 429
+# while an authenticated fetch worked first time. The tarball is also ~69 MB
+# against the ~250 MB of tree and history a clone pulls to build one venv.
+# The secret is a mount, so the token is in no layer and in no image. It is
+# required: an anonymous fallback is the thing that was breaking, and a build
+# that quietly takes it just hides the failure until the next 429.
+#   export GH_TOKEN=$(gh auth token)   before docker compose build
+RUN --mount=type=secret,id=gh_token,required=true \
+    apt-get update \
  && apt-get install -y --no-install-recommends python3 python3-venv git ffmpeg socat \
  && rm -rf /var/lib/apt/lists/* \
- && git clone --depth 1 --branch "v${HERMES_VERSION}" https://github.com/NousResearch/hermes-agent.git /usr/local/lib/hermes-agent \
+ && mkdir -p /usr/local/lib/hermes-agent \
+ && printf 'Authorization: Bearer %s' "$(cat /run/secrets/gh_token)" \
+      | curl -fsSL --header @/dev/stdin --retry 3 --retry-delay 10 \
+          "https://api.github.com/repos/NousResearch/hermes-agent/tarball/v${HERMES_VERSION}" \
+          -o /tmp/hermes.tgz \
+ && tar -xzf /tmp/hermes.tgz -C /usr/local/lib/hermes-agent --strip-components=1 \
+ && rm /tmp/hermes.tgz \
  && cd /usr/local/lib/hermes-agent \
  && uv venv venv --python /usr/bin/python3 \
  && UV_PROJECT_ENVIRONMENT=/usr/local/lib/hermes-agent/venv uv sync --extra all --locked \
