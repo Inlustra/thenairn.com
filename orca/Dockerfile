@@ -74,7 +74,7 @@ RUN apt-get update \
  && git clone --depth 1 --branch "v${HERMES_VERSION}" https://github.com/NousResearch/hermes-agent.git /usr/local/lib/hermes-agent \
  && cd /usr/local/lib/hermes-agent \
  && uv venv venv --python /usr/bin/python3 \
- && UV_PYTHON=/usr/local/lib/hermes-agent/venv/bin/python uv sync --extra all --locked \
+ && UV_PROJECT_ENVIRONMENT=/usr/local/lib/hermes-agent/venv uv sync --extra all --locked \
  && cd web && npm ci --no-audit --no-fund && npm run build && rm -rf node_modules \
  && rm -rf /root/.cache/uv /root/.npm
 COPY hermes-wrapper /usr/local/bin/hermes
