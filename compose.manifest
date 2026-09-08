@@ -41,7 +41,6 @@ docker-compose.invoicing.yml      # 2  invoiceninja, invoiceninjadb
 docker-compose.media.yml          # 17 the media zoo, both gluetun tunnels
 docker-compose.orca.yml           # 1  orca
 docker-compose.paperbox.yml       # 1  paperbox
-docker-compose.paperclip.yml      # 2  paperclip, paperclip-postgres
 docker-compose.syncthing.yml      # 1  syncthing
 docker-compose.unifi.yml          # 2  unifi-network-application, unifi-db
 docker-compose.watchdog.yml       # 1  fleet-breaker
