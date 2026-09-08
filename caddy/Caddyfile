@@ -982,7 +982,9 @@ hermes.thenairn.com {
         remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
     }
     handle @internal {
-        reverse_proxy orca:9119
+        reverse_proxy orca:9119 {
+            header_up Host 127.0.0.1:9118
+        }
     }
     handle {
         abort
