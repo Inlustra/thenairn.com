@@ -698,26 +698,6 @@ rowm.thenairn.com {
     }
 }
 
-# Second Paperclip instance — the one that runs on Tower itself, as the
-# `paperclip` compose service (docker-compose.paperclip.yml) with its own
-# Postgres. Unlike rowm.thenairn.com (which proxies to the Mac and is only up
-# while the Mac is awake), this one is local to the box and always on.
-#
-# Same auth shape as orca/rowm: LAN bypasses the portal, external goes through
-# the OAuth admin policy. Host is passed through unrewritten — Paperclip's
-# allowlist is set to rainn.thenairn.com and 403s anything else.
-rainn.thenairn.com {
-    @internal {
-        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
-    }
-    handle @internal {
-        reverse_proxy paperclip:3100
-    }
-    handle {
-        import admin
-        reverse_proxy paperclip:3100
-    }
-}
 
 # Illustrated-book review + build UI for the Grace & Quentin wedding book.
 # Runs inside the orca container (project: /mnt/cache/HQ/nairn-book), started by
