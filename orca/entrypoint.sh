@@ -39,6 +39,8 @@ if ! command -v claude >/dev/null 2>&1; then
     || echo "[orca] claude install failed (see /tmp/claude-install.log)" >&2
 fi
 
+# Hermes gateway (project-manager seat). Idempotent; never blocks the runtime.
+bash /usr/local/bin/hermes-start >/tmp/hermes-start.log 2>&1 || echo "[orca] hermes-start failed (see /tmp/hermes-start.log)" >&2
 # Headless display for Electron. NOTE: xvfb-run hangs when the container is
 # detached, so start Xvfb directly and export DISPLAY ourselves.
 Xvfb :99 -screen 0 1280x1024x24 -nolisten tcp >/tmp/xvfb.log 2>&1 &
