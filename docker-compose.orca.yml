@@ -10,6 +10,7 @@ services:
       context: ./orca
       args:
         ORCA_VERSION: "1.4.184"
+        HERMES_VERSION: "2026.9.7"
     # Full host management (mirrors jarvis-console): privileged + host PID
     # namespace lets agents nsenter the host; docker.sock drives the stack.
     privileged: true
@@ -20,6 +21,9 @@ services:
       - HOME=/home/orca
       - ORCA_PORT=6768
       - ORCA_PAIRING_ADDRESS=wss://orca.thenairn.com
+      # Hermes: which profile's gateway hermes-start runs. Plannotator: fixed port 19432 for the Caddy vhost.
+      - HERMES_PM_PROFILE=rowm
+      - PLANNOTATOR_REMOTE=1
     volumes:
       # Persisted runtime state + ALL agent logins + runtime-installed tools.
       - /mnt/cache/Config/orca:/home/orca

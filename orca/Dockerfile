@@ -63,6 +63,23 @@ RUN install -d /etc/apt/keyrings \
  && apt-get update && apt-get install -y --no-install-recommends eza \
  && rm -rf /var/lib/apt/lists/*
 
+# Hermes Agent: the project-manager gateway (see orca/hermes-start.sh).
+# Pinned like ORCA_VERSION; an upgrade is a rebuild plus a recreate, deliberately.
+# System python 3.11 from bookworm; no uv-managed interpreter, so nothing lives in /root.
+ARG HERMES_VERSION=2026.9.7
+COPY --from=ghcr.io/astral-sh/uv:0.12.10 /uv /usr/local/bin/uv
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends python3 python3-venv git ffmpeg \
+ && rm -rf /var/lib/apt/lists/* \
+ && git clone --depth 1 --branch "v${HERMES_VERSION}" https://github.com/NousResearch/hermes-agent.git /usr/local/lib/hermes-agent \
+ && cd /usr/local/lib/hermes-agent \
+ && uv venv venv --python /usr/bin/python3 \
+ && UV_PROJECT_ENVIRONMENT=/usr/local/lib/hermes-agent/venv uv sync --extra all --locked \
+ && cd web && npm ci --no-audit --no-fund && npm run build && rm -rf node_modules \
+ && rm -rf /root/.cache/uv /root/.npm
+COPY hermes-wrapper /usr/local/bin/hermes
+COPY hermes-start.sh /usr/local/bin/hermes-start
+RUN chmod +x /usr/local/bin/hermes /usr/local/bin/hermes-start
 # Persisted-tool PATH for login-shell terminals Orca spawns (the entrypoint sets
 # the same for the runtime + inherited agent processes).
 COPY orca-tools.sh /etc/profile.d/orca-tools.sh
