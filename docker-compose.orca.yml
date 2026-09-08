@@ -22,7 +22,7 @@ services:
       - ORCA_PORT=6768
       - ORCA_PAIRING_ADDRESS=wss://orca.thenairn.com
       # Hermes: which profile's gateway hermes-start runs. Plannotator: fixed port 19432 for the Caddy vhost.
-      - HERMES_PM_PROFILE=rowm
+      - HERMES_PM_PROFILE=hq
       - PLANNOTATOR_REMOTE=1
       # Claude Code refuses --dangerously-skip-permissions as root unless it believes it is sandboxed; this container is root.
       - IS_SANDBOX=1
