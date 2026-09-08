@@ -14,16 +14,13 @@ log() { echo "[hermes-start] $(date '+%F %T') $*"; }
 
 command -v hermes >/dev/null 2>&1 || { log "no hermes binary in this image; skipping"; exit 0; }
 
-# Profiles are Hermes distributions kept in hq-control. --force keeps memories, sessions and auth.
-if [ -d "$HQ_CONTROL/profiles" ]; then
-  for p in "$HQ_CONTROL"/profiles/*/; do
-    [ -f "$p/distribution.yaml" ] || continue
-    if hermes profile install "$p" --force -y >>"$LOG_DIR/profile-install.log" 2>&1; then
-      log "profile $(basename "$p") installed"
-    else
-      log "profile $(basename "$p") install FAILED (see profile-install.log)"
-    fi
-  done
+# Profiles come from hq-control; its script joins the shared rules onto each profile.
+if [ -x "$HQ_CONTROL/scripts/install-profiles.sh" ]; then
+  if "$HQ_CONTROL/scripts/install-profiles.sh" >>"$LOG_DIR/profile-install.log" 2>&1; then
+    log "profiles installed from $HQ_CONTROL"
+  else
+    log "profile install FAILED (see profile-install.log)"
+  fi
 else
   log "no hq-control checkout at $HQ_CONTROL; gateway starts with whatever profiles exist"
 fi
