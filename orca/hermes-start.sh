@@ -35,10 +35,17 @@ else
   log "gateway started for profile $PROFILE (pid $!)"
 fi
 
-# Dashboard for Caddy (hermes.thenairn.com -> orca:9119). Non-loopback binds require Hermes' own auth.
+# Dashboard for Caddy (hermes.thenairn.com -> orca:9119). Hermes demands a login on any non-loopback
+# bind and has no switch for it, so it binds loopback and a forwarder fronts it. Caddy is the boundary: LAN only.
 if pgrep -f "hermes.* dashboard" >/dev/null 2>&1; then
   log "dashboard already running"
 else
-  nohup hermes dashboard --host 0.0.0.0 --port 9119 --no-open --skip-build >>"$LOG_DIR/dashboard.log" 2>&1 &
-  log "dashboard started (pid $!)"
+  nohup hermes dashboard --host 127.0.0.1 --port 9118 --no-open --skip-build >>"$LOG_DIR/dashboard.log" 2>&1 &
+  log "dashboard started on loopback (pid $!)"
+fi
+if pgrep -f "dashboard-forward.py" >/dev/null 2>&1; then
+  log "dashboard forwarder already running"
+else
+  nohup python3 /usr/local/bin/dashboard-forward.py >>"$LOG_DIR/dashboard-forward.log" 2>&1 &
+  log "dashboard forwarder started (pid $!)"
 fi

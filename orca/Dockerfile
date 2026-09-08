@@ -79,6 +79,7 @@ RUN apt-get update \
  && rm -rf /root/.cache/uv /root/.npm
 COPY hermes-wrapper /usr/local/bin/hermes
 COPY hermes-start.sh /usr/local/bin/hermes-start
+COPY dashboard-forward.py /usr/local/bin/dashboard-forward.py
 RUN chmod +x /usr/local/bin/hermes /usr/local/bin/hermes-start
 # Persisted-tool PATH for login-shell terminals Orca spawns (the entrypoint sets
 # the same for the runtime + inherited agent processes).
