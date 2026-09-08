@@ -83,6 +83,9 @@ RUN --mount=type=secret,id=gh_token,required=true \
  && apt-get install -y --no-install-recommends python3 python3-venv git ffmpeg socat \
  && rm -rf /var/lib/apt/lists/* \
  && mkdir -p /usr/local/lib/hermes-agent \
+ && { [ -s /run/secrets/gh_token ] || { \
+        echo "gh_token build secret is empty. Run: export GH_TOKEN=\$(gh auth token)" >&2; \
+        exit 1; }; } \
  && printf 'Authorization: Bearer %s' "$(cat /run/secrets/gh_token)" \
       | curl -fsSL --header @/dev/stdin --retry 3 --retry-delay 10 \
           "https://api.github.com/repos/NousResearch/hermes-agent/tarball/v${HERMES_VERSION}" \
