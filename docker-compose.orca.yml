@@ -11,6 +11,12 @@ services:
       args:
         ORCA_VERSION: "1.4.184"
         HERMES_VERSION: "2026.9.7"
+      # BuildKit mounts this for the Hermes fetch only; it lands in no layer.
+      # Required: export GH_TOKEN=$(gh auth token) before building, or the
+      # build stops rather than falling back to the anonymous fetch that
+      # GitHub rate-limits from this box.
+      secrets:
+        - gh_token
     # Full host management (mirrors jarvis-console): privileged + host PID
     # namespace lets agents nsenter the host; docker.sock drives the stack.
     privileged: true
@@ -43,3 +49,7 @@ services:
       # into the container HOME so agents share the host's creds + history.
       - /root:/hostroot
     restart: unless-stopped
+
+secrets:
+  gh_token:
+    environment: GH_TOKEN
