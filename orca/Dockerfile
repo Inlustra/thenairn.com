@@ -79,7 +79,10 @@ RUN apt-get update \
  && rm -rf /root/.cache/uv /root/.npm
 COPY hermes-wrapper /usr/local/bin/hermes
 COPY hermes-start.sh /usr/local/bin/hermes-start
-RUN chmod +x /usr/local/bin/hermes /usr/local/bin/hermes-start \
+# claude-trust: marks an Orca worktree path trusted for Claude Code before the
+# worker starts there, so the worker does not stop at the folder trust prompt.
+COPY claude-trust /usr/local/bin/claude-trust
+RUN chmod +x /usr/local/bin/hermes /usr/local/bin/hermes-start /usr/local/bin/claude-trust \
  && ln -s /opt/Orca/resources/bin/orca-ide /usr/local/bin/orca
 # Persisted-tool PATH for login-shell terminals Orca spawns (the entrypoint sets
 # the same for the runtime + inherited agent processes).

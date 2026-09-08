@@ -1,0 +1,93 @@
+#!/usr/bin/env python3
+"""Mark folders trusted for Claude Code.
+
+A Claude worker started in a folder Claude has never seen stops at the folder
+trust prompt, and whatever the bridge injected into that terminal is lost.
+Orca names a worktree path before it creates it, so the bridge marks the path
+trusted first.
+
+This is a command and not a python one-liner on purpose. The Hermes command
+allowlist refuses any command that hands quoted text to an interpreter, so
+`python3 -c "..."` can never be allowlisted, while `claude-trust <path>` can.
+
+Usage: claude-trust PATH [PATH ...]
+"""
+
+import fcntl
+import json
+import os
+import sys
+import tempfile
+
+CONFIG = os.path.join(os.path.expanduser("~"), ".claude.json")
+LOCK = CONFIG + ".trust-lock"
+
+
+def keys_for(path):
+    """The forms Claude may look the path up under: absolute, symlink
+    resolved, and each of those NFC normalised."""
+    import unicodedata
+
+    forms = [os.path.abspath(path), os.path.realpath(path)]
+    out = []
+    for form in forms:
+        for candidate in (form, unicodedata.normalize("NFC", form)):
+            if candidate not in out:
+                out.append(candidate)
+    return out
+
+
+def main(argv):
+    if not argv:
+        print("usage: claude-trust PATH [PATH ...]", file=sys.stderr)
+        return 2
+
+    wanted = []
+    for arg in argv:
+        for key in keys_for(arg):
+            if key not in wanted:
+                wanted.append(key)
+
+    os.makedirs(os.path.dirname(CONFIG), exist_ok=True)
+    with open(LOCK, "a+") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+
+        data = {}
+        if os.path.exists(CONFIG):
+            with open(CONFIG) as handle:
+                text = handle.read()
+            if text.strip():
+                data = json.loads(text)
+
+        projects = data.setdefault("projects", {})
+        changed = []
+        for key in wanted:
+            entry = projects.setdefault(key, {})
+            if entry.get("hasTrustDialogAccepted") is not True:
+                entry["hasTrustDialogAccepted"] = True
+                changed.append(key)
+
+        if changed:
+            mode = os.stat(CONFIG).st_mode & 0o777 if os.path.exists(CONFIG) else 0o600
+            handle = tempfile.NamedTemporaryFile(
+                "w", dir=os.path.dirname(CONFIG), prefix=".claude.json.", delete=False
+            )
+            try:
+                json.dump(data, handle, indent=2)
+                handle.write("\n")
+                handle.flush()
+                os.fsync(handle.fileno())
+                handle.close()
+                os.chmod(handle.name, mode)
+                os.replace(handle.name, CONFIG)
+            except BaseException:
+                os.unlink(handle.name)
+                raise
+
+    for key in wanted:
+        print(("trusted " if key in changed else "already trusted ") + key)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
