@@ -956,22 +956,6 @@ playground.thenairn.com {
     }
 }
 
-# Hermes dashboard (inside the orca container, started by orca/hermes-start.sh). LAN only, deliberately.
-hermes.thenairn.com {
-    @internal {
-        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
-    }
-    handle @internal {
-        reverse_proxy orca:9119 {
-            header_up Host 127.0.0.1:9118
-            header_up Origin http://127.0.0.1:9118
-        }
-    }
-    handle {
-        abort
-    }
-}
-
 # Plannotator sessions from inside the orca container (PLANNOTATOR_REMOTE=1 pins 19432). LAN only, deliberately.
 # 502 means no review session is open right now, not a routing fault.
 plannotator.thenairn.com {

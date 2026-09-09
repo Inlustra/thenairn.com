@@ -64,43 +64,10 @@ RUN install -d /etc/apt/keyrings \
  && apt-get update && apt-get install -y --no-install-recommends eza \
  && rm -rf /var/lib/apt/lists/*
 
-# Hermes Agent: the project-manager gateway (see orca/hermes-start.sh).
-# Pinned like ORCA_VERSION; an upgrade is a rebuild plus a recreate, deliberately.
-# System python 3.11 from bookworm; no uv-managed interpreter, so nothing lives in /root.
-ARG HERMES_VERSION=2026.9.7
-COPY --from=ghcr.io/astral-sh/uv:0.12.10 /uv /usr/local/bin/uv
-# The source is the tag tarball, fetched with a token mounted as a build secret.
-# It used to be an in-build `git clone`, which is anonymous: GitHub rate-limits
-# unauthenticated traffic from this box, and six builds in a row died on HTTP 429
-# while an authenticated fetch worked first time. The tarball is also ~69 MB
-# against the ~250 MB of tree and history a clone pulls to build one venv.
-# The secret is a mount, so the token is in no layer and in no image. It is
-# required: an anonymous fallback is the thing that was breaking, and a build
-# that quietly takes it just hides the failure until the next 429.
-#   export GH_TOKEN=$(gh auth token)   before docker compose build
-RUN --mount=type=secret,id=gh_token,required=true \
-    apt-get update \
- && apt-get install -y --no-install-recommends python3 python3-venv git ffmpeg socat \
- && rm -rf /var/lib/apt/lists/* \
- && mkdir -p /usr/local/lib/hermes-agent \
- && { [ -s /run/secrets/gh_token ] || { \
-        echo "gh_token build secret is empty. Run: export GH_TOKEN=\$(gh auth token)" >&2; \
-        exit 1; }; } \
- && printf 'Authorization: Bearer %s' "$(cat /run/secrets/gh_token)" \
-      | curl -fsSL --header @/dev/stdin --retry 3 --retry-delay 10 \
-          "https://api.github.com/repos/NousResearch/hermes-agent/tarball/v${HERMES_VERSION}" \
-          -o /tmp/hermes.tgz \
- && tar -xzf /tmp/hermes.tgz -C /usr/local/lib/hermes-agent --strip-components=1 \
- && rm /tmp/hermes.tgz \
- && cd /usr/local/lib/hermes-agent \
- && uv venv venv --python /usr/bin/python3 \
- && UV_PROJECT_ENVIRONMENT=/usr/local/lib/hermes-agent/venv uv sync --extra all --locked \
- && cd web && npm ci --no-audit --no-fund && npm run build && rm -rf node_modules \
- && rm -rf /root/.cache/uv /root/.npm
-COPY hermes-wrapper /usr/local/bin/hermes
-COPY hermes-start.sh /usr/local/bin/hermes-start
-RUN chmod +x /usr/local/bin/hermes /usr/local/bin/hermes-start \
- && ln -s /opt/Orca/resources/bin/orca-ide /usr/local/bin/orca
+# `orca` on the system PATH: terminals Orca spawns get a scrubbed
+# environment and cannot find the runtime otherwise.
+RUN ln -s /opt/Orca/resources/bin/orca-ide /usr/local/bin/orca
+
 # Persisted-tool PATH for login-shell terminals Orca spawns (the entrypoint sets
 # the same for the runtime + inherited agent processes).
 COPY orca-tools.sh /etc/profile.d/orca-tools.sh
