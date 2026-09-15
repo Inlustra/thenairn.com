@@ -1,6 +1,6 @@
 services:
   paperbox:
-    build: ./paperbox
+    build: ../repos/paperbox
     container_name: paperbox
     restart: unless-stopped
     environment:
@@ -26,7 +26,7 @@ services:
       # It has no volume yet on purpose: paperbox/docs/decisions.md flags that
       # its path needs somebody to confirm the destination is actually swept,
       # by listing it rather than by reading the script meant to write to it.
-      - ${LARGE_TEMP_DIR}/paperbox/derived:/data/derived
+      - ${CONFIG_DIR}/paperbox/derived:/data/derived
     labels:
       plugsy.name: "Paperbox"
       plugsy.category: "Media"
