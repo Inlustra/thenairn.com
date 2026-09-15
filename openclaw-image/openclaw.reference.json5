@@ -1,0 +1,148 @@
+// REFERENCE COPY — not read by anything. The live file is
+// ${OPENCLAW_CONFIG_DIR}/openclaw.json = /mnt/user/Config/openclaw/openclaw.json
+//
+// WHY THIS FILE EXISTS
+// --------------------
+// OpenClaw OWNS its config file and rewrites it on startup. On first boot here
+// it canonicalised a 3,079-byte commented JSON5 file down to 602 bytes of plain
+// JSON, stripping every comment, and logged it as a "size-drop-vs-last-good"
+// anomaly. It also dropped one key outright (see allowInsecureAuth below). So
+// the reasoning cannot live in the live file — it lives here, in git, and the
+// live file is treated as generated state.
+//
+// It keeps its own backup of what it replaced, at openclaw.json.bak.
+//
+// Set up 2026-09-09, against OpenClaw 2026.9.3.
+{
+  gateway: {
+    // Required. Without it the gateway refuses to start at all:
+    //   "Gateway start blocked: existing config is missing gateway.mode.
+    //    Treat this as suspicious or clobbered config."
+    // It is not in the trusted-proxy docs; it is a separate precondition, and
+    // it is the first thing to check if the container ever restart-loops.
+    mode: "local",
+
+    // Listen on the container interface so Caddy can reach it. Not an exposure
+    // decision: docker-compose.openclaw.yml publishes NO host port, so "lan"
+    // here means thenairncom_default and nothing wider. The gateway logs a
+    // scary "binding to a non-loopback address" warning on every boot anyway.
+    bind: "lan",
+    port: 18789,   // multiplexes Control UI, WebSocket protocol and /healthz
+
+    // Caddy's address on thenairncom_default, and the linchpin of the whole
+    // model: an identity header is honoured ONLY from an address in this list.
+    // Verified empirically on setup — the same spoofed X-Forwarded-User that
+    // works from Caddy gets 403 proxy_attribution_required from any other
+    // container on the network.
+    //
+    // Caddy is pinned to this high address in docker-compose.yml while staying
+    // attached to thenairncom_default. Both Caddy and OpenClaw retain access to
+    // every service on the shared network, but Caddy recreation cannot change
+    // the trusted source address. Verify it with:
+    //   docker inspect caddy --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}'
+    // Do not widen this to 172.18.0.0/16: that would trust every container in
+    // the stack to be honest about who the caller is.
+    trustedProxies: ["172.18.255.254"],
+
+    auth: {
+      // No gateway token, no gateway password. Google OAuth at the Caddy edge
+      // (caddy-security adminpolicy) is the only authentication, so there is no
+      // second login. Startup REJECTS this mode if a shared token is also
+      // configured — which is why OPENCLAW_GATEWAY_TOKEN, left over from the
+      // retired 2026-04 attempt, was removed from thenairn.com/.env.
+      mode: "trusted-proxy",
+      trustedProxy: {
+        // Set by `header_up X-Forwarded-User` in the claw.thenairn.com block,
+        // from the X-Token-User-Email claim caddy-security injects.
+        //
+        // NOT SUFFICIENT ON ITS OWN. The gateway also requires a forwarded
+        // client address: identity header + no X-Forwarded-For = 403
+        // proxy_attribution_required, even from a trusted proxy IP. Caddy's
+        // reverse_proxy sets X-Forwarded-For automatically, so this is
+        // satisfied in the real path — but it will bite anyone hand-testing
+        // with curl, and it would bite a future proxy config that stripped it.
+        userHeader: "x-forwarded-user",
+
+        // Defence in depth: adminpolicy already limits the vhost to the
+        // authp/admin role, which is exactly these two addresses. This means a
+        // Caddyfile mistake that let a wider policy through still would not
+        // grant gateway access. Keep the two lists in step.
+        allowUsers: ["thomas@rowm.co", "thomas@thenairn.com"],
+
+        // PASSING GATEWAY AUTH IS NOT THE WHOLE STORY. Device pairing is a
+        // SECOND, INDEPENDENT layer. Without this block a browser that has
+        // authenticated perfectly well through Caddy still gets an "Approve
+        // this browser" screen and closes with:
+        //   code=1008 reason=pairing required: device is not approved yet
+        // — once per browser, forever. Enabling it made the difference:
+        //   security audit: trusted-proxy operator device auto-approved
+        //   user=thomas@rowm.co device=a4f44c9da0d1
+        //
+        // The proxy identity becomes the enrolment boundary: if Caddy vouched
+        // for you, the device is approved. That is the intended trade and the
+        // reason the scope list below matters.
+        deviceAutoApprove: {
+          enabled: true,
+          // operator.admin ADDED 2026-09-09, knowingly. It started as the four
+          // non-admin scopes; the Control UI then refused model setup, which
+          // requires operator.admin. The gateway logs a SECURITY WARNING on
+          // every boot because of it:
+          //   "every proxy-authenticated user can auto-approve a new operator
+          //    device with full admin, and requests without scopes receive
+          //    full admin automatically"
+          // That warning is expected here and is not a misconfiguration.
+          //
+          // WHAT MAKES IT ACCEPTABLE, AND WHAT WOULD STOP MAKING IT SO.
+          // The set of proxy-authenticated users is exactly two addresses,
+          // enforced twice over: caddy-security's adminpolicy (authp/admin
+          // role) on the claw.thenairn.com vhost, and allowUsers above. Both
+          // resolve to Thomas, so the blast radius is one person.
+          //
+          // Those two lists are therefore LOAD-BEARING FOR ADMIN ACCESS, not
+          // just for who can see the page. Widening that vhost's policy, or
+          // adding someone to authp/admin for an unrelated reason, silently
+          // hands them full gateway admin on first visit. Read this comment
+          // before doing either.
+          //
+          // THE TIGHTER OPTION, NOT TAKEN YET: upstream's own advice in that
+          // warning is "grant admin per identity via gateway.auth.identityScopes
+          // instead". That decouples admin from "whoever the proxy admits" and
+          // is the better long-term shape here.
+          scopes: ["operator.read", "operator.write", "operator.approvals", "operator.questions", "operator.admin"],
+        },
+
+        // CURRENTLY INERT, KEPT AS A SIGNPOST. The intent was to let the CLI
+        // work via `docker exec`, because in trusted-proxy mode the local CLI
+        // is refused — `openclaw devices list` inside the container returns
+        // "unauthorized", reason=trusted_proxy_untrusted_source from
+        // remote=127.0.0.1. Note that this makes the "RUN ON THE GATEWAY HOST:
+        // openclaw devices approve <id>" instruction the Control UI prints
+        // impossible to follow on this deployment.
+        //
+        // This flag alone does not fix it: the source is evaluated against
+        // trustedProxies FIRST, so 127.0.0.1 and ::1 must also be added there.
+        // That widening was not made — with deviceAutoApprove on there is no
+        // longer anything the CLI is needed for. If a future task does need
+        // it, add both loopback addresses to trustedProxies above and know
+        // that reaching this container's loopback requires root on Tower.
+        allowLoopback: true,
+      },
+    },
+
+    controlUi: {
+      // Non-loopback Control UI deployments must name their origin explicitly.
+      allowedOrigins: ["https://claw.thenairn.com"],
+
+      // allowInsecureAuth: true was set on first boot and 2026.9.3 SILENTLY
+      // DROPPED IT during "tier-eval tranche retirements" — it is not in the
+      // live file now. Upstream issue #20524 says it is needed when a proxy
+      // terminates TLS and forwards plain HTTP, with the symptom being a
+      // WebSocket close 1008 "device token mismatch" in the browser.
+      //
+      // Left out deliberately rather than fought back in: the key appears to
+      // have been retired in this version, and trusted-proxy mode may not use
+      // the device-token path at all. If the Control UI fails to authenticate
+      // with exactly that error, this is the first thing to try.
+    },
+  },
+}

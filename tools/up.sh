@@ -56,8 +56,8 @@
 #                 started against a half-open tunnel comes up with no route.
 #                 These take the longest to become healthy; start them early
 #                 and let them settle while stage 3 runs.
-#   3. control    Orca, the host-management surface. Deliberately before the
-#                 media zoo so it is available if
+#   3. control    Orca and OpenClaw, the host-management and agent surfaces.
+#                 Deliberately before the media zoo so they are available if
 #                 the remainder of bring-up needs diagnosis.
 #   4. business   Invoicing and documents. Real money and real records; they
 #                 get their own stage and their own check.
@@ -80,9 +80,9 @@
 # * There are no named volumes anywhere in this stack — every mount is a host
 #   bind — so no `docker compose` operation here can orphan data. `down -v` is
 #   still refused below, because that will not always be true.
-# * `orca` is in stage 3 and WILL be recreated by a full run. If you are using
-#   it, use `tools/up.sh --skip control` from inside the container, or run the
-#   full bring-up from the host.
+# * `orca` and OpenClaw are in stage 3 and WILL be recreated by a full run. If
+#   you are using either one, use `tools/up.sh --skip control` from inside the
+#   container, or run the full bring-up from the host.
 #
 set -euo pipefail
 
@@ -105,7 +105,7 @@ STAGE_NAMES=(core-data vpn control business media home edge)
 
 STAGE_core_data=(port-permission-module invoiceninjadb unifi-db immich-redis immich-database paperless-broker)
 STAGE_vpn=(gluetun gluetun-uk)
-STAGE_control=(orca)
+STAGE_control=(orca openclaw-gateway openclaw-native-auth-bridge voicebox voicebox-openai-bridge)
 STAGE_business=(invoiceninja paperless unifi-network-application)
 STAGE_media=(plex transmission sonarr animesonarr radarr animeradarr prowlarr flaresolverr seerr get_iplayer iplayarr recyclarr plex-meta-manager suwayomi syncyomi paperbox)
 STAGE_home=(immich-server immich-machine-learning immich-kiosk go2rtc frame-cams frigate syncthing weddingphotos gallery gracewedding)
@@ -372,7 +372,7 @@ cmd_status() {
 
 cmd_down() {
   build_file_args
-  say "Teardown — all 41 services, project $PROJECT"
+  say "Teardown — all 45 services, project $PROJECT"
   printf '   This stops and removes every container in the stack.\n'
   printf '   All mounts are host binds, so no data is removed.\n'
   read -r -p '   Type the project name to confirm: ' answer
@@ -382,13 +382,13 @@ cmd_down() {
 
 usage() {
   cat <<'EOF'
-up.sh — the single bring-up for thenairn.com (41 services, 11 compose files)
+up.sh — the single bring-up for thenairn.com (45 services, 12 compose files)
 
   tools/up.sh                 bring the whole stack up, in stages, idempotent
   tools/up.sh --build         same, but build images first (cold host)
   tools/up.sh --skip control  same, but leave a stage alone (repeatable).
-                              Use it while working inside Orca — that stage
-                              recreates the container.
+                              Use it while working inside Orca or OpenClaw —
+                              that stage recreates those containers.
   tools/up.sh check           validate the merged project, the manifest and the
                               stage map. Changes nothing. Run this first.
   tools/up.sh status          what is actually running

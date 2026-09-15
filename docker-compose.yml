@@ -58,6 +58,12 @@ services:
       - ${CONFIG_DIR}/invoiceninja:/var/www/app
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile
       - ./Playground:/Playground
+    # OpenClaw trusts Caddy's source address for proxy-authenticated requests.
+    # Keep Caddy on the shared network, but pin its address so container
+    # recreation cannot silently break gateway authentication.
+    networks:
+      default:
+        ipv4_address: 172.18.255.254
     restart: unless-stopped
 
   plugsy:
@@ -126,3 +132,10 @@ services:
       PAGE_SHOW_FULLSCREEN_BUTTON: 'true'
       PHOTO_DEFAULT_REVERSE: 'false'
     restart: unless-stopped
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.18.0.0/16
+          gateway: 172.18.0.1

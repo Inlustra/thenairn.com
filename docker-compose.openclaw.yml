@@ -1,0 +1,174 @@
+services:
+  openclaw-gateway:
+    container_name: openclaw-gateway
+    labels:
+      plugsy.name: "OpenClaw"
+      plugsy.category: "Code"
+      plugsy.icon: "@styled-icons/feather/Terminal"
+      plugsy.link: https://claw.thenairn.com
+    build:
+      context: ./openclaw-image
+      args:
+        # Pinned in openclaw-image/Dockerfile too. Change both together.
+        OPENCLAW_VERSION: "2026.9.3"
+    environment:
+      - HOME=/home/node
+      - TERM=xterm-256color
+      # Keep this "lan". The gateway must listen on the container's network
+      # interface for Caddy to reach it; "loopback" would confine it to the
+      # container's own namespace and produce a 502 that looks like a routing
+      # fault. It is not an exposure decision — no host port is published
+      # below, so "lan" here means "this docker network", nothing wider.
+      - OPENCLAW_GATEWAY_BIND=lan
+      - OPENCLAW_GATEWAY_PORT=18789
+    # NO OPENCLAW_GATEWAY_TOKEN, DELIBERATELY.
+    # Auth is delegated to Caddy (see caddy/Caddyfile, claw.thenairn.com, and
+    # gateway.auth.mode "trusted-proxy" in ${OPENCLAW_CONFIG_DIR}/openclaw.json).
+    # Upstream REFUSES TO START if a shared token is configured alongside
+    # trusted-proxy mode, so setting one here does not weaken the deployment,
+    # it breaks it. The stale OPENCLAW_GATEWAY_TOKEN left in .env by the
+    # 2026-04 attempt was removed on 2026-09-09 for this reason.
+    #
+    # NO `ports:` KEY, DELIBERATELY.
+    # 18789 multiplexes the Control UI, the WebSocket protocol and /healthz on
+    # one port. It is reachable only from thenairncom_default, which is what
+    # makes trusting an identity header safe: the only route in is Caddy, and
+    # openclaw.json trusts only Caddy's address on that network. Publishing a
+    # host port here would put an unauthenticated gateway on the LAN.
+    volumes:
+      # Gateway state: config, SQLite, plugins, OAuth material. Mount as a
+      # DIRECTORY, never a single file — upstream is explicit about this.
+      - ${OPENCLAW_CONFIG_DIR}:/home/node/.openclaw
+      - ${OPENCLAW_WORKSPACE_DIR}:/home/node/.openclaw/workspace
+      # Box and media management, 2026-09-09, deliberate. Match ORCA's data
+      # namespace so media agents see stable host paths, and expose /boot for
+      # explicitly authorized persistence work across Unraid reboots. Keep the
+      # narrower mounts below as child overrides. docker.sock is root-equivalent
+      # on Tower. All compose files share project `thenairncom`, so any
+      # --remove-orphans deletes the other containers; up.sh refuses it.
+      - /mnt/user:/mnt/user
+      - /mnt/cache:/mnt/cache
+      - /boot:/boot
+      - /mnt/cache/HQ/thenairn.com:/mnt/user/HQ/thenairn.com
+      - ${CONFIG_DIR}:/mnt/user/Config
+      - /var/run/docker.sock:/var/run/docker.sock
+    # The base image runs as uid/gid 1000 (`node`); the bind mounts above are
+    # chowned to match.
+    user: "1000:1000"
+    # docker.sock is root:281 mode 660; uid 1000 needs gid 281 to use it.
+    group_add:
+      - "281"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - NET_RAW
+      - NET_ADMIN
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:18789/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  # Local-first voice studio for Talk Mode. Built from the detached Voicebox
+  # source checkout at /mnt/user/HQ/repos/voicebox, pinned to commit 51f49de.
+  # No host port is published: only peers on thenairncom_default can reach it.
+  voicebox:
+    container_name: voicebox
+    image: thenairncom-voicebox:51f49de
+    runtime: nvidia
+    environment:
+      NVIDIA_VISIBLE_DEVICES: GPU-47ef7f1b-a0df-c491-bb1f-31d44c8a28c2
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+      LOG_LEVEL: info
+      NUMBA_CACHE_DIR: /tmp/numba_cache
+    volumes:
+      - ${CONFIG_DIR}/voicebox/data:/app/data
+      - ${CONFIG_DIR}/voicebox/models:/home/voicebox/.cache/huggingface
+    deploy:
+      resources:
+        limits:
+          cpus: "6"
+          memory: 16G
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
+  # Voicebox exposes its own profile-oriented API rather than OpenAI's speech
+  # endpoint. This small private adapter preserves OpenClaw's supported
+  # OpenAI-compatible Talk provider contract and selects Qwen CustomVoice.
+  voicebox-openai-bridge:
+    container_name: voicebox-openai-bridge
+    build:
+      context: ./voicebox-openai-bridge
+    depends_on:
+      voicebox:
+        condition: service_healthy
+    environment:
+      VOICEBOX_URL: http://voicebox:17493
+      VOICEBOX_PROFILE: OpenClaw Ryan
+      VOICEBOX_SPEAKER: Ryan
+      VOICEBOX_MODEL_SIZE: 1.7B
+      VOICEBOX_INSTRUCT: Speak naturally and conversationally, with warm, emotionally appropriate delivery.
+    read_only: true
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8880/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+
+  openclaw-native-auth-bridge:
+    container_name: openclaw-native-auth-bridge
+    build:
+      context: ./openclaw-native-auth-bridge
+    # The Gateway trusts only Caddy's fixed Docker address (172.18.255.254).
+    # Sharing Caddy's network namespace makes upstream bridge connections
+    # originate from that same trusted address, without widening trustedProxies.
+    # The bridge binds loopback only; Caddy reaches it at 127.0.0.1:18791.
+    network_mode: service:caddy
+    depends_on:
+      caddy:
+        condition: service_started
+      openclaw-gateway:
+        condition: service_healthy
+    environment:
+      BRIDGE_LISTEN_HOST: 127.0.0.1
+      BRIDGE_LISTEN_PORT: "18791"
+      BRIDGE_EXPECTED_HOST: claw-native.thenairn.com
+      BRIDGE_FORWARDED_HOST: claw-native.thenairn.com
+      BRIDGE_FORWARDED_PROTO: https
+      BRIDGE_MAPPED_USER: thomas@rowm.co
+      BRIDGE_UPSTREAM_URL: ws://openclaw-gateway:18789
+      BRIDGE_TOKEN_FILE: /run/secrets/openclaw_native_bridge_token
+      BRIDGE_CONNECT_MAX_BYTES: "65536"
+      BRIDGE_HANDSHAKE_TIMEOUT_MS: "7500"
+    secrets:
+      - source: openclaw_native_bridge_token
+        target: openclaw_native_bridge_token
+        mode: 0400
+    read_only: true
+    init: true
+    user: "1000:1000"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:18791/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+
+secrets:
+  openclaw_native_bridge_token:
+    file: ${OPENCLAW_NATIVE_BRIDGE_TOKEN_FILE:?Set OPENCLAW_NATIVE_BRIDGE_TOKEN_FILE to the absolute token-file path}

@@ -181,13 +181,57 @@ HTML
 # served only a 502. The hostname now falls through to the same
 # connection-refused an unknown subdomain gets, which is the honest answer.
 
+# OpenClaw gateway Control UI, repointed 2026-09-09 at the openclaw-gateway
+# service (docker-compose.openclaw.yml). It previously proxied
+# 192.168.96.14:18790 with a hardcoded bearer token; nothing had listened there
+# since the 2026-04 attempt was retired, and this repo is public, so that token
+# was readable on GitHub for months. It is gone from HEAD as of this change but
+# is STILL IN THE PUBLIC HISTORY and must be treated as compromised — same
+# shape as the HINDSIGHT_API_TOKEN incident in commit 715ae79.
+#
+# NO @internal BYPASS, DELIBERATELY — unlike almost every other vhost here.
+# OpenClaw runs in trusted-proxy auth mode: it has no login of its own and
+# takes the caller's identity from a header. A request arriving without that
+# header is refused with AUTH_IDENTITY_HEADER_REQUIRED, so a LAN bypass would
+# not mean "no login on the LAN", it would mean a hard 401 on the LAN. Every
+# request goes through the portal instead; the Google session cookie makes that
+# a single click, and LAN and external behave identically.
+#
+# header_up SETS X-Forwarded-User rather than appending, from the claims
+# caddy-security already injected (adminpolicy ends `inject headers with
+# claims`, which emits X-Token-User-Email). A spoofed inbound X-Forwarded-User
+# is therefore overwritten here, not honoured.
+#
+# The gateway publishes no host port — 18789 is reachable only from
+# thenairncom_default, and openclaw.json trusts only Caddy's address on that
+# network. Those two facts are what make trusting a header safe; loosening
+# either one breaks the model.
 claw.thenairn.com {
     import proxy_error_page
     import admin
-    reverse_proxy 192.168.96.14:18790 {
-        header_up Authorization "Bearer 7u88crYayckAQO9QkoW7Z8BcOFi8XLNMWRumgCviFj8"
+    reverse_proxy openclaw-gateway:18789 {
+        header_up X-Forwarded-User {http.request.header.X-Token-User-Email}
+        header_up X-Forwarded-Proto https
     }
 }
+# Native OpenClaw companion apps cannot complete the browser-only Google OAuth
+# flow used by claw.thenairn.com. This hostname therefore terminates TLS at
+# Caddy and forwards only to the loopback-only token bridge sharing Caddy's
+# network namespace. The bridge validates connect.params.auth.token before it
+# relays a byte to the trusted-proxy Gateway. No Gateway port is published.
+claw-native.thenairn.com {
+    import proxy_error_page
+    reverse_proxy 127.0.0.1:18791 {
+        # Overwrite all attribution supplied by the public client. The bridge
+        # accepts exactly one syntactically valid address in X-Forwarded-For.
+        header_up Host claw-native.thenairn.com
+        header_up X-Forwarded-Host claw-native.thenairn.com
+        header_up X-Forwarded-Proto https
+        header_up X-Forwarded-For {http.request.remote.host}
+        header_up X-Real-IP {http.request.remote.host}
+    }
+}
+
 
 http://192.168.96.14 { 
     reverse_proxy go2rtc:1984 {
