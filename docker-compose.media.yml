@@ -48,7 +48,7 @@ services:
       - TZ=Europe/Paris
       # - PLEX_CLAIM=${PLEX_CLAIM}
       - ADVERTISE_IP=${PLEX_ADVERTISE_IP}
-      - NVIDIA_VISIBLE_DEVICES=GPU-c1d14a88-b2fa-5786-e47d-64af7a34ea34
+      - NVIDIA_VISIBLE_DEVICES=GPU-47ef7f1b-a0df-c491-bb1f-31d44c8a28c2
       - NVIDIA_DRIVER_CAPABILITIES=all
       - PLEX_UID=0
       - PLEX_GID=0
@@ -164,7 +164,7 @@ services:
       - PUID=0
       - TZ=Europe/Paris
     restart: unless-stopped
-  
+
   animeradarr:
     container_name: animeradarr
     labels:
@@ -219,7 +219,7 @@ services:
       - sonarr
       - radarr
       - transmission
-    
+
   # CAPTCHA SOLVER — Byparr (FlareSolverr-API-compatible, but uses undetected-chromedriver
   # which currently beats Cloudflare where FlareSolverr 3.5.0 can't pass cookies properly).
   # Listens on 8191 inside the gluetun network namespace — Prowlarr hits http://gluetun:8191/v1.
