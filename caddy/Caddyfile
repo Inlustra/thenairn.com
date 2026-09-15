@@ -52,6 +52,24 @@
 
 			cookie domain thenairn.com
             cookie path /
+
+            # Without this, caddy-security SILENTLY IGNORES the redirect_url it
+            # was itself given and dumps the user on the portal landing page —
+            # the "My Identity" screen — instead of the page they asked for.
+            # It affected every gated vhost, on every login, not just one.
+            #
+            # The authorize policies do their half correctly: an unauthenticated
+            # request to e.g. claw.thenairn.com 302s to
+            #   …/authorization-code-callback?redirect_url=https%3A%2F%2Fclaw.thenairn.com%2F
+            # The portal then discards that parameter unless the target matches
+            # a trusted URI, and with no directive present nothing is trusted.
+            # Added 2026-09-09.
+            #
+            # Note `suffix` matches on the string, so it would also trust a
+            # hypothetical evilthenairn.com. Every host actually served here is
+            # a real subdomain, so tighten to explicit entries if that ever
+            # stops being a safe assumption.
+            trust login redirect uri domain suffix thenairn.com path prefix /
 			ui {
 				links {
 					"My Identity" "/whoami" icon "las la-user"
