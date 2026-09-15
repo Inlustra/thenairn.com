@@ -42,7 +42,7 @@
 # ORDER
 # -----
 # Most of the ordering is already declared and Compose computes it: `depends_on`
-# (transmission→gluetun, paperless→broker, paperclip→postgres healthy,
+# (transmission→gluetun, paperless→broker,
 # immich-server→redis+db, unifi-app→unifi-db, frigate→go2rtc) and `links:`,
 # which Compose also treats as a start-order edge (caddy→its ten upstreams).
 #
@@ -56,10 +56,9 @@
 #                 started against a half-open tunnel comes up with no route.
 #                 These take the longest to become healthy; start them early
 #                 and let them settle while stage 3 runs.
-#   3. control    paperclip (the board this business runs on) and orca (the
-#                 host-management surface). Deliberately before the media zoo:
-#                 if bring-up goes wrong from here, these two are how you find
-#                 out and how you fix it.
+#   3. control    Orca, the host-management surface. Deliberately before the
+#                 media zoo so it is available if
+#                 the remainder of bring-up needs diagnosis.
 #   4. business   Invoicing and documents. Real money and real records; they
 #                 get their own stage and their own check.
 #   5. media      The bulk. Plex first for the GPU.
@@ -81,10 +80,9 @@
 # * There are no named volumes anywhere in this stack — every mount is a host
 #   bind — so no `docker compose` operation here can orphan data. `down -v` is
 #   still refused below, because that will not always be true.
-# * `orca` is in stage 3 and WILL be recreated by a full run. If you are reading
-#   this from a Claude session inside orca, that session dies mid-run. Use
-#   `tools/up.sh --skip control` from inside the container, or run it from the
-#   host. The same applies to `paperclip`, which is where the agents run.
+# * `orca` is in stage 3 and WILL be recreated by a full run. If you are using
+#   it, use `tools/up.sh --skip control` from inside the container, or run the
+#   full bring-up from the host.
 #
 set -euo pipefail
 
@@ -107,7 +105,7 @@ STAGE_NAMES=(core-data vpn control business media home edge)
 
 STAGE_core_data=(port-permission-module invoiceninjadb unifi-db immich-redis immich-database paperless-broker)
 STAGE_vpn=(gluetun gluetun-uk)
-STAGE_control=(orca fleet-breaker)
+STAGE_control=(orca)
 STAGE_business=(invoiceninja paperless unifi-network-application)
 STAGE_media=(plex transmission sonarr animesonarr radarr animeradarr prowlarr flaresolverr seerr get_iplayer iplayarr recyclarr plex-meta-manager suwayomi syncyomi paperbox)
 STAGE_home=(immich-server immich-machine-learning immich-kiosk go2rtc frame-cams frigate syncthing weddingphotos gallery gracewedding)
@@ -189,10 +187,6 @@ dc() { docker compose -p "$PROJECT" "${FILE_ARGS[@]}" "$@"; }
 # ModuleNotFoundError before starting a single service. Failing closed was
 # correct; needing a pip install to bring the stack up was not.
 #
-# Verified missing in the paperclip container. NOT verified on the Unraid host,
-# which is where this script normally runs — so treat "the host was broken too"
-# as unproven. The dependency is unnecessary either way.
-#
 # `config --services` has no dependency beyond the compose binary this script
 # already requires, and it is authoritative rather than approximate: it answers
 # for the MERGED project, so overrides, extends and anchors resolve the way
@@ -260,11 +254,9 @@ cmd_preflight() {
   # looking healthy with no data.
   #
   # THIS CHECK IS ONLY MEANINGFUL ON THE HOST. It tests our own mount namespace,
-  # but the daemon binds from the host's. Run from inside the paperclip
-  # container (which mounts only HQ and Internal) 15 of 17 paths report missing
-  # while being perfectly present on Tower — measured 2026-08-22, RAI-28.
-  # The socket grants Docker, not the host filesystem. Do not "fix" the paths
-  # this prints without confirming where you are running.
+  # but the daemon binds from the host's. A container can report host paths as
+  # missing while they are present on Tower: the socket grants Docker access,
+  # not access to the host filesystem namespace.
   local missing=0 name path
   while IFS='=' read -r name path; do
     path="${path%\"}"; path="${path#\"}"
@@ -362,7 +354,6 @@ cmd_up() {
   cat <<'EOF'
    tools/up.sh status                  every service and its state
    docker compose -p thenairncom logs -f caddy      TLS + vhost errors
-   curl -sI https://rainn.thenairn.com  | head -1   the board
    curl -sI https://docs.thenairn.com   | head -1   paperless
    curl -sI https://invoice.thenairn.com| head -1   invoiceninja
    docker exec gluetun    wget -qO- https://ipinfo.io/country   expect CH
@@ -381,7 +372,7 @@ cmd_status() {
 
 cmd_down() {
   build_file_args
-  say "Teardown — all 43 services, project $PROJECT"
+  say "Teardown — all 41 services, project $PROJECT"
   printf '   This stops and removes every container in the stack.\n'
   printf '   All mounts are host binds, so no data is removed.\n'
   read -r -p '   Type the project name to confirm: ' answer
@@ -391,14 +382,13 @@ cmd_down() {
 
 usage() {
   cat <<'EOF'
-up.sh — the single bring-up for thenairn.com (43 services, 12 compose files)
+up.sh — the single bring-up for thenairn.com (41 services, 11 compose files)
 
   tools/up.sh                 bring the whole stack up, in stages, idempotent
   tools/up.sh --build         same, but build images first (cold host)
   tools/up.sh --skip control  same, but leave a stage alone (repeatable).
-                              Use --skip control when running from INSIDE orca
-                              or the paperclip container — that stage recreates
-                              the container you are typing into.
+                              Use it while working inside Orca — that stage
+                              recreates the container.
   tools/up.sh check           validate the merged project, the manifest and the
                               stage map. Changes nothing. Run this first.
   tools/up.sh status          what is actually running
