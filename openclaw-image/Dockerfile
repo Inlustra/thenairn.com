@@ -26,7 +26,7 @@
 # pinned below; switch the tag if the browser tool is ever wanted.
 
 ARG BUN_VERSION=1.4.2
-ARG OPENCLAW_VERSION=2026.9.3
+ARG OPENCLAW_VERSION=2026.9.4
 # Official Bun image, pinned by version and immutable linux/amd64 manifest
 # digest. Copying the standalone binary avoids running a remote installer and
 # keeps Bun independent of the node user's writable home directory.
@@ -103,4 +103,11 @@ RUN apt-get update \
 # lockfiles. Keep both `bun` and its `bunx` alias available system-wide.
 COPY --from=bun-runtime /usr/local/bin/bun /usr/local/bin/bun
 RUN ln -s /usr/local/bin/bun /usr/local/bin/bunx
+# Claude Code, pinned like OPENCLAW_VERSION. Root-owned under /usr/local so the
+# node user cannot self-update it; DISABLE_AUTOUPDATER stops the attempt.
+ARG CLAUDE_CODE_VERSION=2.1.274
+RUN npm install -g --allow-scripts=@anthropic-ai/claude-code @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION} \
+ && npm cache clean --force
+ENV DISABLE_AUTOUPDATER=1
+
 USER node

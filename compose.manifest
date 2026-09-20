@@ -24,7 +24,7 @@
 # Later files win on conflicting keys. `docker-compose.yml` leads by convention.
 # Start order is the STAGE_* map in tools/up.sh — a different thing entirely.
 #
-# Updated 2026-09-15: 12 files, 45 services. The Paperclip app, its dedicated
+# Updated 2026-09-18: 12 files, 46 services. The Paperclip app, its dedicated
 # Postgres service, and the Paperclip-only fleet breaker were retired together.
 # docker-compose.openclaw.yml added 2026-09-09.
 # OpenClaw gateway, pinned to 2026.9.3 via openclaw-image/, the native-app token
@@ -40,9 +40,8 @@ docker-compose.docs.yml           # 2  paperless, paperless-broker
 docker-compose.gracewedding.yml   # 1  gracewedding
 docker-compose.immich.yml         # 5  immich-server, -machine-learning, -kiosk, -redis, -database
 docker-compose.invoicing.yml      # 2  invoiceninja, invoiceninjadb
-docker-compose.media.yml          # 17 the media zoo, both gluetun tunnels
+docker-compose.media.yml          # 18 the media zoo, both gluetun tunnels
 docker-compose.openclaw.yml       # 4  OpenClaw, native auth, Voicebox, Talk adapter
 docker-compose.orca.yml           # 1  orca
 docker-compose.paperbox.yml       # 1  paperbox
-docker-compose.syncthing.yml      # 1  syncthing
 docker-compose.unifi.yml          # 2  unifi-network-application, unifi-db

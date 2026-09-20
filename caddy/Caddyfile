@@ -110,6 +110,12 @@
                 match email nikkihazell@yahoo.co.uk
                 action add role authp/family
             }
+
+            transform user {
+                match realm google
+                match email haz.nairn@gmail.com
+                action add role authp/family
+            }
 		}
 
 		authorization policy adminpolicy {
@@ -241,6 +247,26 @@ http://192.168.96.14 {
 
 auth.thenairn.com {
     authenticate with myportal
+}
+
+http://voicebox.thenairn.com {
+    redir https://{host}{uri}
+}
+
+# Voicebox stays private on the Compose network. LAN and Docker callers bypass
+# interactive auth; external browser access uses the existing admin policy.
+voicebox.thenairn.com {
+    import proxy_error_page
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle @internal {
+        reverse_proxy voicebox:17493
+    }
+    handle {
+        import family
+        reverse_proxy voicebox:17493
+    }
 }
 
 transmission.thenairn.com {
@@ -441,6 +467,19 @@ prowlarr.thenairn.com {
     }
 }
 
+questarr.thenairn.com {
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle @internal {
+        reverse_proxy questarr:5000
+    }
+    handle {
+        import user
+        reverse_proxy questarr:5000
+    }
+}
+
 # Plugsy renders server-side, and its getServerSideProps calls its OWN GraphQL
 # endpoint at whatever public address it believes it is being served on. It
 # takes that address from X-Forwarded-Host, which Caddy's reverse_proxy sets
@@ -510,20 +549,6 @@ nairn.wedding {
 
 gallery.thenairn.com {
     reverse_proxy gallery:3000
-}
-
-sync.thenairn.com {
-    
-    @internal {
-        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
-    }
-    handle @internal {
-        reverse_proxy syncthing:8384
-    }
-    handle {
-        import admin
-        reverse_proxy syncthing:8384
-    }
 }
 
 immich.thenairn.com {

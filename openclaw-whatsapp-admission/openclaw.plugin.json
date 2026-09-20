@@ -1,0 +1,34 @@
+{
+  "id": "whatsapp-admission",
+  "name": "WhatsApp Concierge Admission",
+  "description": "Privately notifies the owner when a new WhatsApp guest requests Concierge access.",
+  "categories": ["channels"],
+  "activation": {
+    "onStartup": true
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["ownerNumber"],
+    "properties": {
+      "ownerNumber": {
+        "type": "string",
+        "pattern": "^\\+[1-9][0-9]{6,14}$"
+      },
+      "accountId": {
+        "type": "string",
+        "default": "default"
+      }
+    }
+  },
+  "uiHints": {
+    "ownerNumber": {
+      "label": "Owner WhatsApp number",
+      "help": "Trusted E.164 destination for new guest approval notifications.",
+      "presentation": "phone-number"
+    },
+    "accountId": {
+      "label": "WhatsApp account ID"
+    }
+  }
+}

@@ -10,10 +10,17 @@ services:
       context: ./openclaw-image
       args:
         # Pinned in openclaw-image/Dockerfile too. Change both together.
-        OPENCLAW_VERSION: "2026.9.3"
+        OPENCLAW_VERSION: "2026.9.4"
+    # Apply the version-pinned WhatsApp Concierge admission UX patch before
+    # the Gateway loads the managed channel package. If a future OpenClaw
+    # version changes that package, the wrapper logs the mismatch and starts
+    # with OpenClaw's still-secure native pairing behavior.
+    command:
+      - /mnt/user/HQ/thenairn.com/openclaw-whatsapp-admission/start-gateway.sh
     environment:
       - HOME=/home/node
       - TERM=xterm-256color
+      - CLAUDE_CONFIG_DIR=/home/node/.claude
       # Keep this "lan". The gateway must listen on the container's network
       # interface for Caddy to reach it; "loopback" would confine it to the
       # container's own namespace and produce a 502 that looks like a routing
@@ -52,6 +59,27 @@ services:
       - /mnt/cache/HQ/thenairn.com:/mnt/user/HQ/thenairn.com
       - ${CONFIG_DIR}:/mnt/user/Config
       - /var/run/docker.sock:/var/run/docker.sock
+      # Claude Code state, SHARED WITH ORCA — one login, one session history,
+      # one set of plugins and skills. Work done in either container is visible
+      # to the other, which is the point; it also means one bad settings.json
+      # edit hits both.
+      #
+      # An earlier note here said this could not be shared, because the
+      # credential file is root-owned 0600 and Claude rewrites it on every
+      # refresh. Only half true: root ignores permissions, so root (orca) can
+      # read and write a node-owned file fine. The breakage is one-directional
+      # — orca's refresh lands a fresh root:root inode and locks uid 1000 out.
+      # The tree is chowned to 1000:1000 and the claude-creds-chown User Script
+      # puts ownership back after each refresh. If OpenClaw agents start
+      # answering "Not logged in · Please run /login", check that watcher first.
+      #
+      # /mnt/cache, not /mnt/user: match the direct-path convention the orca
+      # compose file already uses for its binds. HQ is cache=only, so both
+      # spellings resolve to the same directory.
+      #
+      # Rollback: the pre-2026-09-18 private state is intact at
+      # ${CONFIG_DIR}/openclaw-claude — repoint this line to restore it.
+      - /mnt/cache/HQ/.claude:/home/node/.claude
     # The base image runs as uid/gid 1000 (`node`); the bind mounts above are
     # chowned to match.
     user: "1000:1000"
@@ -72,11 +100,13 @@ services:
     restart: unless-stopped
 
   # Local-first voice studio for Talk Mode. Built from the detached Voicebox
-  # source checkout at /mnt/user/HQ/repos/voicebox, pinned to commit 51f49de.
+  # source checkout at /mnt/user/HQ/repos/voicebox, pinned to commit a2800e4.
   # No host port is published: only peers on thenairncom_default can reach it.
   voicebox:
     container_name: voicebox
-    image: thenairncom-voicebox:51f49de
+    image: thenairncom-voicebox:a2800e4-tower
+    build:
+      context: ./voicebox-image
     runtime: nvidia
     environment:
       NVIDIA_VISIBLE_DEVICES: GPU-47ef7f1b-a0df-c491-bb1f-31d44c8a28c2
