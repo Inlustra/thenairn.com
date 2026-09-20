@@ -107,8 +107,8 @@ STAGE_core_data=(port-permission-module invoiceninjadb unifi-db immich-redis imm
 STAGE_vpn=(gluetun gluetun-uk)
 STAGE_control=(orca openclaw-gateway openclaw-native-auth-bridge voicebox voicebox-openai-bridge)
 STAGE_business=(invoiceninja paperless unifi-network-application)
-STAGE_media=(plex transmission sonarr animesonarr radarr animeradarr prowlarr flaresolverr seerr get_iplayer iplayarr recyclarr plex-meta-manager suwayomi syncyomi paperbox)
-STAGE_home=(immich-server immich-machine-learning immich-kiosk go2rtc frame-cams frigate syncthing weddingphotos gallery gracewedding)
+STAGE_media=(plex transmission sonarr animesonarr radarr animeradarr prowlarr questarr flaresolverr seerr get_iplayer iplayarr recyclarr plex-meta-manager suwayomi syncyomi paperbox)
+STAGE_home=(immich-server immich-machine-learning immich-kiosk go2rtc frame-cams frigate weddingphotos gallery gracewedding)
 STAGE_edge=(plugsy rclone caddy)
 
 stage_services() {                      # $1 = stage name -> echoes its services

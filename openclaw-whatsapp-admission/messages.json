@@ -1,0 +1,11 @@
+{
+  "pairingIntro": "Hi — I haven’t seen you before.",
+  "pairingStatus": "I’ve asked Tom to approve this chat. Once he does, I’ll message you and we can carry on.",
+  "approved": "Tom’s approved it — we can carry on. What would you like help with?",
+  "contact": {
+    "displayName": "Thor — Tower Assistant",
+    "organization": "Tower",
+    "title": "Primary manager",
+    "phone": "+33652254224"
+  }
+}
