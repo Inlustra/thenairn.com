@@ -1,0 +1,46 @@
+{
+  "id": "whatsapp-groups",
+  "name": "WhatsApp Groups",
+  "description": "Create WhatsApp groups and manage their members using the Gateway's existing connection.",
+  "categories": ["channels"],
+  "contracts": {
+    "tools": ["whatsapp_group_create", "whatsapp_group_add", "whatsapp_group_info"]
+  },
+  "activation": {
+    "onStartup": true
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "defaultAccountId": {
+        "type": "string"
+      },
+      "maxParticipants": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 256,
+        "default": 32
+      }
+    }
+  },
+  "uiHints": {
+    "": {
+      "label": "WhatsApp Groups",
+      "help": "Lets an agent create WhatsApp groups and add members. It borrows the Gateway's existing WhatsApp connection rather than opening its own, so it needs no separate credentials. Grant the tools per agent under that agent's tools.allow - they are not given to every agent by default."
+    },
+    "defaultAccountId": {
+      "label": "Default account",
+      "help": "WhatsApp account id used when a tool call does not name one. Leave blank to use the channel's default account."
+    },
+    "maxParticipants": {
+      "label": "Max participants per call",
+      "help": "Upper bound on how many people one call may create a group with or add at once. A guard against a mistaken bulk add, not a WhatsApp limit."
+    }
+  },
+  "toolMetadata": {
+    "whatsapp_group_create": { "optional": true },
+    "whatsapp_group_add": { "optional": true },
+    "whatsapp_group_info": { "optional": true }
+  }
+}
