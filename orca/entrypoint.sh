@@ -31,13 +31,44 @@ if [ -d "$HOSTROOT" ]; then
   done
 fi
 
-# Ensure the Claude Code *binary* exists (container-native, persisted npm
-# prefix); its config/auth/history come from the host via the symlink above.
-if ! command -v claude >/dev/null 2>&1; then
-  echo "[orca] installing claude into $NPM_CONFIG_PREFIX ..."
-  npm install -g @anthropic-ai/claude-code >/tmp/claude-install.log 2>&1 \
-    || echo "[orca] claude install failed (see /tmp/claude-install.log)" >&2
+# codex and opencode each share ONE credential store with the host, which links
+# the same two paths into its own tmpfs /root (user script `agent-cli-setup`),
+# so a single login on either side serves both. Pointed straight at HQ rather
+# than via /hostroot, so neither side depends on the other having booted first.
+#
+# /mnt/cache, not /mnt/user: HQ is cache=only so they are the same directory,
+# but /mnt/user is shfs (FUSE) and this compose file bind-mounts /mnt/cache, so
+# both sides reach these files as the same btrfs inode. That is what makes
+# sharing opencode's SQLite WAL database safe — it is then no more shared than
+# between two processes on one machine. Via the /mnt/user view it would not be.
+# Directory symlinks, never file ones: both tools rewrite credentials through
+# an atomic rename(), which would replace a file symlink with a real file and
+# silently split the store in two.
+if [ -d /mnt/cache/HQ ]; then
+  for pair in "$HOME/.codex:/mnt/cache/HQ/.codex" \
+              "$HOME/.local/share/opencode:/mnt/cache/HQ/.opencode"; do
+    dst="${pair%%:*}"; store="${pair#*:}"
+    mkdir -p "$store" "$(dirname "$dst")"
+    if [ ! -L "$dst" ] && [ -e "$dst" ]; then
+      cp -a --update "$dst"/. "$store"/ 2>/dev/null || true
+      rm -rf "$dst"
+    fi
+    ln -sfn "$store" "$dst"
+  done
 fi
+
+# Ensure the agent CLI *binaries* exist (container-native, persisted npm
+# prefix). Their state lives in the persisted HOME too, so logins survive a
+# recreate: claude via the /hostroot symlink above, codex and opencode via the
+# shared HQ stores linked just above. Nothing here logs anyone in — these are
+# re-installs for a wiped prefix, not a credential path.
+for spec in claude:@anthropic-ai/claude-code codex:@openai/codex opencode:opencode-ai; do
+  bin="${spec%%:*}"; pkg="${spec#*:}"
+  command -v "$bin" >/dev/null 2>&1 && continue
+  echo "[orca] installing $bin into $NPM_CONFIG_PREFIX ..."
+  npm install -g "$pkg" >"/tmp/$bin-install.log" 2>&1 \
+    || echo "[orca] $bin install failed (see /tmp/$bin-install.log)" >&2
+done
 
 # Headless display for Electron. NOTE: xvfb-run hangs when the container is
 # detached, so start Xvfb directly and export DISPLAY ourselves.

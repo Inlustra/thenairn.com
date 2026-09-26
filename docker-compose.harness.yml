@@ -1,0 +1,46 @@
+services:
+  # Tower's agent harness (thenairn.com/harness): Milo on WhatsApp for approved
+  # guests, Thor on Telegram for Tom, and the media agent behind them. Replaces
+  # OpenClaw (stopped 2026-09-26). All state is ${CONFIG_DIR}/harness: SQLite,
+  # the WhatsApp session, Codex's home, Mem0's store, credentials.json (600).
+  #
+  # The console (every conversation in full) is harness.thenairn.com, via
+  # Caddy. NO `ports:` KEY, DELIBERATELY: the console has no auth of its own.
+  harness:
+    container_name: harness
+    build:
+      context: ./harness
+    image: thenairncom-harness:latest
+    environment:
+      - HOME=/root
+      - HARNESS_STATE=/mnt/user/Config/harness
+      - WHATSAPP_MODE=live
+      - TELEGRAM=on
+      - CONSOLE_PORT=7812
+      - LOG_LEVEL=info
+      # Private: phone numbers and chat IDs live in .env (and the thenairn-env
+      # 1Password item), never in this public repo.
+      - OWNER_NUMBER=${HARNESS_OWNER_NUMBER}
+      - MILO_NUMBER=${HARNESS_MILO_NUMBER}
+      - TELEGRAM_OWNER_ID=${HARNESS_TELEGRAM_OWNER_ID}
+    volumes:
+      # Thor and the media agent operate the box from in here, with the same
+      # reach OpenClaw's agents had. Guest-facing Milo gets none of it: his
+      # threads have no execution environment at all (see harness/src/milo.ts).
+      # docker.sock is root-equivalent on Tower. All compose files share the
+      # project `thenairncom`, so never run --remove-orphans; up.sh refuses it.
+      - /mnt/user:/mnt/user
+      - /mnt/cache:/mnt/cache
+      - /boot:/boot
+      - /mnt/cache/HQ/thenairn.com:/mnt/user/HQ/thenairn.com
+      - ${CONFIG_DIR}:/mnt/user/Config
+      - /var/run/docker.sock:/var/run/docker.sock
+      # gh for Thor, the same login orca uses.
+      - /mnt/cache/HQ/.gh:/root/.config/gh
+    healthcheck:
+      test: ["CMD", "bun", "-e", "fetch('http://127.0.0.1:7812/api/convos').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped

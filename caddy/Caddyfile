@@ -52,6 +52,24 @@
 
 			cookie domain thenairn.com
             cookie path /
+
+            # Without this, caddy-security SILENTLY IGNORES the redirect_url it
+            # was itself given and dumps the user on the portal landing page —
+            # the "My Identity" screen — instead of the page they asked for.
+            # It affected every gated vhost, on every login, not just one.
+            #
+            # The authorize policies do their half correctly: an unauthenticated
+            # request to e.g. claw.thenairn.com 302s to
+            #   …/authorization-code-callback?redirect_url=https%3A%2F%2Fclaw.thenairn.com%2F
+            # The portal then discards that parameter unless the target matches
+            # a trusted URI, and with no directive present nothing is trusted.
+            # Added 2026-09-09.
+            #
+            # Note `suffix` matches on the string, so it would also trust a
+            # hypothetical evilthenairn.com. Every host actually served here is
+            # a real subdomain, so tighten to explicit entries if that ever
+            # stops being a safe assumption.
+            trust login redirect uri domain suffix thenairn.com path prefix /
 			ui {
 				links {
 					"My Identity" "/whoami" icon "las la-user"
@@ -90,6 +108,12 @@
             transform user {
                 match realm google
                 match email nikkihazell@yahoo.co.uk
+                action add role authp/family
+            }
+
+            transform user {
+                match realm google
+                match email haz.nairn@gmail.com
                 action add role authp/family
             }
 		}
@@ -163,13 +187,57 @@ HTML
 # served only a 502. The hostname now falls through to the same
 # connection-refused an unknown subdomain gets, which is the honest answer.
 
+# OpenClaw gateway Control UI, repointed 2026-09-09 at the openclaw-gateway
+# service (docker-compose.openclaw.yml). It previously proxied
+# 192.168.96.14:18790 with a hardcoded bearer token; nothing had listened there
+# since the 2026-04 attempt was retired, and this repo is public, so that token
+# was readable on GitHub for months. It is gone from HEAD as of this change but
+# is STILL IN THE PUBLIC HISTORY and must be treated as compromised — same
+# shape as the HINDSIGHT_API_TOKEN incident in commit 715ae79.
+#
+# NO @internal BYPASS, DELIBERATELY — unlike almost every other vhost here.
+# OpenClaw runs in trusted-proxy auth mode: it has no login of its own and
+# takes the caller's identity from a header. A request arriving without that
+# header is refused with AUTH_IDENTITY_HEADER_REQUIRED, so a LAN bypass would
+# not mean "no login on the LAN", it would mean a hard 401 on the LAN. Every
+# request goes through the portal instead; the Google session cookie makes that
+# a single click, and LAN and external behave identically.
+#
+# header_up SETS X-Forwarded-User rather than appending, from the claims
+# caddy-security already injected (adminpolicy ends `inject headers with
+# claims`, which emits X-Token-User-Email). A spoofed inbound X-Forwarded-User
+# is therefore overwritten here, not honoured.
+#
+# The gateway publishes no host port — 18789 is reachable only from
+# thenairncom_default, and openclaw.json trusts only Caddy's address on that
+# network. Those two facts are what make trusting a header safe; loosening
+# either one breaks the model.
 claw.thenairn.com {
     import proxy_error_page
     import admin
-    reverse_proxy 192.168.96.14:18790 {
-        header_up Authorization "Bearer 7u88crYayckAQO9QkoW7Z8BcOFi8XLNMWRumgCviFj8"
+    reverse_proxy openclaw-gateway:18789 {
+        header_up X-Forwarded-User {http.request.header.X-Token-User-Email}
+        header_up X-Forwarded-Proto https
     }
 }
+# Native OpenClaw companion apps cannot complete the browser-only Google OAuth
+# flow used by claw.thenairn.com. This hostname therefore terminates TLS at
+# Caddy and forwards only to the loopback-only token bridge sharing Caddy's
+# network namespace. The bridge validates connect.params.auth.token before it
+# relays a byte to the trusted-proxy Gateway. No Gateway port is published.
+claw-native.thenairn.com {
+    import proxy_error_page
+    reverse_proxy 127.0.0.1:18791 {
+        # Overwrite all attribution supplied by the public client. The bridge
+        # accepts exactly one syntactically valid address in X-Forwarded-For.
+        header_up Host claw-native.thenairn.com
+        header_up X-Forwarded-Host claw-native.thenairn.com
+        header_up X-Forwarded-Proto https
+        header_up X-Forwarded-For {http.request.remote.host}
+        header_up X-Real-IP {http.request.remote.host}
+    }
+}
+
 
 http://192.168.96.14 { 
     reverse_proxy go2rtc:1984 {
@@ -179,6 +247,26 @@ http://192.168.96.14 {
 
 auth.thenairn.com {
     authenticate with myportal
+}
+
+http://voicebox.thenairn.com {
+    redir https://{host}{uri}
+}
+
+# Voicebox stays private on the Compose network. LAN and Docker callers bypass
+# interactive auth; external browser access uses the existing admin policy.
+voicebox.thenairn.com {
+    import proxy_error_page
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle @internal {
+        reverse_proxy voicebox:17493
+    }
+    handle {
+        import family
+        reverse_proxy voicebox:17493
+    }
 }
 
 transmission.thenairn.com {
@@ -206,9 +294,20 @@ http://gluetun.thenairn.com {
     }
 }
 
+# Seerr retired 2026-09-25: film and show requests go to Milo on WhatsApp, and
+# this page (thenairn.com/Playground/milo, gitignored like the rest of
+# Playground) says so. PUBLIC like the page it replaced; it holds nothing but
+# Milo's number. Edit a file and it is live, no reload needed.
 media.thenairn.com {
-    reverse_proxy seerr:5055
-} 
+    root * /Playground/milo
+    encode zstd gzip
+    header Cache-Control "no-cache"
+    # milo.vcf is the "Add to contacts" button: phones open it as a contact card.
+    @vcf path *.vcf
+    header @vcf Content-Type "text/vcard; charset=utf-8"
+    header @vcf Content-Disposition "inline; filename=\"Milo.vcf\""
+    file_server
+}
  
 home.thenairn.com {
     reverse_proxy 192.168.96.15:8123
@@ -379,6 +478,19 @@ prowlarr.thenairn.com {
     }
 }
 
+questarr.thenairn.com {
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle @internal {
+        reverse_proxy questarr:5000
+    }
+    handle {
+        import user
+        reverse_proxy questarr:5000
+    }
+}
+
 # Plugsy renders server-side, and its getServerSideProps calls its OWN GraphQL
 # endpoint at whatever public address it believes it is being served on. It
 # takes that address from X-Forwarded-Host, which Caddy's reverse_proxy sets
@@ -448,20 +560,6 @@ nairn.wedding {
 
 gallery.thenairn.com {
     reverse_proxy gallery:3000
-}
-
-sync.thenairn.com {
-    
-    @internal {
-        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
-    }
-    handle @internal {
-        reverse_proxy syncthing:8384
-    }
-    handle {
-        import admin
-        reverse_proxy syncthing:8384
-    }
 }
 
 immich.thenairn.com {
@@ -744,6 +842,56 @@ grace-wedding-book.thenairn.com {
     file_server
 }
 
+# The RainnWorks studio site. PUBLIC — it is the company's front door, so no
+# `import admin`. A static site served straight off the Playground mount
+# (thenairn.com/Playground/rainnworks, gitignored like the rest of Playground);
+# implemented from the claude.ai/design project "rainn.works": a home page
+# plus one page per app. Edit a file and it is live — no reload needed.
+#
+# Two names, two ways of getting a certificate, one site:
+#   rainnworks.thenairn.com  Porkbun zone: the usual global acme_dns porkbun.
+#   rainn.works, www         CLOUDFLARE zone, proxied (orange cloud), SSL mode
+#                            Full (strict). This Caddy has no Cloudflare DNS
+#                            plugin, so it cannot do ACME for them; instead it
+#                            presents a Cloudflare Origin CA certificate
+#                            (ECC, rainn.works + *.rainn.works, expires
+#                            2041-09-21) from /caddy/certs/rainn.works/, i.e.
+#                            /mnt/user/Config/caddy/certs/rainn.works/ on the
+#                            host. Only Cloudflare trusts that certificate, so
+#                            these names only work proxied. Manage the zone
+#                            with `cf` — see HQ CLAUDE.md, "Cloudflare".
+(rainnworks_site) {
+    root * /Playground/rainnworks
+    encode zstd gzip
+    # Revalidate every time: the pages change by hand and should never be stale.
+    header Cache-Control "no-cache"
+    # /tilecam/privacy serves privacy.html. App Store Connect has the .html
+    # spelling on record, so both must keep working.
+    try_files {path} {path}.html
+    file_server
+
+    # The site's own 404 rather than the stack-wide proxy_error_page, which
+    # is written for a dead upstream and there is no upstream here.
+    handle_errors 404 {
+        rewrite * /404.html
+        file_server
+    }
+}
+
+rainnworks.thenairn.com {
+    import rainnworks_site
+}
+
+rainn.works {
+    tls /caddy/certs/rainn.works/origin.pem /caddy/certs/rainn.works/origin.key
+    import rainnworks_site
+}
+
+www.rainn.works {
+    tls /caddy/certs/rainn.works/origin.pem /caddy/certs/rainn.works/origin.key
+    redir https://rainn.works{uri} 308
+}
+
 # The guests' phones, and the state they follow.
 #
 # PUBLIC — no `import admin`, on purpose. Quentin is French and much of his
@@ -967,5 +1115,22 @@ plannotator.thenairn.com {
     }
     handle {
         abort
+    }
+}
+
+# Agent harness console (thenairn.com/harness): every Milo/Thor conversation in
+# full. The `harness` container (docker-compose.harness.yml), port 7812. No auth
+# of its own, so Google auth off-LAN.
+harness.thenairn.com {
+    import proxy_error_page
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle @internal {
+        reverse_proxy harness:7812
+    }
+    handle {
+        import admin
+        reverse_proxy harness:7812
     }
 }

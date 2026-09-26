@@ -1,0 +1,78 @@
+{
+  "id": "agent-policy",
+  "name": "Shared Agent Policy",
+  "description": "Injects operator-owned shared and per-agent instruction files into every agent's system context.",
+  "categories": ["security"],
+  "contracts": {
+    "tools": ["agent_policy"]
+  },
+  "activation": {
+    "onStartup": true
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "enabled": {
+        "type": "boolean",
+        "default": true
+      },
+      "defaults": {
+        "type": "array",
+        "items": { "type": "string" },
+        "default": []
+      },
+      "byAgent": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "default": {}
+      },
+      "maxFileChars": {
+        "type": "integer",
+        "minimum": 200,
+        "maximum": 20000,
+        "default": 8000
+      },
+      "maxTotalChars": {
+        "type": "integer",
+        "minimum": 200,
+        "maximum": 40000,
+        "default": 16000
+      }
+    }
+  },
+  "uiHints": {
+    "": {
+      "label": "Shared Agent Policy",
+      "help": "Operator-owned instruction files injected into every agent's system context. Use this for rules that must apply Gateway-wide, such as routing responsibilities, identity on shared channels, and authorisation boundaries."
+    },
+    "enabled": {
+      "label": "Enabled",
+      "help": "Turn shared policy injection on or off. Disabling stops injection on the next turn; it does not delete any files."
+    },
+    "defaults": {
+      "label": "Default policy files",
+      "help": "Absolute paths to Markdown files injected for every agent, in order. Example: /mnt/user/HQ/agent-policy/core.md"
+    },
+    "byAgent": {
+      "label": "Per-agent policy files",
+      "help": "Extra absolute Markdown paths per agent id, appended after the defaults. Use this for role responsibilities and anything containing identifiers that should not reach every agent."
+    },
+    "maxFileChars": {
+      "label": "Max characters per file",
+      "help": "A policy file larger than this is refused rather than truncated, and the agent is told its policy is incomplete. Keep policy short enough to stay well inside this limit."
+    },
+    "maxTotalChars": {
+      "label": "Max characters total",
+      "help": "Combined budget across all policy files for one agent. Files that would exceed it are skipped and reported to the agent rather than silently dropped."
+    }
+  },
+  "toolMetadata": {
+    "agent_policy": {
+      "optional": true
+    }
+  }
+}

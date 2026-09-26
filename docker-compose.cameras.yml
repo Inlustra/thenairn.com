@@ -63,7 +63,7 @@ services:
       - /dev/bus/usb:/dev/bus/usb   # Coral USB Accelerator (re-enumerates on init)
     environment:
       - TZ=Europe/Paris
-      - NVIDIA_VISIBLE_DEVICES=GPU-c1d14a88-b2fa-5786-e47d-64af7a34ea34
+      - NVIDIA_VISIBLE_DEVICES=GPU-47ef7f1b-a0df-c491-bb1f-31d44c8a28c2
       - NVIDIA_DRIVER_CAPABILITIES=all
       - FRIGATE_MQTT_USER=${FRIGATE_MQTT_USER}
       - FRIGATE_MQTT_PASSWORD=${FRIGATE_MQTT_PASSWORD}
