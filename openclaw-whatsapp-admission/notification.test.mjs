@@ -17,8 +17,8 @@ test("owner alert includes only bounded identity metadata and a simple decision 
 });
 
 test("config requires a valid E.164 owner and defaults the account", () => {
-  assert.deepEqual(normalizeAdmissionConfig({ ownerNumber: "+447903180530" }), {
-    ownerNumber: "+447903180530",
+  assert.deepEqual(normalizeAdmissionConfig({ ownerNumber: "+447700900001" }), {
+    ownerNumber: "+447700900001",
     accountId: "default",
   });
   assert.throws(() => normalizeAdmissionConfig({ ownerNumber: "07903180530" }), /E\.164/);
