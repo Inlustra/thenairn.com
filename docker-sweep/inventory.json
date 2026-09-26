@@ -271,14 +271,6 @@
       "criticality": "high",
       "custom_build": true,
       "note": "hosts this Claude session; recreate kills running sessions"
-    },
-    {
-      "container": "seerr",
-      "image": "ghcr.io/seerr-team/seerr:latest",
-      "repo": "seerr-team/seerr",
-      "compose": "docker-compose.media.yml",
-      "criticality": "low",
-      "note": "migrated from overseerr 2026-08-01"
     }
   ]
 }
