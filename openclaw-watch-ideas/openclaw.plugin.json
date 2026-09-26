@@ -1,0 +1,48 @@
+{
+  "id": "watch-ideas",
+  "name": "Watch Ideas",
+  "description": "Link-free film and TV recommendation search for guest-facing agents, plus a guard that keeps them off page-fetching tools.",
+  "categories": ["security"],
+  "contracts": {
+    "tools": ["find_watch_ideas", "find_anime", "check_library"]
+  },
+  "activation": {
+    "onStartup": true
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "agents": {
+        "type": "array",
+        "items": { "type": "string" },
+        "default": ["concierge"]
+      },
+      "count": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 8,
+        "default": 6
+      }
+    }
+  },
+  "uiHints": {
+    "": {
+      "label": "Watch Ideas",
+      "help": "Gives a guest-facing agent a film/TV recommendation search (find_watch_ideas), an AniList anime lookup (find_anime), and web_fetch limited to pages its own searches returned. Queries with URLs, domains, IPs, search operators or nothing about film/TV are refused. Grant the tools per agent under tools.allow."
+    },
+    "agents": {
+      "label": "Guarded agents",
+      "help": "Agent ids whose web_fetch is limited to their own search results, and who are refused web_search, x_search and browser tools outright, whatever their allowlist says. Default: concierge (Milo)."
+    },
+    "count": {
+      "label": "Results per search",
+      "help": "How many results one search returns, 1-8."
+    }
+  },
+  "toolMetadata": {
+    "find_watch_ideas": { "optional": true },
+    "find_anime": { "optional": true },
+    "check_library": { "optional": true }
+  }
+}

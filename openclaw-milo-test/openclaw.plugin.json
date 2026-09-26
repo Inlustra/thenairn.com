@@ -1,0 +1,1 @@
+{"id":"milo-test","name":"Milo isolated test transport","channels":["milo-test"],"configSchema":{"type":"object","additionalProperties":false,"properties":{}},"channelConfigs":{"milo-test":{"schema":{"type":"object","additionalProperties":false,"properties":{"enabled":{"type":"boolean"}}}}}}
