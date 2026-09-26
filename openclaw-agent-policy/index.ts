@@ -97,22 +97,48 @@ export default definePluginEntry({
         const root = resolveRoot(config);
 
         if (input.action === "list") {
-          return { root, files: await listPolicyFiles(root) };
+          const files = await listPolicyFiles(root);
+          return {
+            content: [
+              {
+                type: "text",
+                text: `Policy root: ${root}\n${files.length} file(s):\n${files
+                  .map((file) => `- ${file}`)
+                  .join("\n")}`,
+              },
+            ],
+            details: { root, files },
+          };
         }
 
         if (input.action === "assignments") {
           const agentIds = Object.keys(api.config?.agents?.entries ?? {});
+          const assignments = describeAssignments(config, agentIds);
           return {
-            root,
-            defaults: config.defaults,
-            assignments: describeAssignments(config, agentIds),
+            content: [
+              {
+                type: "text",
+                text: [
+                  `Policy root: ${root}`,
+                  `Defaults: ${config.defaults.join(", ") || "(none)"}`,
+                  ...assignments.map(
+                    (entry) => `${entry.agentId}: ${entry.files.join(", ") || "(defaults only)"}`,
+                  ),
+                ].join("\n"),
+              },
+            ],
+            details: { root, defaults: config.defaults, assignments },
           };
         }
 
         if (!input.file) throw new Error("file is required for this action");
 
         if (input.action === "read") {
-          return { root, file: input.file, content: await readPolicyFile(root, input.file) };
+          const text = await readPolicyFile(root, input.file);
+          return {
+            content: [{ type: "text", text }],
+            details: { root, file: input.file, content: text },
+          };
         }
 
         const written = await writePolicyFile(
@@ -122,7 +148,15 @@ export default definePluginEntry({
           config.maxFileChars,
         );
         api.logger.info(`agent-policy: updated ${written.path} (${written.chars} chars)`);
-        return { root, ...written, appliesFrom: "next turn" };
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Wrote ${written.path} (${written.chars} chars). Applies from the next turn.`,
+            },
+          ],
+          details: { root, ...written, appliesFrom: "next turn" },
+        };
       },
     });
 
