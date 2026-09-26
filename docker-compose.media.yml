@@ -187,19 +187,6 @@ services:
       - TZ=Europe/Paris
     restart: unless-stopped
 
-  # overseerr replaced by seerr (merged Overseerr+Jellyseerr successor) 2026-08-01.
-  # Overseerr upstream archived; config migrated to ${CONFIG_DIR}/seerr. Original
-  # ${CONFIG_DIR}/overseer + stopped `overseerr` container retained as rollback.
-  seerr:
-    image: ghcr.io/seerr-team/seerr:latest
-    container_name: seerr
-    environment:
-      - TZ=Europe/Paris
-      - LOG_LEVEL=info
-    volumes:
-      - ${CONFIG_DIR}/seerr:/app/config
-    restart: unless-stopped
-
   prowlarr:
     container_name: prowlarr
     image: ghcr.io/linuxserver/prowlarr:develop

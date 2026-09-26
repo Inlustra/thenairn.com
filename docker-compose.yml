@@ -41,7 +41,6 @@ services:
       - plex
       - plugsy
       - prowlarr
-      - seerr
       - paperless
       - rclone
       - invoiceninja
