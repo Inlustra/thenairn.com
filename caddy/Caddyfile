@@ -1123,6 +1123,15 @@ plannotator.thenairn.com {
 # of its own, so Google auth off-LAN.
 harness.thenairn.com {
     import proxy_error_page
+    # Anything that changes something (prompts, messages to Thor) needs Tom's
+    # Google sign-in even on the LAN: Thor has full access to Tower.
+    @write {
+        method POST PUT PATCH DELETE
+    }
+    handle @write {
+        import admin
+        reverse_proxy harness:7812
+    }
     @internal {
         remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
     }

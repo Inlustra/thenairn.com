@@ -1,5 +1,5 @@
 services:
-  # Tower's agent harness (thenairn.com/harness): Milo on WhatsApp for approved
+  # Milo (github.com/RainnWorks/milo, checked out at HQ/repos/milo): Milo on WhatsApp for approved
   # guests, Thor on Telegram for Tom, and the media agent behind them. Replaces
   # OpenClaw (stopped 2026-09-26). All state is ${CONFIG_DIR}/harness: SQLite,
   # the WhatsApp session, Codex's home, Mem0's store, credentials.json (600).
@@ -8,12 +8,15 @@ services:
   # Caddy. NO `ports:` KEY, DELIBERATELY: the console has no auth of its own.
   harness:
     container_name: harness
+    # Deploy with `scripts/deploy.sh` in that checkout (tests, replays, then
+    # this service), not by building here.
     build:
-      context: ./harness
+      context: ../repos/milo
     image: thenairncom-harness:latest
+    # Tower's settings (media stack, paths): not private, so in this repo.
+    env_file: milo.env
     environment:
       - HOME=/root
-      - HARNESS_STATE=/mnt/user/Config/harness
       - WHATSAPP_MODE=live
       - TELEGRAM=on
       - CONSOLE_PORT=7812
@@ -26,7 +29,7 @@ services:
     volumes:
       # Thor and the media agent operate the box from in here, with the same
       # reach OpenClaw's agents had. Guest-facing Milo gets none of it: his
-      # threads have no execution environment at all (see harness/src/milo.ts).
+      # threads have no execution environment at all (see src/milo.ts there).
       # docker.sock is root-equivalent on Tower. All compose files share the
       # project `thenairncom`, so never run --remove-orphans; up.sh refuses it.
       - /mnt/user:/mnt/user
