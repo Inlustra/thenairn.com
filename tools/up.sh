@@ -105,9 +105,9 @@ STAGE_NAMES=(core-data vpn control business media home edge)
 
 STAGE_core_data=(port-permission-module invoiceninjadb unifi-db immich-redis immich-database paperless-broker)
 STAGE_vpn=(gluetun gluetun-uk)
-STAGE_control=(orca openclaw-gateway openclaw-native-auth-bridge voicebox voicebox-openai-bridge)
+STAGE_control=(orca voicebox voicebox-openai-bridge)
 STAGE_business=(invoiceninja paperless unifi-network-application)
-STAGE_media=(plex transmission sonarr animesonarr radarr animeradarr prowlarr questarr flaresolverr seerr get_iplayer iplayarr recyclarr plex-meta-manager suwayomi syncyomi paperbox)
+STAGE_media=(plex transmission sonarr animesonarr radarr animeradarr prowlarr questarr flaresolverr get_iplayer iplayarr recyclarr plex-meta-manager suwayomi syncyomi paperbox harness)
 STAGE_home=(immich-server immich-machine-learning immich-kiosk go2rtc frame-cams frigate weddingphotos gallery gracewedding)
 STAGE_edge=(plugsy rclone caddy)
 

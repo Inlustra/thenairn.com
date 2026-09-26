@@ -1,0 +1,6 @@
+node_modules
+codex-proto
+local_cache
+*.log
+Dockerfile
+.dockerignore
