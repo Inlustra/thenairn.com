@@ -294,9 +294,20 @@ http://gluetun.thenairn.com {
     }
 }
 
+# Seerr retired 2026-09-25: film and show requests go to Milo on WhatsApp, and
+# this page (thenairn.com/Playground/milo, gitignored like the rest of
+# Playground) says so. PUBLIC like the page it replaced; it holds nothing but
+# Milo's number. Edit a file and it is live, no reload needed.
 media.thenairn.com {
-    reverse_proxy seerr:5055
-} 
+    root * /Playground/milo
+    encode zstd gzip
+    header Cache-Control "no-cache"
+    # milo.vcf is the "Add to contacts" button: phones open it as a contact card.
+    @vcf path *.vcf
+    header @vcf Content-Type "text/vcard; charset=utf-8"
+    header @vcf Content-Disposition "inline; filename=\"Milo.vcf\""
+    file_server
+}
  
 home.thenairn.com {
     reverse_proxy 192.168.96.15:8123
@@ -831,6 +842,56 @@ grace-wedding-book.thenairn.com {
     file_server
 }
 
+# The RainnWorks studio site. PUBLIC — it is the company's front door, so no
+# `import admin`. A static site served straight off the Playground mount
+# (thenairn.com/Playground/rainnworks, gitignored like the rest of Playground);
+# implemented from the claude.ai/design project "rainn.works": a home page
+# plus one page per app. Edit a file and it is live — no reload needed.
+#
+# Two names, two ways of getting a certificate, one site:
+#   rainnworks.thenairn.com  Porkbun zone: the usual global acme_dns porkbun.
+#   rainn.works, www         CLOUDFLARE zone, proxied (orange cloud), SSL mode
+#                            Full (strict). This Caddy has no Cloudflare DNS
+#                            plugin, so it cannot do ACME for them; instead it
+#                            presents a Cloudflare Origin CA certificate
+#                            (ECC, rainn.works + *.rainn.works, expires
+#                            2041-09-21) from /caddy/certs/rainn.works/, i.e.
+#                            /mnt/user/Config/caddy/certs/rainn.works/ on the
+#                            host. Only Cloudflare trusts that certificate, so
+#                            these names only work proxied. Manage the zone
+#                            with `cf` — see HQ CLAUDE.md, "Cloudflare".
+(rainnworks_site) {
+    root * /Playground/rainnworks
+    encode zstd gzip
+    # Revalidate every time: the pages change by hand and should never be stale.
+    header Cache-Control "no-cache"
+    # /tilecam/privacy serves privacy.html. App Store Connect has the .html
+    # spelling on record, so both must keep working.
+    try_files {path} {path}.html
+    file_server
+
+    # The site's own 404 rather than the stack-wide proxy_error_page, which
+    # is written for a dead upstream and there is no upstream here.
+    handle_errors 404 {
+        rewrite * /404.html
+        file_server
+    }
+}
+
+rainnworks.thenairn.com {
+    import rainnworks_site
+}
+
+rainn.works {
+    tls /caddy/certs/rainn.works/origin.pem /caddy/certs/rainn.works/origin.key
+    import rainnworks_site
+}
+
+www.rainn.works {
+    tls /caddy/certs/rainn.works/origin.pem /caddy/certs/rainn.works/origin.key
+    redir https://rainn.works{uri} 308
+}
+
 # The guests' phones, and the state they follow.
 #
 # PUBLIC — no `import admin`, on purpose. Quentin is French and much of his
@@ -1054,5 +1115,22 @@ plannotator.thenairn.com {
     }
     handle {
         abort
+    }
+}
+
+# Agent harness console (thenairn.com/harness): every Milo/Thor conversation in
+# full. The `harness` container (docker-compose.harness.yml), port 7812. No auth
+# of its own, so Google auth off-LAN.
+harness.thenairn.com {
+    import proxy_error_page
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle @internal {
+        reverse_proxy harness:7812
+    }
+    handle {
+        import admin
+        reverse_proxy harness:7812
     }
 }

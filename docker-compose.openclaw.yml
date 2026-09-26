@@ -1,5 +1,11 @@
 services:
+  # RETIRED 2026-09-26: replaced by the harness (docker-compose.harness.yml).
+  # Opt-in only via the `openclaw` profile, so a stack bring-up can't revive it:
+  # it holds the same WhatsApp session and Telegram bot as the harness, and two
+  # holders fight (WhatsApp unlinks the device). Start by name only, and only
+  # after stopping the harness:  docker compose -p thenairncom --profile openclaw up -d openclaw-gateway
   openclaw-gateway:
+    profiles: ["openclaw"]
     container_name: openclaw-gateway
     labels:
       plugsy.name: "OpenClaw"
@@ -164,6 +170,8 @@ services:
     # originate from that same trusted address, without widening trustedProxies.
     # The bridge binds loopback only; Caddy reaches it at 127.0.0.1:18791.
     network_mode: service:caddy
+    # Only useful with the gateway: retired with it (see above).
+    profiles: ["openclaw"]
     depends_on:
       caddy:
         condition: service_started

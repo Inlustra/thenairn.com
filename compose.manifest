@@ -31,6 +31,7 @@
 # bridge, and private GPU-backed Voicebox plus its OpenAI-compatible Talk adapter.
 # claw.thenairn.com remains Google OAuth-only; the auth bridge shares Caddy's
 # network namespace and maps validated native clients to trusted-proxy.
+# docker-compose.harness.yml added 2026-09-26: the agent harness replacing OpenClaw.
 # If you add or remove a file here, `tools/up.sh check` will tell you what else
 # needs updating before anything starts.
 
@@ -38,10 +39,11 @@ docker-compose.yml                # 6  caddy, plugsy, rclone, port-permission-mo
 docker-compose.cameras.yml        # 3  go2rtc, frigate, frame-cams
 docker-compose.docs.yml           # 2  paperless, paperless-broker
 docker-compose.gracewedding.yml   # 1  gracewedding
+docker-compose.harness.yml        # 1  harness: Milo (WhatsApp), Thor (Telegram), media agent
 docker-compose.immich.yml         # 5  immich-server, -machine-learning, -kiosk, -redis, -database
 docker-compose.invoicing.yml      # 2  invoiceninja, invoiceninjadb
 docker-compose.media.yml          # 18 the media zoo, both gluetun tunnels
-docker-compose.openclaw.yml       # 4  OpenClaw, native auth, Voicebox, Talk adapter
+docker-compose.openclaw.yml       # 4  Voicebox, Talk adapter; OpenClaw + native auth behind the `openclaw` profile (retired 2026-09-26)
 docker-compose.orca.yml           # 1  orca
 docker-compose.paperbox.yml       # 1  paperbox
 docker-compose.unifi.yml          # 2  unifi-network-application, unifi-db
