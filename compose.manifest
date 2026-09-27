@@ -32,10 +32,12 @@
 # claw.thenairn.com remains Google OAuth-only; the auth bridge shares Caddy's
 # network namespace and maps validated native clients to trusted-proxy.
 # docker-compose.harness.yml added 2026-09-26: the agent harness replacing OpenClaw.
+# docker-compose.attention.yml added 2026-09-27: the Attention daemon, moved from Tom's Mac.
 # If you add or remove a file here, `tools/up.sh check` will tell you what else
 # needs updating before anything starts.
 
 docker-compose.yml                # 6  caddy, plugsy, rclone, port-permission-module, +2
+docker-compose.attention.yml      # 1  attention: the Attention daemon (dev, bun --watch on HQ/repos/Attention)
 docker-compose.cameras.yml        # 3  go2rtc, frigate, frame-cams
 docker-compose.docs.yml           # 2  paperless, paperless-broker
 docker-compose.gracewedding.yml   # 1  gracewedding
