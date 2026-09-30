@@ -25,6 +25,7 @@ services:
         --listen 0.0.0.0:7420
         --pairing-address https://attention.thenairn.com
         --pair-from-network
+        --turns 40
     environment:
       - HOME=/root
     volumes:
