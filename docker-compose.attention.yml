@@ -1,0 +1,35 @@
+services:
+  # Attention (github.com/RainnWorks/Attention, checked out at HQ/repos/Attention):
+  # the daemon behind the Attention phone app. Dev harness: runs the checkout
+  # itself under `bun --watch`, so an edit in HQ/repos/Attention restarts it.
+  #
+  # attention.thenairn.com, via Caddy, LAN only. NO `ports:` KEY: the phone must
+  # come in over HTTPS (iOS refuses plain http from the app).
+  #
+  # The executor is the Claude Agent SDK, which ships its own claude binary and
+  # runs on Tom's Claude Code login: the same .claude directory orca uses,
+  # mounted as a directory so token refreshes (atomic rename) land on disk.
+  # State is ${CONFIG_DIR}/attention: attention.db and attention.sock, so the
+  # CLI in orca reaches the daemon with --socket /mnt/user/Config/attention/attention.sock.
+  attention:
+    container_name: attention
+    image: oven/bun:1.4.2@sha256:9114c058aeae42162ee16dd5084b95fe9473970bb6bcb5b232ab1630f0546895
+    working_dir: /app
+    command:
+      - sh
+      - -c
+      - >-
+        bun install --frozen-lockfile &&
+        exec bun --watch apps/cli/src/main.ts serve
+        --db /state/attention.db --socket /state/attention.sock
+        --listen 0.0.0.0:7420
+        --pairing-address https://attention.thenairn.com
+        --pair-from-network
+        --turns 40
+    environment:
+      - HOME=/root
+    volumes:
+      - /mnt/cache/HQ/repos/Attention:/app
+      - ${CONFIG_DIR}/attention:/state
+      - /mnt/cache/HQ/.claude:/root/.claude
+    restart: unless-stopped

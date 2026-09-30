@@ -1118,6 +1118,21 @@ plannotator.thenairn.com {
     }
 }
 
+# Attention daemon (docker-compose.attention.yml), port 7420. LAN only, deliberately:
+# the pairing page hands out device codes to any browser that reaches it.
+# The phone needs HTTPS; this name is its pairing origin.
+attention.thenairn.com {
+    @internal {
+        remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+    handle @internal {
+        reverse_proxy attention:7420
+    }
+    handle {
+        abort
+    }
+}
+
 # Agent harness console (thenairn.com/harness): every Milo/Thor conversation in
 # full. The `harness` container (docker-compose.harness.yml), port 7812. No auth
 # of its own, so Google auth off-LAN.
